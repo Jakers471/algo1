@@ -1,0 +1,27 @@
+{
+  "run_id": 5,
+  "name": "run_0005",
+  "strategy": "fanning_mtf",
+  "timestamp": "2026-06-24T19:22:42",
+  "parent": "run_0004",
+  "notes": "",
+  "config_diff": {
+    "changed": {
+      "X": [
+        70,
+        65
+      ]
+    },
+    "added": {},
+    "removed": {}
+  },
+  "headline": {
+    "total_return": 0.36271769409492705,
+    "cagr": 0.015598697381844273,
+    "sharpe": 0.49625790713143264,
+    "max_drawdown": -0.07300325533407825,
+    "round_trips": 479.0,
+    "win_rate": 0.4509394572025052,
+    "exposure": 0.041291063604627906
+  }
+}

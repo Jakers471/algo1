@@ -1,0 +1,25 @@
+{
+  "symbol": "NQ",
+  "htf_tf": "1d",
+  "ltf_tf": "15m",
+  "htf_fan": [
+    5,
+    500,
+    0.15
+  ],
+  "ltf_fan": [
+    5,
+    100,
+    0.03
+  ],
+  "n_ma": 32,
+  "slope_L": 5,
+  "X": 70,
+  "htf_gate": 50,
+  "coil_k": 20,
+  "coil_level": 40,
+  "exit_th": 30,
+  "atr_mult": 5.0,
+  "atr_n": 14,
+  "cost_per_turn": 0.0002
+}

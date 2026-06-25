@@ -1,0 +1,35 @@
+{
+  "run_id": 4,
+  "name": "run_0004",
+  "strategy": "fanning_mtf",
+  "timestamp": "2026-06-24T19:21:50",
+  "parent": "run_0003",
+  "notes": "",
+  "config_diff": {
+    "changed": {},
+    "added": {
+      "capital": 100000.0,
+      "sizing": "risk_pct",
+      "size_contracts": 1,
+      "risk_pct": 0.01,
+      "max_contracts": 20,
+      "commission_per_side": 2.25,
+      "slippage_ticks": 1,
+      "point_value": 20.0,
+      "tick": 0.25,
+      "tick_value": 5.0
+    },
+    "removed": {
+      "cost_per_turn": 0.0002
+    }
+  },
+  "headline": {
+    "total_return": 0.2787598354059053,
+    "cagr": 0.012373833622436159,
+    "sharpe": 0.44155457801251163,
+    "max_drawdown": -0.08525048555326997,
+    "round_trips": 404.0,
+    "win_rate": 0.4405940594059406,
+    "exposure": 0.03680856235172148
+  }
+}

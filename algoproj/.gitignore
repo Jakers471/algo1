@@ -1,0 +1,12 @@
+# Raw market data — large (NQ_1min is ~151MB, over GitHub's limit) and external/reproducible.
+# Lives locally; referenced by absolute path in config.py.
+NQdata/
+
+# Python caches / build
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Streamlit / OS cruft
+.DS_Store

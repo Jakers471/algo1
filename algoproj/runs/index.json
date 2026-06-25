@@ -1,0 +1,317 @@
+[
+  {
+    "run_id": 1,
+    "name": "run_0001",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T16:55:15",
+    "parent": null,
+    "notes": "",
+    "config_diff": null,
+    "headline": {
+      "total_return": 0.23595265237231877,
+      "cagr": 0.010651329107625784,
+      "sharpe": 0.31787242818854344,
+      "max_drawdown": -0.10404414406795304,
+      "round_trips": 817.0,
+      "win_rate": 0.45532435740514077,
+      "exposure": 0.08849713606025995
+    },
+    "path": "fanning_mtf/backtest/run_0001"
+  },
+  {
+    "run_id": 2,
+    "name": "run_0002",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T16:55:21",
+    "parent": "run_0001",
+    "notes": "",
+    "config_diff": {
+      "changed": {
+        "X": [
+          70,
+          60
+        ]
+      },
+      "added": {},
+      "removed": {}
+    },
+    "headline": {
+      "total_return": 0.17133826070619973,
+      "cagr": 0.007940873707177332,
+      "sharpe": 0.2299814966987521,
+      "max_drawdown": -0.11993191657122715,
+      "round_trips": 1014.0,
+      "win_rate": 0.43984220907297833,
+      "exposure": 0.097746058990921
+    },
+    "path": "fanning_mtf/backtest/run_0002"
+  },
+  {
+    "run_id": 3,
+    "name": "run_0003",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T16:57:55",
+    "parent": "run_0002",
+    "notes": "",
+    "config_diff": {
+      "changed": {
+        "X": [
+          60,
+          70
+        ]
+      },
+      "added": {},
+      "removed": {}
+    },
+    "headline": {
+      "total_return": 0.23595265237231877,
+      "cagr": 0.010651329107625784,
+      "sharpe": 0.31787242818854344,
+      "max_drawdown": -0.10404414406795304,
+      "round_trips": 817.0,
+      "win_rate": 0.45532435740514077,
+      "exposure": 0.08849713606025995
+    },
+    "path": "fanning_mtf/backtest/run_0003"
+  },
+  {
+    "run_id": 4,
+    "name": "run_0004",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T19:21:50",
+    "parent": "run_0003",
+    "notes": "",
+    "config_diff": {
+      "changed": {},
+      "added": {
+        "capital": 100000.0,
+        "sizing": "risk_pct",
+        "size_contracts": 1,
+        "risk_pct": 0.01,
+        "max_contracts": 20,
+        "commission_per_side": 2.25,
+        "slippage_ticks": 1,
+        "point_value": 20.0,
+        "tick": 0.25,
+        "tick_value": 5.0
+      },
+      "removed": {
+        "cost_per_turn": 0.0002
+      }
+    },
+    "headline": {
+      "total_return": 0.2787598354059053,
+      "cagr": 0.012373833622436159,
+      "sharpe": 0.44155457801251163,
+      "max_drawdown": -0.08525048555326997,
+      "round_trips": 404.0,
+      "win_rate": 0.4405940594059406,
+      "exposure": 0.03680856235172148
+    },
+    "path": "fanning_mtf/backtest/run_0004"
+  },
+  {
+    "run_id": 5,
+    "name": "run_0005",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T19:22:42",
+    "parent": "run_0004",
+    "notes": "",
+    "config_diff": {
+      "changed": {
+        "X": [
+          70,
+          65
+        ]
+      },
+      "added": {},
+      "removed": {}
+    },
+    "headline": {
+      "total_return": 0.36271769409492705,
+      "cagr": 0.015598697381844273,
+      "sharpe": 0.49625790713143264,
+      "max_drawdown": -0.07300325533407825,
+      "round_trips": 479.0,
+      "win_rate": 0.4509394572025052,
+      "exposure": 0.041291063604627906
+    },
+    "path": "fanning_mtf/backtest/run_0005"
+  },
+  {
+    "run_id": 6,
+    "name": "run_0006",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T19:23:19",
+    "parent": "run_0005",
+    "notes": "",
+    "config_diff": {
+      "changed": {
+        "X": [
+          65,
+          70
+        ]
+      },
+      "added": {},
+      "removed": {}
+    },
+    "headline": {
+      "total_return": 0.2787598354059053,
+      "cagr": 0.012373833622436159,
+      "sharpe": 0.44155457801251163,
+      "max_drawdown": -0.08525048555326997,
+      "round_trips": 404.0,
+      "win_rate": 0.4405940594059406,
+      "exposure": 0.03680856235172148
+    },
+    "path": "fanning_mtf/backtest/run_0006"
+  },
+  {
+    "run_id": 1,
+    "name": "wfo_0001",
+    "kind": "wfo",
+    "backtest_type": "Walk-Forward Optimization",
+    "strategy": "fanning_mtf",
+    "timestamp": "2026-06-24T20:06:27",
+    "date": "2026-06-24",
+    "notes": "",
+    "objective": "sharpe",
+    "anchored": false,
+    "train_days": 1095,
+    "test_days": 365,
+    "n_windows": 17,
+    "n_configs": 3,
+    "oos_span": [
+      "2008-01-20",
+      "2025-01-10"
+    ],
+    "swept_params": {
+      "X": [
+        60.0,
+        80.0,
+        10.0
+      ]
+    },
+    "config_labeled": {
+      "signal_params": {
+        "symbol": "NQ",
+        "htf_tf": "1d",
+        "ltf_tf": "15m",
+        "htf_fan": [
+          5,
+          500,
+          0.15
+        ],
+        "ltf_fan": [
+          5,
+          100,
+          0.03
+        ],
+        "n_ma": 32,
+        "slope_L": 5,
+        "X": 70,
+        "htf_gate": 50,
+        "coil_k": 20,
+        "coil_level": 40,
+        "exit_th": 30,
+        "atr_mult": 5.0,
+        "atr_n": 14
+      },
+      "account_execution": {
+        "capital": 100000.0,
+        "sizing": "risk_pct",
+        "size_contracts": 1,
+        "risk_pct": 0.01,
+        "max_contracts": 20,
+        "commission_per_side": 2.25,
+        "slippage_ticks": 1,
+        "point_value": 20.0,
+        "tick": 0.25,
+        "tick_value": 5.0
+      }
+    },
+    "headline": {
+      "oos_total_return": 0.14635648716840377,
+      "oos_cagr": 0.008041955136394385,
+      "oos_sharpe": 0.28153193063947957,
+      "oos_win_rate": 0.43005181347150256,
+      "full_total_return": 0.24978745480745346
+    },
+    "path": "fanning_mtf/walk_forward/wfo_0001"
+  },
+  {
+    "run_id": 2,
+    "name": "wfo_0002",
+    "kind": "wfo",
+    "backtest_type": "Walk-Forward Optimization",
+    "strategy": "fanning_mtf",
+    "path": "fanning_mtf/walk_forward/wfo_0002",
+    "timestamp": "2026-06-24T20:18:11",
+    "date": "2026-06-24",
+    "notes": "",
+    "objective": "sharpe",
+    "anchored": false,
+    "train_days": 1095,
+    "test_days": 365,
+    "n_windows": 17,
+    "n_configs": 7,
+    "oos_span": [
+      "2008-01-20",
+      "2025-01-10"
+    ],
+    "swept_params": {
+      "coil_k": [
+        20.0,
+        80.0,
+        10.0
+      ]
+    },
+    "config_labeled": {
+      "signal_params": {
+        "symbol": "NQ",
+        "htf_tf": "1d",
+        "ltf_tf": "15m",
+        "htf_fan": [
+          5,
+          500,
+          0.15
+        ],
+        "ltf_fan": [
+          5,
+          100,
+          0.03
+        ],
+        "n_ma": 32,
+        "slope_L": 5,
+        "X": 70,
+        "htf_gate": 50,
+        "coil_k": 20,
+        "coil_level": 40,
+        "exit_th": 30,
+        "atr_mult": 5.0,
+        "atr_n": 14
+      },
+      "account_execution": {
+        "capital": 100000.0,
+        "sizing": "risk_pct",
+        "size_contracts": 1,
+        "risk_pct": 0.01,
+        "max_contracts": 20,
+        "commission_per_side": 2.25,
+        "slippage_ticks": 1,
+        "point_value": 20.0,
+        "tick": 0.25,
+        "tick_value": 5.0
+      }
+    },
+    "headline": {
+      "oos_total_return": 0.3044485458569408,
+      "oos_cagr": 0.015707907325795523,
+      "oos_sharpe": 0.4685047416869528,
+      "oos_max_drawdown": -0.11654691892845459,
+      "oos_exposure": 0.04783173398232097,
+      "oos_win_rate": 0.4282511210762332,
+      "full_total_return": 0.36639695810031125
+    }
+  }
+]

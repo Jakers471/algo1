@@ -1,0 +1,14 @@
+{
+  "specs": {
+    "coil_k": [
+      20.0,
+      80.0,
+      10.0
+    ]
+  },
+  "objective": "sharpe",
+  "train_days": 1095.0,
+  "test_days": 365.0,
+  "anchored": false,
+  "backtest_type": "Walk-Forward Optimization"
+}
