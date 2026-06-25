@@ -111,16 +111,19 @@ def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
         bi = int(np.argmax(scored))
         bestA, best_ov, train_score = arrs[bi], configs[bi], scored[bi]
         _, test_seg = _score(bestA, test_lo, test_hi, objective)
+        _, is_seg = _score(bestA, train_lo, train_hi, objective)   # chosen config on its TRAIN window
 
         chosen_rets[test_lo:test_hi] = bestA["rets"][test_lo:test_hi]
         chosen_inmkt[test_lo:test_hi] = bestA["in_market"][test_lo:test_hi]
         oos_trades.extend(validation._trades_in(bestA["trades"], test_lo, test_hi))
-        steps.append(dict(
+        step = dict(
             fold=fold,
             train_from=str(idx[train_lo])[:10], train_to=str(idx[train_hi - 1])[:10],
             test_from=str(idx[test_lo])[:10], test_to=str(idx[test_hi - 1])[:10],
             train_bars=[int(train_lo), int(train_hi)], test_bars=[int(test_lo), int(test_hi)],
-            params=best_ov, train_score=float(train_score), test=test_seg))
+            params=best_ov, train_score=float(train_score), test=test_seg)
+        step["is"] = is_seg                                        # 'is' is reserved -> set by key
+        steps.append(step)
         cursor_t += test_td
 
     # stitched out-of-sample: test windows tile contiguously from the first test bar
@@ -129,13 +132,14 @@ def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
     oos = validation._segment(chosen_rets[oos_lo:oos_hi], oos_trades,
                               chosen_inmkt[oos_lo:oos_hi], ppy)
 
-    # overfit yardstick: single best config chosen on the FULL selected range (in-sample optimal)
+    # overfit ceiling: the single config chosen WITH HINDSIGHT (best over the whole range), but
+    # MEASURED over the OOS span so it's a fair head-to-head with the walk-forward (same span).
     full_scored = [_score(A, lo, hi, objective)[0] for A in arrs]
     fi = int(np.argmax(full_scored))
     fullA, full_ov = arrs[fi], configs[fi]
-    full_seg = validation._segment(fullA["rets"][lo:hi],
-                                   validation._trades_in(fullA["trades"], lo, hi),
-                                   fullA["in_market"][lo:hi], ppy)
+    full_seg = validation._segment(fullA["rets"][oos_lo:oos_hi],
+                                   validation._trades_in(fullA["trades"], oos_lo, oos_hi),
+                                   fullA["in_market"][oos_lo:oos_hi], ppy)
 
     # how often each swept param's value was re-chosen (parameter stability)
     stability = {}
@@ -146,13 +150,47 @@ def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
             counts[v] = counts.get(v, 0) + 1
         stability[p] = counts
 
-    # equity curves for the detail view: honest walk-forward OOS vs the overfit best-on-full
+    # ---- In-sample vs Out-of-sample + Walk-Forward Efficiency (the standard interpretation) ----
+    MK = ["total_return", "cagr", "sharpe", "max_drawdown", "exposure", "round_trips",
+          "win_rate", "expectancy", "profit_factor"]
+    is_blocks = [s["is"] for s in steps if s.get("is")]
+    is_avg = {k: (float(np.mean([b[k] for b in is_blocks if b.get(k) is not None]))
+                  if any(b.get(k) is not None for b in is_blocks) else None) for k in MK}
+    is_cagrs = [b.get("cagr") for b in is_blocks if b.get("cagr") is not None]
+    is_cagr_mean = float(np.mean(is_cagrs)) if is_cagrs else 0.0
+    oos_cagr = oos.get("cagr") or 0.0
+    per_window_wfe = [((s["test"].get("cagr") / s["is"].get("cagr"))
+                       if (s.get("is") and s.get("test") and (s["is"].get("cagr") or 0) > 0
+                           and s["test"].get("cagr") is not None) else None) for s in steps]
+    wfe = (oos_cagr / is_cagr_mean) if is_cagr_mean > 0 else None
+    if wfe is None:
+        rating, note = "na", "In-sample return not positive - WFE undefined; judge the OOS result directly."
+    else:
+        rating = ("excellent" if wfe > 0.70 else "good" if wfe >= 0.50
+                  else "weak" if wfe >= 0.30 else "overfit")
+        note = ""
+    wfe_block = dict(wfe=wfe, is_cagr_mean=is_cagr_mean, oos_cagr=oos_cagr,
+                     per_window=per_window_wfe, rating=rating, note=note)
+
+    # ---- consistency / validity across windows ----
+    trets = [s["test"].get("total_return") for s in steps if s.get("test") and s["test"].get("total_return") is not None]
+    tshs = [s["test"].get("sharpe") for s in steps if s.get("test") and s["test"].get("sharpe") is not None]
+    tdds = [s["test"].get("max_drawdown") for s in steps if s.get("test") and s["test"].get("max_drawdown") is not None]
+    pos_sum = sum(r for r in trets if r > 0)
+    conc = (max([r for r in trets if r > 0], default=0.0) / pos_sum) if pos_sum > 0 else 0.0
+    consistency = dict(n_windows=len(steps), n_pos_oos=sum(1 for r in trets if r > 0),
+                       oos_sharpe_std=float(np.std(tshs)) if tshs else 0.0,
+                       worst_window_dd=float(min(tdds)) if tdds else 0.0,
+                       concentration_pct=float(conc), concentrated=bool(conc > 0.5))
+
+    # equity curves on a SHARED span: honest walk-forward OOS vs the overfit ceiling
     equity = {"oos": _daily_curve(chosen_rets[oos_lo:oos_hi], idx[oos_lo:oos_hi]),
-              "full": _daily_curve(fullA["rets"][lo:hi], idx[lo:hi])}
+              "full": _daily_curve(fullA["rets"][oos_lo:oos_hi], idx[oos_lo:oos_hi])}
 
     oos_end = str(idx[min(oos_hi, n) - 1])[:10]
     return dict(steps=steps, oos=oos, oos_span=(str(idx[oos_lo])[:10], oos_end),
-                full_best=dict(params=full_ov, metrics=full_seg),
+                full_best=dict(params=full_ov, metrics=full_seg), is_avg=is_avg,
+                wfe=wfe_block, consistency=consistency,
                 objective=objective, anchored=anchored, equity=equity,
                 date_range=(str(idx[lo])[:10], str(idx[min(hi, n) - 1])[:10]),
                 train_days=train_days, test_days=test_days, n_windows=len(steps),

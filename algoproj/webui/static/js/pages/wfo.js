@@ -80,53 +80,81 @@
       objective: m.objective, anchored: m.anchored, train_days: m.train_days, test_days: m.test_days,
       n_windows: m.n_windows, n_configs: m.n_configs, date_range: m.date_range,
       oos_span: r.oos_span || m.oos_span, oos: r.oos, full_best: r.full_best,
-      stability: r.stability, steps: api.steps || [], equity: r.equity
+      stability: r.stability, steps: api.steps || [], equity: r.equity,
+      wfe: r.wfe, consistency: r.consistency, is_avg: r.is_avg
     };
   };
 
   const ROWS = ['total_return', 'cagr', 'sharpe', 'max_drawdown', 'exposure', 'round_trips',
     'win_rate', 'profit_factor'];
+  const RATING_FLAG = { excellent: 'good', good: 'good', weak: 'warn', overfit: 'bad', na: 'off' };
+  const RATING_TXT = { excellent: 'excellent (>70%)', good: 'good (50-70%)', weak: 'weak (30-50%)', overfit: 'overfit (<30%)', na: 'undefined' };
 
   function tabOverview(host, res) {
-    const oos = res.oos || {}, full = (res.full_best || {}).metrics || {};
+    const wfe = res.wfe || {}, cons = res.consistency || {}, oos = res.oos || {}, isA = res.is_avg || {};
+    const wval = wfe.wfe == null ? 'n/a' : (wfe.wfe * 100).toFixed(0) + '%';
+    // headline KPIs: WFE + the two CAGRs it's built from
+    host.append(el('div', { class: 'grid cols-3', style: 'margin-bottom:12px;' },
+      el('div', { class: 'card kpi' }, el('div', { class: 'k-label' }, 'Walk-forward efficiency (OOS / IS return)'),
+        el('div', { class: 'k-value ' + (wfe.wfe == null ? '' : wfe.wfe >= 0.5 ? 'pos' : 'neg') }, wval),
+        el('div', { class: 'k-sub' }, RATING_TXT[wfe.rating] || '')),
+      el('div', { class: 'card kpi' }, el('div', { class: 'k-label' }, 'In-sample CAGR (avg)'),
+        el('div', { class: 'k-value' }, fmtMetric('cagr', wfe.is_cagr_mean))),
+      el('div', { class: 'card kpi' }, el('div', { class: 'k-label' }, 'Out-of-sample CAGR'),
+        el('div', { class: 'k-value ' + ((wfe.oos_cagr || 0) >= 0 ? 'pos' : 'neg') }, fmtMetric('cagr', wfe.oos_cagr)))));
+    host.append(W.flag(RATING_FLAG[wfe.rating] || 'off', '<b>Read:</b> ' + (wfe.wfe == null
+      ? (wfe.note || 'WFE undefined.')
+      : `Walk-forward efficiency ${wval} (${RATING_TXT[wfe.rating]}) - out-of-sample kept ${wval} of the in-sample edge. `
+        + (wfe.wfe >= 0.5 ? 'A real edge survives re-tuning.' : 'Most of the in-sample edge did not generalize.'))));
+
+    // IS vs OOS aggregate table
     const t = el('table', { class: 'data' });
     t.append(el('thead', {}, el('tr', {}, el('th', {}, 'metric'), el('th', {}, 'what it means'),
-      el('th', { class: 'num' }, 'walk-forward OOS'), el('th', { class: 'num' }, 'best-on-full'))));
+      el('th', { class: 'num' }, 'in-sample (avg)'), el('th', { class: 'num' }, 'out-of-sample'))));
     const tb = el('tbody');
     ROWS.forEach(k => tb.append(el('tr', {}, el('td', { html: `<b>${k}</b>` }),
       el('td', { class: 'dim' }, window.EXPLAIN[k] || ''),
-      el('td', { class: 'num mono' }, fmtMetric(k, oos[k])),
-      el('td', { class: 'num mono' }, fmtMetric(k, full[k])))));
+      el('td', { class: 'num mono' }, fmtMetric(k, isA[k])),
+      el('td', { class: 'num mono' }, fmtMetric(k, oos[k])))));
     t.append(tb);
-    host.append(W.card('Walk-forward (honest) vs best-on-full-history (overfit)', el('div', { class: 'tbl-wrap' }, t)));
-    const oosR = oos.total_return || 0, fullR = full.total_return || 0, gap = fullR - oosR;
-    const kind = oosR <= 0 ? 'bad' : gap > 0.10 ? 'warn' : 'good';
-    host.append(W.flag(kind, `<b>Read:</b> best-on-full shows ${(fullR * 100).toFixed(0)}% but the honest `
-      + `walk-forward OOS is ${(oosR * 100).toFixed(0)}% - a ${(gap * 100).toFixed(0)}-pt overfit gap. `
-      + (oosR <= 0 ? 'The OOS result is negative: re-tuning did not rescue it.'
-        : 'The walk-forward number is what you could realistically expect.')));
-    host.append(el('div', { class: 'note', style: 'margin:6px 0 0;',
-      html: `Best-on-full config: <code>${JSON.stringify((res.full_best || {}).params || {})}</code> - looked best over the `
-        + 'WHOLE range (uses future info; shown only as a yardstick).' }));
+    host.append(W.card('In-sample (training) vs Out-of-sample (honest)', el('div', { class: 'tbl-wrap' }, t)));
+
+    // consistency + validity flags
+    const np = cons.n_pos_oos || 0, nw = cons.n_windows || 1;
+    const g = el('div', { class: 'grid cols-2', style: 'margin-top:6px;' });
+    g.append(W.flag(np >= nw * 0.6 ? 'good' : np >= nw * 0.4 ? 'warn' : 'bad',
+      `<b>Consistency:</b> ${np} of ${nw} windows positive OOS. Sharpe dispersion ${W.num(cons.oos_sharpe_std)} `
+      + `(lower = steadier). Worst window drawdown ${fmtMetric('max_drawdown', cons.worst_window_dd)}.`));
+    g.append(W.flag(cons.concentrated ? 'bad' : 'good',
+      `<b>Validity:</b> biggest single window made ${((cons.concentration_pct || 0) * 100).toFixed(0)}% of OOS profit. `
+      + (cons.concentrated ? 'Over 50% from one window - fragile / lucky period.' : 'No single window dominates - healthy.')));
+    host.append(g);
+
+    // overfit ceiling - secondary reference only
+    const full = (res.full_best || {}).metrics || {};
+    host.append(el('div', { class: 'note', style: 'margin-top:10px;',
+      html: `Overfit ceiling (reference only): the single best config chosen with hindsight, measured on the SAME OOS span, `
+        + `returns <b>${fmtMetric('total_return', full.total_return)}</b> vs the honest <b>${fmtMetric('total_return', oos.total_return)}</b>. `
+        + `A ceiling, not an expectation. Config <code>${JSON.stringify((res.full_best || {}).params || {})}</code>.` }));
   }
 
   function tabEquity(host, res) {
     const eq = res.equity || {}, oosC = eq.oos || { dates: [], pct: [] }, fullC = eq.full || { dates: [], pct: [] };
     if ((oosC.dates || []).length || (fullC.dates || []).length) {
-      const cc = W.chartCard('Equity: walk-forward OOS (honest) vs best-on-full (overfit) - % from start', 'xtall');
+      const cc = W.chartCard('Out-of-sample equity (honest) vs overfit ceiling - same span, % from start', 'xtall');
       host.append(cc.card);
       const dates = [...new Set([...(fullC.dates || []), ...(oosC.dates || [])])].sort();
       const onto = c => { const m = {}; (c.dates || []).forEach((d, i) => m[d] = c.pct[i]); return dates.map(d => d in m ? m[d] : null); };
       Ch.multiLine(cc.box, {
         x: dates, yFormatter: v => v == null ? '-' : v.toFixed(0) + '%',
         series: [
-          { name: 'Best-on-full (overfit)', color: Ch.C.amber, data: onto(fullC) },
+          { name: 'Overfit ceiling (hindsight)', color: Ch.C.amber, data: onto(fullC) },
           { name: 'Walk-forward OOS (honest)', color: Ch.C.accent, data: onto(oosC) },
         ]
       });
       host.append(el('div', { class: 'note', style: 'margin-top:6px;' },
-        'The amber line had access to the whole range when its single config was chosen (overfit). '
-        + 'The teal line is the honest re-tuned-per-window result. The gap between them is the lie.'));
+        'Both lines now cover the SAME out-of-sample span. Teal = honest re-tuned-per-window result '
+        + '(what you would expect). Amber = the one config you would have picked with hindsight (a ceiling).'));
     } else {
       host.append(W.flag('off', 'No equity curves saved for this run (it predates the curve feature). Re-run to generate.'));
     }
@@ -141,27 +169,35 @@
       return W.card(title, t);
     };
     const g = el('div', { class: 'grid cols-2', style: 'margin-top:14px;' });
-    g.append(statCard('Walk-forward OOS (honest)', oos), statCard('Best-on-full (overfit yardstick)', full));
+    g.append(statCard('Walk-forward OOS (honest)', oos), statCard('Overfit ceiling (hindsight, same span)', full));
     host.append(g);
   }
 
   function tabWindows(host, res) {
+    const pw = res.wfe ? (res.wfe.per_window || []) : [];
     const ft = el('table', { class: 'data' });
     ft.append(el('thead', {}, el('tr', {},
-      ...['fold', 'train <=', 'picked params', 'train ' + res.objective, 'test window', 'test net', 'test sharpe', 'test win']
+      ...['fold', 'test window', 'picked params', 'IS net', 'IS sharpe', 'OOS net', 'OOS sharpe', 'WFE']
         .map((h, i) => el('th', { class: i >= 3 ? 'num' : '' }, h)))));
     const ftb = el('tbody');
-    (res.steps || []).forEach(s => {
+    (res.steps || []).forEach((s, i) => {
+      const is = s.is || {}, t = s.test || {};
       const p = Object.entries(s.params || {}).map(([k, v]) => `${k}=${v}`).join(', ');
-      ftb.append(el('tr', {}, el('td', {}, String(s.fold)), el('td', { class: 'mono' }, s.train_to),
-        el('td', { class: 'mono' }, p), el('td', { class: 'num mono' }, W.num(s.train_score)),
+      const w = pw[i];
+      ftb.append(el('tr', {}, el('td', {}, String(s.fold)),
         el('td', { class: 'mono' }, `${s.test_from} -> ${s.test_to}`),
-        el('td', { class: 'num mono ' + ((s.test || {}).total_return >= 0 ? 'pos' : 'neg') }, fmtMetric('total_return', (s.test || {}).total_return)),
-        el('td', { class: 'num mono' }, W.num((s.test || {}).sharpe)),
-        el('td', { class: 'num mono' }, fmtMetric('win_rate', (s.test || {}).win_rate))));
+        el('td', { class: 'mono' }, p),
+        el('td', { class: 'num mono ' + ((is.total_return || 0) >= 0 ? 'pos' : 'neg') }, fmtMetric('total_return', is.total_return)),
+        el('td', { class: 'num mono' }, W.num(is.sharpe)),
+        el('td', { class: 'num mono ' + ((t.total_return || 0) >= 0 ? 'pos' : 'neg') }, fmtMetric('total_return', t.total_return)),
+        el('td', { class: 'num mono' }, W.num(t.sharpe)),
+        el('td', { class: 'num mono' }, w == null ? 'n/a' : (w * 100).toFixed(0) + '%')));
     });
     ft.append(ftb);
-    host.append(W.card('Per-fold: trained -> picked -> tested out-of-sample', el('div', { class: 'tbl-wrap' }, ft)));
+    host.append(W.card('Per window: in-sample (train) vs out-of-sample (test), and efficiency', el('div', { class: 'tbl-wrap' }, ft)));
+    host.append(el('div', { class: 'note', style: 'margin-top:6px;' },
+      'WFE per window = OOS return / IS return; it is noisy when IS return is tiny (shown n/a when IS <= 0). '
+      + 'The aggregate WFE on the Overview tab is the reliable number.'));
   }
 
   function tabStability(host, res) {
