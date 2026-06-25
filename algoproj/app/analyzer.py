@@ -20,7 +20,8 @@ import streamlit as st
 
 from algokit import runs, wfo
 from app import sidebar
-from app.views import summary, trades, equity, chart, validation, wfopt, runs_browser
+from app.views import (summary, trades, equity, chart, validation, wfopt,
+                       runs_browser, strategies_browser)
 
 st.set_page_config(page_title="Strategy Analyzer", layout="wide")
 st.markdown(
@@ -118,10 +119,13 @@ def _render_wfo(cfg):
         wfopt.render(res)
 
 
-# top-level page nav: the Analyzer (run/optimize) vs the Runs registry browser
-nav = st.radio("nav", ["Analyzer", "Runs"], horizontal=True, label_visibility="collapsed")
+# top-level page nav: Analyzer (run/optimize), Strategies (cross-strategy), Runs (one strategy)
+nav = st.radio("nav", ["Analyzer", "Strategies", "Runs"], horizontal=True,
+               label_visibility="collapsed")
 if nav == "Runs":
     runs_browser.render()
+elif nav == "Strategies":
+    strategies_browser.render()
 else:
     # wide main area on the left, slim config panel on the right
     main_col, cfg_col = st.columns([6.5, 1.4], gap="medium")
