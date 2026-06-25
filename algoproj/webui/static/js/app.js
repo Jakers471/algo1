@@ -17,9 +17,10 @@
 
   // ---- nav ----
   const NAV = [
-    { id: 'analyzer', label: 'Analyzer', sub: 'Run & optimize' },
+    { id: 'analyzer', label: 'Analyzer', sub: 'Build & run' },
+    { id: 'performance', label: 'Performance', sub: 'Backtest outputs' },
+    { id: 'runs', label: 'Runs', sub: 'All tests, by type' },
     { id: 'strategies', label: 'Strategies', sub: 'Compare strategies' },
-    { id: 'runs', label: 'Runs', sub: 'Browse & compare runs' },
   ];
 
   function renderSidebar(active) {
@@ -47,7 +48,7 @@
   }
 
   function route() {
-    const id = (location.hash.replace('#', '') || 'runs');
+    const id = (location.hash.replace('#', '') || 'analyzer');
     const page = window.PAGES[id] || window.PAGES.runs;
     renderSidebar(page.id);
     document.getElementById('topbar').innerHTML = '';

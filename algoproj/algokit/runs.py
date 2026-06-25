@@ -24,18 +24,25 @@ from config import _ROOT
 RUNS_DIR = os.path.join(_ROOT, "runs")
 
 
+# the three test kinds are kept strictly separate on disk and in the UI
+KINDS = ("backtest", "wfo", "anchored")
+_SUB = {"backtest": "backtest", "wfo": "walk_forward", "anchored": "anchored"}
+_PREFIX = {"backtest": "run_", "wfo": "wfo_", "anchored": "awf_"}
+# human label per kind/backtest_type (anchored is NOT called "WFO")
+TYPE_LABEL = {"backtest": "Backtest", "wfo": "Walk-Forward", "anchored": "Anchored"}
+
+
 def _sub(kind):
-    """Folder name for a run kind: backtests vs walk-forward optimizations."""
-    return "walk_forward" if kind == "wfo" else "backtest"
+    return _SUB.get(kind, "backtest")
 
 
 def _type_dir(strategy, kind="backtest"):
-    """runs/<strategy>/<backtest|walk_forward> — where runs of this kind live."""
+    """runs/<strategy>/<backtest|walk_forward|anchored> — where runs of this kind live."""
     return os.path.join(RUNS_DIR, strategy, _sub(kind))
 
 
 def _prefix(kind):
-    return "wfo_" if kind == "wfo" else "run_"
+    return _PREFIX.get(kind, "run_")
 
 
 def _ids(strategy, kind="backtest"):
@@ -193,16 +200,16 @@ def save_wfo(result, strategy_name, base_cfg, settings, notes=""):
     os.makedirs(RUNS_DIR, exist_ok=True)
     from algokit import params as _params
 
-    parent_dir = _type_dir(strategy_name, "wfo")
-    ids = _ids(strategy_name, "wfo")
+    kind = "anchored" if result["anchored"] else "wfo"
+    parent_dir = _type_dir(strategy_name, kind)
+    ids = _ids(strategy_name, kind)
     rid = (ids[-1] + 1) if ids else 1
-    name = f"wfo_{rid:04d}"
+    name = f"{_prefix(kind)}{rid:04d}"
     d = os.path.join(parent_dir, name)
     os.makedirs(d, exist_ok=True)
 
     signal_p, exec_p = _params.split_params(base_cfg)
-    bt = ("Anchored Walk-Forward Optimization" if result["anchored"]
-          else "Walk-Forward Optimization")
+    bt = TYPE_LABEL[kind]                              # "Anchored" / "Walk-Forward" (not "WFO")
     now = datetime.datetime.now()
 
     json.dump(base_cfg, open(os.path.join(d, "config.json"), "w"), indent=2)
@@ -213,7 +220,7 @@ def save_wfo(result, strategy_name, base_cfg, settings, notes=""):
               open(os.path.join(d, "result.json"), "w"), indent=2)
 
     o = result["oos"]; fb = result["full_best"]["metrics"]
-    meta = dict(run_id=rid, name=name, kind="wfo", backtest_type=bt,
+    meta = dict(run_id=rid, name=name, kind=kind, backtest_type=bt,
                 strategy=strategy_name, path=_relpath(d),
                 timestamp=now.isoformat(timespec="seconds"), date=now.date().isoformat(),
                 notes=notes,
@@ -295,7 +302,7 @@ def _all_metas():
         sdir = os.path.join(RUNS_DIR, strat)
         if not os.path.isdir(sdir):
             continue
-        for sub in ("backtest", "walk_forward"):
+        for sub in _SUB.values():
             subdir = os.path.join(sdir, sub)
             if not os.path.isdir(subdir):
                 continue
@@ -310,11 +317,10 @@ def _all_metas():
 
 
 def list_runs(kind=None):
-    """All saved runs as meta dicts (kind='backtest'|'wfo' to filter), oldest first."""
+    """All saved runs as meta dicts (kind='backtest'|'wfo'|'anchored' to filter), oldest first."""
     metas = _all_metas()
     if kind:
-        want = "wfo" if kind == "wfo" else "backtest"
-        metas = [m for m in metas if m.get("kind", "backtest") == want]
+        metas = [m for m in metas if m.get("kind", "backtest") == kind]
     return metas
 
 
@@ -342,7 +348,7 @@ def _rebuild_index():
     for r in metas:
         bt = r.get("backtest_type", "Backtest")
         h = r.get("headline", {})
-        if r.get("kind") == "wfo":
+        if r.get("kind") in ("wfo", "anchored"):
             result = (f"OOS {_pct(h.get('oos_total_return'))} · "
                       f"sharpe {_num(h.get('oos_sharpe'))} · "
                       f"win {_pct(h.get('oos_win_rate')).lstrip('+')}")

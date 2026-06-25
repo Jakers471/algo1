@@ -20,10 +20,10 @@
     return n;
   }
 
-  function toReport(path) {
+  function toPerformance(path) {
     if (!path) return;
-    sessionStorage.setItem('report_run', path);
-    location.hash = 'report';
+    sessionStorage.setItem('perf_run', path);
+    location.hash = 'performance';
   }
 
   function render(main) {
@@ -151,7 +151,7 @@
         prog.set(1, (meta.unchanged ? 'Unchanged - reused ' : 'Saved ') + meta.name + ' - opening report...');
         let path = meta.path;
         if (!path) { const runs = await window.API.get('/api/runs'); path = (runs.find(r => r.name === meta.name) || {}).path; }
-        toReport(path);
+        toPerformance(path);
       } catch (e) { prog.set(0, 'Error: ' + e.message); btn.disabled = false; }
     }
     async function runWFO(btn, prog) {
@@ -166,8 +166,10 @@
           train_days: ctx.train_days, test_days: ctx.test_days, anchored: ctx.mode.startsWith('Anchored'),
           start_date: ctx.start, end_date: ctx.end, mode: ctx.mode
         });
-        prog.set(1, 'Saved ' + res.meta.name + ' - opening report...');
-        toReport(res.meta.path);
+        prog.set(1, 'Saved ' + res.meta.name + ' - opening result...');
+        window.WFO_RESULT = res.result;
+        sessionStorage.setItem('wfo_run', res.meta.path);
+        location.hash = 'wforesult';
       } catch (e) { prog.set(0, 'Error: ' + e.message); btn.disabled = false; }
     }
   }
