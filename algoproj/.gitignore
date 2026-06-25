@@ -10,3 +10,6 @@ __pycache__/
 
 # Streamlit / OS cruft
 .DS_Store
+
+# Archived run registries (already preserved in git history; kept locally as backups)
+runs_archive/
