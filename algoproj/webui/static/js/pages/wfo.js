@@ -3,7 +3,7 @@
    result-shaped object from a saved /api/run payload (meta+settings+result+steps). */
 (function () {
   const { el } = window.UI;
-  const W = window.W;
+  const W = window.W, Ch = window.Charts;
 
   // ---- shared metric formatting (mirrors algokit/metrics.fmt) ----
   const PCT = new Set(['total_return', 'cagr', 'annual_vol', 'max_drawdown', 'exposure',
@@ -80,49 +80,72 @@
       objective: m.objective, anchored: m.anchored, train_days: m.train_days, test_days: m.test_days,
       n_windows: m.n_windows, n_configs: m.n_configs, date_range: m.date_range,
       oos_span: r.oos_span || m.oos_span, oos: r.oos, full_best: r.full_best,
-      stability: r.stability, steps: api.steps || []
+      stability: r.stability, steps: api.steps || [], equity: r.equity
     };
   };
 
   const ROWS = ['total_return', 'cagr', 'sharpe', 'max_drawdown', 'exposure', 'round_trips',
     'win_rate', 'profit_factor'];
 
-  window.renderWFO = function (host, res) {
-    host.innerHTML = '';
-    const win = res.anchored ? 'Anchored' : 'Rolling';
-    const dr = res.date_range || ['?', '?'];
-    host.append(el('div', { class: 'note', style: 'margin-bottom:14px;',
-      html: `<b>Walk-Forward Optimization</b> (${win}) &nbsp;|&nbsp; optimize on <code>${res.objective}</code> `
-        + `&nbsp;|&nbsp; train ${res.train_days}d / test ${res.test_days}d &nbsp;|&nbsp; ${res.n_windows} windows `
-        + `&nbsp;|&nbsp; ${res.n_configs} configs &nbsp;|&nbsp; range ${dr[0]} -> ${dr[1]} `
-        + `&nbsp;|&nbsp; OOS ${(res.oos_span || [])[0]} -> ${(res.oos_span || [])[1]}` }));
-
-    // ---- OOS vs best-on-full ----
+  function tabOverview(host, res) {
     const oos = res.oos || {}, full = (res.full_best || {}).metrics || {};
     const t = el('table', { class: 'data' });
-    t.append(el('thead', {}, el('tr', {}, el('th', {}, 'metric'),
-      el('th', {}, 'what it means'),
+    t.append(el('thead', {}, el('tr', {}, el('th', {}, 'metric'), el('th', {}, 'what it means'),
       el('th', { class: 'num' }, 'walk-forward OOS'), el('th', { class: 'num' }, 'best-on-full'))));
     const tb = el('tbody');
-    ROWS.forEach(k => tb.append(el('tr', {},
-      el('td', { html: `<b>${k}</b>` }),
+    ROWS.forEach(k => tb.append(el('tr', {}, el('td', { html: `<b>${k}</b>` }),
       el('td', { class: 'dim' }, window.EXPLAIN[k] || ''),
       el('td', { class: 'num mono' }, fmtMetric(k, oos[k])),
       el('td', { class: 'num mono' }, fmtMetric(k, full[k])))));
     t.append(tb);
     host.append(W.card('Walk-forward (honest) vs best-on-full-history (overfit)', el('div', { class: 'tbl-wrap' }, t)));
-
     const oosR = oos.total_return || 0, fullR = full.total_return || 0, gap = fullR - oosR;
     const kind = oosR <= 0 ? 'bad' : gap > 0.10 ? 'warn' : 'good';
     host.append(W.flag(kind, `<b>Read:</b> best-on-full shows ${(fullR * 100).toFixed(0)}% but the honest `
       + `walk-forward OOS is ${(oosR * 100).toFixed(0)}% - a ${(gap * 100).toFixed(0)}-pt overfit gap. `
       + (oosR <= 0 ? 'The OOS result is negative: re-tuning did not rescue it.'
         : 'The walk-forward number is what you could realistically expect.')));
-    host.append(el('div', { class: 'note', style: 'margin:6px 0 18px;',
+    host.append(el('div', { class: 'note', style: 'margin:6px 0 0;',
       html: `Best-on-full config: <code>${JSON.stringify((res.full_best || {}).params || {})}</code> - looked best over the `
-        + 'WHOLE history (uses future info; shown only as a yardstick).' }));
+        + 'WHOLE range (uses future info; shown only as a yardstick).' }));
+  }
 
-    // ---- per-fold ----
+  function tabEquity(host, res) {
+    const eq = res.equity || {}, oosC = eq.oos || { dates: [], pct: [] }, fullC = eq.full || { dates: [], pct: [] };
+    if ((oosC.dates || []).length || (fullC.dates || []).length) {
+      const cc = W.chartCard('Equity: walk-forward OOS (honest) vs best-on-full (overfit) - % from start', 'xtall');
+      host.append(cc.card);
+      const dates = [...new Set([...(fullC.dates || []), ...(oosC.dates || [])])].sort();
+      const onto = c => { const m = {}; (c.dates || []).forEach((d, i) => m[d] = c.pct[i]); return dates.map(d => d in m ? m[d] : null); };
+      Ch.multiLine(cc.box, {
+        x: dates, yFormatter: v => v == null ? '-' : v.toFixed(0) + '%',
+        series: [
+          { name: 'Best-on-full (overfit)', color: Ch.C.amber, data: onto(fullC) },
+          { name: 'Walk-forward OOS (honest)', color: Ch.C.accent, data: onto(oosC) },
+        ]
+      });
+      host.append(el('div', { class: 'note', style: 'margin-top:6px;' },
+        'The amber line had access to the whole range when its single config was chosen (overfit). '
+        + 'The teal line is the honest re-tuned-per-window result. The gap between them is the lie.'));
+    } else {
+      host.append(W.flag('off', 'No equity curves saved for this run (it predates the curve feature). Re-run to generate.'));
+    }
+    // side-by-side stats
+    const oos = res.oos || {}, full = (res.full_best || {}).metrics || {};
+    const STAT = [['total_return', 'Net'], ['cagr', 'CAGR'], ['sharpe', 'Sharpe'], ['max_drawdown', 'Max DD'],
+      ['win_rate', 'Win rate'], ['exposure', 'Exposure'], ['round_trips', 'Trades'], ['profit_factor', 'Profit factor']];
+    const statCard = (title, m) => {
+      const t = el('table', { class: 'data' });
+      t.append(el('tbody', {}, ...STAT.map(([k, lab]) => el('tr', {}, el('td', {}, lab),
+        el('td', { class: 'num mono' }, fmtMetric(k, m[k]))))));
+      return W.card(title, t);
+    };
+    const g = el('div', { class: 'grid cols-2', style: 'margin-top:14px;' });
+    g.append(statCard('Walk-forward OOS (honest)', oos), statCard('Best-on-full (overfit yardstick)', full));
+    host.append(g);
+  }
+
+  function tabWindows(host, res) {
     const ft = el('table', { class: 'data' });
     ft.append(el('thead', {}, el('tr', {},
       ...['fold', 'train <=', 'picked params', 'train ' + res.objective, 'test window', 'test net', 'test sharpe', 'test win']
@@ -130,11 +153,8 @@
     const ftb = el('tbody');
     (res.steps || []).forEach(s => {
       const p = Object.entries(s.params || {}).map(([k, v]) => `${k}=${v}`).join(', ');
-      ftb.append(el('tr', {},
-        el('td', {}, String(s.fold)),
-        el('td', { class: 'mono' }, s.train_to),
-        el('td', { class: 'mono' }, p),
-        el('td', { class: 'num mono' }, W.num(s.train_score)),
+      ftb.append(el('tr', {}, el('td', {}, String(s.fold)), el('td', { class: 'mono' }, s.train_to),
+        el('td', { class: 'mono' }, p), el('td', { class: 'num mono' }, W.num(s.train_score)),
         el('td', { class: 'mono' }, `${s.test_from} -> ${s.test_to}`),
         el('td', { class: 'num mono ' + ((s.test || {}).total_return >= 0 ? 'pos' : 'neg') }, fmtMetric('total_return', (s.test || {}).total_return)),
         el('td', { class: 'num mono' }, W.num((s.test || {}).sharpe)),
@@ -142,9 +162,13 @@
     });
     ft.append(ftb);
     host.append(W.card('Per-fold: trained -> picked -> tested out-of-sample', el('div', { class: 'tbl-wrap' }, ft)));
+  }
 
-    // ---- parameter stability ----
+  function tabStability(host, res) {
     const stab = res.stability || {};
+    if (!Object.keys(stab).length) { host.append(el('div', { class: 'note' }, 'No swept parameters.')); return; }
+    host.append(el('div', { class: 'note', style: 'margin-bottom:10px;' },
+      'How often each swept value was re-chosen across folds. A param that jumps around fold-to-fold has no stable optimum.'));
     const grid = el('div', { class: 'grid cols-3' });
     Object.entries(stab).forEach(([p, counts]) => {
       const st = el('table', { class: 'data' });
@@ -155,11 +179,30 @@
       st.append(stb);
       grid.append(W.card(p, st));
     });
-    if (Object.keys(stab).length) {
-      host.append(el('div', { class: 'section-title' }, 'Parameter stability'));
-      host.append(el('div', { class: 'note', style: 'margin-bottom:10px;' },
-        'How often each swept value was re-chosen across folds. A param that jumps around fold-to-fold has no stable optimum.'));
-      host.append(grid);
+    host.append(grid);
+  }
+
+  window.renderWFO = function (host, res) {
+    host.innerHTML = '';
+    const win = res.anchored ? 'Anchored' : 'Rolling';
+    const dr = res.date_range || ['?', '?'];
+    host.append(el('div', { class: 'note', style: 'margin-bottom:14px;',
+      html: `<b>${win} walk-forward</b> &nbsp;|&nbsp; optimize on <code>${res.objective}</code> `
+        + `&nbsp;|&nbsp; train ${res.train_days}d / test ${res.test_days}d &nbsp;|&nbsp; ${res.n_windows} windows `
+        + `&nbsp;|&nbsp; ${res.n_configs} configs &nbsp;|&nbsp; range ${dr[0]} -> ${dr[1]} `
+        + `&nbsp;|&nbsp; OOS ${(res.oos_span || [])[0]} -> ${(res.oos_span || [])[1]}` }));
+    const tabs = ['Overview', 'Equity', 'Windows', 'Stability'];
+    let active = 'Overview';
+    const bar = el('div'), body = el('div');
+    host.append(bar, body);
+    function draw() {
+      bar.innerHTML = ''; bar.append(W.tabs(tabs, active, v => { active = v; draw(); }));
+      body.innerHTML = '';
+      if (active === 'Overview') tabOverview(body, res);
+      else if (active === 'Equity') tabEquity(body, res);
+      else if (active === 'Windows') tabWindows(body, res);
+      else tabStability(body, res);
     }
+    draw();
   };
 })();

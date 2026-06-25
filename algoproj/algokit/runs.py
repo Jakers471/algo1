@@ -216,7 +216,8 @@ def save_wfo(result, strategy_name, base_cfg, settings, notes=""):
     json.dump(_jsonify(settings), open(os.path.join(d, "settings.json"), "w"), indent=2)
     json.dump(_jsonify(result["steps"]), open(os.path.join(d, "steps.json"), "w"), indent=2)
     json.dump(_jsonify({"oos": result["oos"], "oos_span": result["oos_span"],
-                        "full_best": result["full_best"], "stability": result["stability"]}),
+                        "full_best": result["full_best"], "stability": result["stability"],
+                        "equity": result.get("equity")}),
               open(os.path.join(d, "result.json"), "w"), indent=2)
 
     o = result["oos"]; fb = result["full_best"]["metrics"]

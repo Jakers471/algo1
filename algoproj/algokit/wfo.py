@@ -40,6 +40,20 @@ def _score(A, lo, hi, objective):
     return (v if v is not None and np.isfinite(v) else -np.inf), seg
 
 
+def _daily_curve(rets_slice, idx_slice, capital=100_000.0):
+    """Per-bar return slice -> a daily %-return-from-start curve {dates, pct} for the UI."""
+    rets_slice = np.asarray(rets_slice, float)
+    if len(rets_slice) == 0:
+        return {"dates": [], "pct": []}
+    eq = capital * np.cumprod(1.0 + rets_slice)
+    s = pd.Series(eq, index=pd.DatetimeIndex(idx_slice)).resample("1D").last().dropna()
+    if s.empty:
+        return {"dates": [], "pct": []}
+    base = float(s.iloc[0])
+    return {"dates": [str(d.date()) for d in s.index],
+            "pct": [round(float(v / base * 100 - 100), 2) for v in s.values]}
+
+
 def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
              anchored=False, start_date=None, end_date=None, progress=None):
     """Walk-forward optimize a strategy over a parameter grid (NinjaTrader-style).
@@ -132,10 +146,14 @@ def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
             counts[v] = counts.get(v, 0) + 1
         stability[p] = counts
 
+    # equity curves for the detail view: honest walk-forward OOS vs the overfit best-on-full
+    equity = {"oos": _daily_curve(chosen_rets[oos_lo:oos_hi], idx[oos_lo:oos_hi]),
+              "full": _daily_curve(fullA["rets"][lo:hi], idx[lo:hi])}
+
     oos_end = str(idx[min(oos_hi, n) - 1])[:10]
     return dict(steps=steps, oos=oos, oos_span=(str(idx[oos_lo])[:10], oos_end),
                 full_best=dict(params=full_ov, metrics=full_seg),
-                objective=objective, anchored=anchored,
+                objective=objective, anchored=anchored, equity=equity,
                 date_range=(str(idx[lo])[:10], str(idx[min(hi, n) - 1])[:10]),
                 train_days=train_days, test_days=test_days, n_windows=len(steps),
                 n_configs=len(configs), stability=stability)
