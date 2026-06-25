@@ -1,0 +1,376 @@
+[
+  {
+    "fold": 1.0,
+    "train_from": "2005-01-20",
+    "train_to": "2008-01-18",
+    "test_from": "2008-01-20",
+    "test_to": "2009-01-19",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.05274383042037489,
+    "test": {
+      "total_return": 0.0,
+      "cagr": 0.0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "exposure": 0.0,
+      "round_trips": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "profit_factor": null
+    }
+  },
+  {
+    "fold": 2.0,
+    "train_from": "2005-01-20",
+    "train_to": "2009-01-19",
+    "test_from": "2009-01-19",
+    "test_to": "2010-01-19",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.04558154754547999,
+    "test": {
+      "total_return": -0.006322473633462389,
+      "cagr": -0.0063241860601225275,
+      "sharpe": -0.4452292209102201,
+      "max_drawdown": -0.015133021741934871,
+      "exposure": 0.007872322119934612,
+      "round_trips": 7.0,
+      "win_rate": 0.2857142857142857,
+      "expectancy": -0.00041155993375059056,
+      "profit_factor": 0.4427762966848828
+    }
+  },
+  {
+    "fold": 3.0,
+    "train_from": "2005-01-20",
+    "train_to": "2010-01-19",
+    "test_from": "2010-01-19",
+    "test_to": "2011-01-19",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": -0.14504072506365495,
+    "test": {
+      "total_return": 0.006656434366653308,
+      "cagr": 0.006617122303714584,
+      "sharpe": 0.2233270363526462,
+      "max_drawdown": -0.021940544957784858,
+      "exposure": 0.04300983326207781,
+      "round_trips": 26.0,
+      "win_rate": 0.46153846153846156,
+      "expectancy": -1.3260663613930882e-06,
+      "profit_factor": 0.9983007689488339
+    }
+  },
+  {
+    "fold": 4.0,
+    "train_from": "2005-01-20",
+    "train_to": "2011-01-19",
+    "test_from": "2011-01-19",
+    "test_to": "2012-01-19",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.01979643596990251,
+    "test": {
+      "total_return": 0.008271008523418999,
+      "cagr": 0.008325410172226988,
+      "sharpe": 0.3466965528959602,
+      "max_drawdown": -0.02923731648801209,
+      "exposure": 0.033894636595818366,
+      "round_trips": 21.0,
+      "win_rate": 0.42857142857142855,
+      "expectancy": -1.3266031354351529e-05,
+      "profit_factor": 0.9877288028433107
+    }
+  },
+  {
+    "fold": 5.0,
+    "train_from": "2005-01-20",
+    "train_to": "2012-01-19",
+    "test_from": "2012-01-19",
+    "test_to": "2013-01-18",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.08948045424582071,
+    "test": {
+      "total_return": 0.045320478202222736,
+      "cagr": 0.04559978839451806,
+      "sharpe": 2.0552203759771217,
+      "max_drawdown": -0.009034373409251839,
+      "exposure": 0.029247609570371653,
+      "round_trips": 13.0,
+      "win_rate": 0.6923076923076923,
+      "expectancy": 0.0013378233265841728,
+      "profit_factor": 5.207390169016121
+    }
+  },
+  {
+    "fold": 6.0,
+    "train_from": "2005-01-20",
+    "train_to": "2013-01-18",
+    "test_from": "2013-01-18",
+    "test_to": "2014-01-17",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.3996583135306492,
+    "test": {
+      "total_return": 0.02220789828300984,
+      "cagr": 0.022332496873399776,
+      "sharpe": 0.7063344643133073,
+      "max_drawdown": -0.01882764583509633,
+      "exposure": 0.054186126967652654,
+      "round_trips": 30.0,
+      "win_rate": 0.4,
+      "expectancy": 0.0002297369915053804,
+      "profit_factor": 1.3154643006671747
+    }
+  },
+  {
+    "fold": 7.0,
+    "train_from": "2005-01-20",
+    "train_to": "2014-01-17",
+    "test_from": "2014-01-19",
+    "test_to": "2015-01-16",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.44451269451837616,
+    "test": {
+      "total_return": 0.021571395019759798,
+      "cagr": 0.021574504825250473,
+      "sharpe": 0.5547620992196981,
+      "max_drawdown": -0.03544744457853222,
+      "exposure": 0.10748849412877973,
+      "round_trips": 59.0,
+      "win_rate": 0.423728813559322,
+      "expectancy": 0.0001087226225604607,
+      "profit_factor": 1.1094260018870201
+    }
+  },
+  {
+    "fold": 8.0,
+    "train_from": "2005-01-20",
+    "train_to": "2015-01-16",
+    "test_from": "2015-01-18",
+    "test_to": "2016-01-18",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.44741881500245106,
+    "test": {
+      "total_return": 0.07534215487962848,
+      "cagr": 0.07480620664156179,
+      "sharpe": 2.2840798998786096,
+      "max_drawdown": -0.014354674801438594,
+      "exposure": 0.08653312262418314,
+      "round_trips": 41.0,
+      "win_rate": 0.5121951219512195,
+      "expectancy": 0.001169659850770606,
+      "profit_factor": 2.855191805663221
+    }
+  },
+  {
+    "fold": 9.0,
+    "train_from": "2005-01-20",
+    "train_to": "2016-01-18",
+    "test_from": "2016-01-18",
+    "test_to": "2017-01-17",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.674201183441696,
+    "test": {
+      "total_return": 0.0,
+      "cagr": 0.0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "exposure": 0.0,
+      "round_trips": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "profit_factor": null
+    }
+  },
+  {
+    "fold": 10.0,
+    "train_from": "2005-01-20",
+    "train_to": "2017-01-17",
+    "test_from": "2017-01-17",
+    "test_to": "2018-01-17",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.6450865624746813,
+    "test": {
+      "total_return": 0.08408501098927013,
+      "cagr": 0.08348820214377861,
+      "sharpe": 1.9649263661961798,
+      "max_drawdown": -0.029448050199364473,
+      "exposure": 0.10900392960874765,
+      "round_trips": 57.0,
+      "win_rate": 0.5614035087719298,
+      "expectancy": 0.0007764864088648554,
+      "profit_factor": 2.1811147301674993
+    }
+  },
+  {
+    "fold": 11.0,
+    "train_from": "2005-01-20",
+    "train_to": "2018-01-17",
+    "test_from": "2018-01-17",
+    "test_to": "2019-01-17",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.8048059926993466,
+    "test": {
+      "total_return": 0.04390566060804946,
+      "cagr": 0.04367026162453547,
+      "sharpe": 0.8801011531738047,
+      "max_drawdown": -0.03615773785671794,
+      "exposure": 0.109475935828877,
+      "round_trips": 56.0,
+      "win_rate": 0.39285714285714285,
+      "expectancy": 0.0004314231911594397,
+      "profit_factor": 1.3528082309431797
+    }
+  },
+  {
+    "fold": 12.0,
+    "train_from": "2005-01-20",
+    "train_to": "2019-01-17",
+    "test_from": "2019-01-17",
+    "test_to": "2020-01-17",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.7905793189302656,
+    "test": {
+      "total_return": 0.00018134497779276337,
+      "cagr": 0.0001805785250237335,
+      "sharpe": 0.025961576547573556,
+      "max_drawdown": -0.0334071352258406,
+      "exposure": 0.07477195837437368,
+      "round_trips": 41.0,
+      "win_rate": 0.43902439024390244,
+      "expectancy": -6.079363977463101e-05,
+      "profit_factor": 0.9444076597415278
+    }
+  },
+  {
+    "fold": 13.0,
+    "train_from": "2005-01-20",
+    "train_to": "2020-01-17",
+    "test_from": "2020-01-17",
+    "test_to": "2021-01-15",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.7038077713733075,
+    "test": {
+      "total_return": -0.01799989226022014,
+      "cagr": -0.017990167691892323,
+      "sharpe": -0.3810592218949617,
+      "max_drawdown": -0.041731462535740005,
+      "exposure": 0.033139909735654415,
+      "round_trips": 20.0,
+      "win_rate": 0.35,
+      "expectancy": -0.00047677367579591624,
+      "profit_factor": 0.7371330830340518
+    }
+  },
+  {
+    "fold": 14.0,
+    "train_from": "2005-01-20",
+    "train_to": "2021-01-15",
+    "test_from": "2021-01-17",
+    "test_to": "2022-01-14",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.5946526723816049,
+    "test": {
+      "total_return": -0.010958846151793211,
+      "cagr": -0.010809204121487448,
+      "sharpe": -0.25353538072332965,
+      "max_drawdown": -0.048057132123169755,
+      "exposure": 0.0248982015609094,
+      "round_trips": 17.0,
+      "win_rate": 0.23529411764705882,
+      "expectancy": -0.00012455556919287915,
+      "profit_factor": 0.918921232893017
+    }
+  },
+  {
+    "fold": 15.0,
+    "train_from": "2005-01-20",
+    "train_to": "2022-01-14",
+    "test_from": "2022-01-16",
+    "test_to": "2023-01-16",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.5267276580282311,
+    "test": {
+      "total_return": 0.0,
+      "cagr": 0.0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "exposure": 0.0,
+      "round_trips": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "profit_factor": null
+    }
+  },
+  {
+    "fold": 16.0,
+    "train_from": "2005-01-20",
+    "train_to": "2023-01-16",
+    "test_from": "2023-01-16",
+    "test_to": "2024-01-16",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.51162407403891,
+    "test": {
+      "total_return": -0.008080525964388574,
+      "cagr": -0.007946528707497347,
+      "sharpe": -0.40457276255111946,
+      "max_drawdown": -0.012243738145559901,
+      "exposure": 0.003383236065296456,
+      "round_trips": 5.0,
+      "win_rate": 0.4,
+      "expectancy": -0.0005895819503630051,
+      "profit_factor": 0.22623538088675466
+    }
+  },
+  {
+    "fold": 17.0,
+    "train_from": "2005-01-20",
+    "train_to": "2024-01-16",
+    "test_from": "2024-01-16",
+    "test_to": "2025-01-10",
+    "params": {
+      "htf_gate": 50.0
+    },
+    "train_score": 0.4775483829356634,
+    "test": {
+      "total_return": -0.01023954968931673,
+      "cagr": -0.010223940257972242,
+      "sharpe": -0.4732735867910897,
+      "max_drawdown": -0.0289635088383996,
+      "exposure": 0.007214015802129852,
+      "round_trips": 6.0,
+      "win_rate": 0.16666666666666666,
+      "expectancy": -0.0005918206314312613,
+      "profit_factor": 0.6608016780078667
+    }
+  }
+]

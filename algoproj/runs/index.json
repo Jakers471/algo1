@@ -313,5 +313,163 @@
       "oos_win_rate": 0.4282511210762332,
       "full_total_return": 0.36639695810031125
     }
+  },
+  {
+    "run_id": 3,
+    "name": "wfo_0003",
+    "kind": "wfo",
+    "backtest_type": "Anchored Walk-Forward Optimization",
+    "strategy": "fanning_mtf",
+    "path": "fanning_mtf/walk_forward/wfo_0003",
+    "timestamp": "2026-06-24T20:48:58",
+    "date": "2026-06-24",
+    "notes": "",
+    "objective": "sharpe",
+    "anchored": true,
+    "train_days": 1095,
+    "test_days": 365,
+    "n_windows": 17,
+    "n_configs": 1,
+    "oos_span": [
+      "2008-01-20",
+      "2025-01-10"
+    ],
+    "date_range": [
+      "2005-01-20",
+      "2025-01-10"
+    ],
+    "swept_params": {
+      "htf_gate": [
+        50.0,
+        50.0,
+        1.0
+      ]
+    },
+    "config_labeled": {
+      "signal_params": {
+        "symbol": "NQ",
+        "htf_tf": "1d",
+        "ltf_tf": "15m",
+        "htf_fan": [
+          5,
+          500,
+          0.15
+        ],
+        "ltf_fan": [
+          5,
+          100,
+          0.03
+        ],
+        "n_ma": 32,
+        "slope_L": 5,
+        "X": 70,
+        "htf_gate": 50,
+        "coil_k": 20,
+        "coil_level": 40,
+        "exit_th": 30,
+        "atr_mult": 5.0,
+        "atr_n": 14
+      },
+      "account_execution": {
+        "capital": 100000.0,
+        "sizing": "risk_pct",
+        "size_contracts": 1,
+        "risk_pct": 0.01,
+        "max_contracts": 20,
+        "commission_per_side": 2.25,
+        "slippage_ticks": 1,
+        "point_value": 20.0,
+        "tick": 0.25,
+        "tick_value": 5.0
+      }
+    },
+    "headline": {
+      "oos_total_return": 0.2777440289028765,
+      "oos_cagr": 0.014476636344737281,
+      "oos_sharpe": 0.47749035978209486,
+      "oos_max_drawdown": -0.08525048555326564,
+      "oos_exposure": 0.04259359671134762,
+      "oos_win_rate": 0.44110275689223055,
+      "full_total_return": 0.2787598354059053
+    }
+  },
+  {
+    "run_id": 4,
+    "name": "wfo_0004",
+    "kind": "wfo",
+    "backtest_type": "Anchored Walk-Forward Optimization",
+    "strategy": "fanning_mtf",
+    "path": "fanning_mtf/walk_forward/wfo_0004",
+    "timestamp": "2026-06-24T20:50:41",
+    "date": "2026-06-24",
+    "notes": "",
+    "objective": "sharpe",
+    "anchored": true,
+    "train_days": 1095,
+    "test_days": 365,
+    "n_windows": 17,
+    "n_configs": 7,
+    "oos_span": [
+      "2008-01-20",
+      "2025-01-10"
+    ],
+    "date_range": [
+      "2005-01-20",
+      "2025-01-10"
+    ],
+    "swept_params": {
+      "coil_level": [
+        40.0,
+        70.0,
+        5.0
+      ]
+    },
+    "config_labeled": {
+      "signal_params": {
+        "symbol": "NQ",
+        "htf_tf": "1d",
+        "ltf_tf": "15m",
+        "htf_fan": [
+          5,
+          500,
+          0.15
+        ],
+        "ltf_fan": [
+          5,
+          100,
+          0.03
+        ],
+        "n_ma": 32,
+        "slope_L": 5,
+        "X": 70,
+        "htf_gate": 50,
+        "coil_k": 20,
+        "coil_level": 40,
+        "exit_th": 30,
+        "atr_mult": 5.0,
+        "atr_n": 14
+      },
+      "account_execution": {
+        "capital": 100000.0,
+        "sizing": "risk_pct",
+        "size_contracts": 1,
+        "risk_pct": 0.01,
+        "max_contracts": 20,
+        "commission_per_side": 2.25,
+        "slippage_ticks": 1,
+        "point_value": 20.0,
+        "tick": 0.25,
+        "tick_value": 5.0
+      }
+    },
+    "headline": {
+      "oos_total_return": 0.24535970325712997,
+      "oos_cagr": 0.01295056307083553,
+      "oos_sharpe": 0.4723487771990118,
+      "oos_max_drawdown": -0.11913025866471538,
+      "oos_exposure": 0.04010693164193032,
+      "oos_win_rate": 0.44623655913978494,
+      "full_total_return": 0.2978822619975747
+    }
   }
 ]

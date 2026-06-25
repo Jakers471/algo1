@@ -114,7 +114,7 @@ def _render_wfo(cfg):
 
     res = st.session_state.get("wfo_result")
     if res is None:
-        st.info("Tick **sweep** on a parameter, then **Run walk-forward**.")
+        st.info("Enable **sweep** on a parameter, then **Run walk-forward**.")
     else:
         wfopt.render(res)
 

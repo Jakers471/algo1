@@ -134,11 +134,17 @@ def render():
                            "widen the dates or shorten it.")
             else:
                 nwin = max(1, (total_days - train_days) // test_days)
-                st.caption(f"approx {nwin} walk-forward windows")
+                oos_days = nwin * test_days
+                st.caption(f"approx {nwin} walk-forward windows (each: "
+                           f"{train_days:,}d train -> {test_days}d test)")
+                st.caption(f"in-sample warm-up: first {train_days:,}d "
+                           f"({train_days / total_days * 100:.0f}%, never tested OOS)")
+                st.caption(f"out-of-sample: {nwin} x {test_days}d = ~{oos_days:,}d tested "
+                           f"({oos_days / total_days * 100:.0f}% of timeline)")
         wfo_cfg["anchored"] = anchored
         n_cfg = optimize.grid_size(specs) if specs else 0
         if n_cfg == 0:
-            st.warning("Tick sweep on at least one parameter to define the grid.")
+            st.warning("Enable sweep on at least one parameter to define the grid.")
         else:
             kind = "anchored" if anchored else "rolling"
             st.caption(f"{n_cfg} configs ({kind})  ·  ~{n_cfg * 2.4:.0f}s estimated")

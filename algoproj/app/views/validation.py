@@ -1,10 +1,10 @@
 """Validation view — the out-of-sample / walk-forward / significance honesty checks.
 
-Reads the `analysis.json` that `runs.save_run` writes for every run (in/out-sample,
-walk-forward folds, significance tests, benchmark) and lays it out so you can see at a
-glance whether an edge SURVIVES on data it was never fitted on. Nothing here recomputes —
-configurable windows / true walk-forward optimization live in the sidebar (Backtest type
--> Walk-Forward Optimization).
+Lays out whether an edge SURVIVES on data it was never fitted on. The IS/OOS split is
+EDITABLE and recomputed live from the saved run's arrays (drag the fraction / pick a date);
+the walk-forward folds, significance and benchmark blocks are read from the saved
+`analysis.json`. True walk-forward OPTIMIZATION (re-tuning per window) lives in the sidebar
+(Backtest type -> Walk-Forward Optimization).
 """
 import json
 import os
@@ -12,7 +12,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-from algokit import metrics
+from algokit import metrics, runs, validation
 
 # metric rows shown for the in/out-sample and walk-forward blocks, in order
 _ROWS = ["total_return", "cagr", "sharpe", "max_drawdown", "exposure",
@@ -22,6 +22,22 @@ _ROWS = ["total_return", "cagr", "sharpe", "max_drawdown", "exposure",
 def _load_analysis(R):
     p = os.path.join(R["dir"], "analysis.json")
     return json.load(open(p)) if os.path.exists(p) else None
+
+
+@st.cache_data(show_spinner=False)
+def _prep(run_name):
+    """Per-bar arrays + bar-indexed trades for live IS/OOS recompute (cached per run)."""
+    R = runs.load_run(run_name)
+    eq, tr = R["equity"], R["trades"]
+    idx = pd.DatetimeIndex(eq["time"])
+    rets = eq["ret"].to_numpy(float)
+    in_market = eq["in_market"].to_numpy()
+    ent_i = idx.searchsorted(pd.DatetimeIndex(tr["entry"]))
+    ext_i = idx.searchsorted(pd.DatetimeIndex(tr["exit"]))
+    trades = [dict(entry_i=int(ei), exit_i=int(xi), ret=float(r), pnl=float(p))
+              for ei, xi, r, p in zip(ent_i, ext_i, tr["ret"], tr["pnl"])]
+    days = (idx[-1] - idx[0]).days or 1
+    return rets, in_market, idx, len(rets) / (days / 365.25), trades
 
 
 def _verdict(is_blk, oos_blk):
@@ -53,13 +69,26 @@ def render(R):
                 "Re-run the backtest to generate it.")
         return
 
-    # ---- 1. In-sample vs Out-of-sample (fixed 70/30 split, computed at save) ----
-    ios = a.get("in_out_sample", {})
-    is_blk, oos_blk = ios.get("in_sample", {}), ios.get("out_of_sample", {})
+    # ---- 1. In-sample vs Out-of-sample (editable split, recomputed live) ----
+    run_name = R["meta"]["name"]
+    rets, in_market, idx, ppy, trades = _prep(run_name)
+    d0, d1 = idx[0].date(), idx[-1].date()
     st.subheader("In-sample vs Out-of-sample")
-    st.caption(f"Train on the first 70% of history, test on the unseen last 30%. "
-               f"Split at **{ios.get('split_time', '?')}**. Params were chosen on in-sample, "
-               "so out-of-sample is the honest number.")
+    c1, c2, _ = st.columns([1, 1.4, 2])
+    mode = c1.radio("Split by", ["Fraction", "Date"], horizontal=True,
+                    key=f"vs_mode_{run_name}")
+    if mode == "Fraction":
+        split = c2.slider("In-sample fraction", 0.50, 0.95, 0.70, 0.05,
+                          key=f"vs_frac_{run_name}")
+    else:
+        split = c2.date_input("Train up to (exclusive)", value=idx[int(len(idx) * 0.70)].date(),
+                              min_value=d0, max_value=d1, key=f"vs_date_{run_name}")
+    ios = validation.in_out_sample(rets, trades, in_market, idx, ppy, split=split)
+    is_blk, oos_blk = ios["in_sample"], ios["out_of_sample"]
+    in_pct = ios["split_bar"] / len(idx) * 100
+    st.caption(f"Train on the first **{in_pct:.0f}%** (in-sample), test on the unseen last "
+               f"**{100 - in_pct:.0f}%**. Split at **{ios['split_time'][:16]}**. Params were "
+               "chosen on in-sample, so out-of-sample is the honest number. Drag to re-split.")
     rows = [(k, metrics.EXPLAIN.get(k, ""), metrics.fmt(k, is_blk.get(k)),
              metrics.fmt(k, oos_blk.get(k))) for k in _ROWS]
     st.dataframe(pd.DataFrame(rows, columns=["metric", "what it means", "in-sample",

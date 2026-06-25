@@ -1,0 +1,376 @@
+[
+  {
+    "fold": 1.0,
+    "train_from": "2005-01-20",
+    "train_to": "2008-01-18",
+    "test_from": "2008-01-20",
+    "test_to": "2009-01-19",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.05274383042037489,
+    "test": {
+      "total_return": 0.0,
+      "cagr": 0.0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "exposure": 0.0,
+      "round_trips": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "profit_factor": null
+    }
+  },
+  {
+    "fold": 2.0,
+    "train_from": "2005-01-20",
+    "train_to": "2009-01-19",
+    "test_from": "2009-01-19",
+    "test_to": "2010-01-19",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.04558154754547999,
+    "test": {
+      "total_return": -0.006322473633462389,
+      "cagr": -0.0063241860601225275,
+      "sharpe": -0.4452292209102201,
+      "max_drawdown": -0.015133021741934871,
+      "exposure": 0.007872322119934612,
+      "round_trips": 7.0,
+      "win_rate": 0.2857142857142857,
+      "expectancy": -0.00041155993375059056,
+      "profit_factor": 0.4427762966848828
+    }
+  },
+  {
+    "fold": 3.0,
+    "train_from": "2005-01-20",
+    "train_to": "2010-01-19",
+    "test_from": "2010-01-19",
+    "test_to": "2011-01-19",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": -0.14504072506365495,
+    "test": {
+      "total_return": 0.006656434366653308,
+      "cagr": 0.006617122303714584,
+      "sharpe": 0.2233270363526462,
+      "max_drawdown": -0.021940544957784858,
+      "exposure": 0.04300983326207781,
+      "round_trips": 26.0,
+      "win_rate": 0.46153846153846156,
+      "expectancy": -1.3260663613930882e-06,
+      "profit_factor": 0.9983007689488339
+    }
+  },
+  {
+    "fold": 4.0,
+    "train_from": "2005-01-20",
+    "train_to": "2011-01-19",
+    "test_from": "2011-01-19",
+    "test_to": "2012-01-19",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.01979643596990251,
+    "test": {
+      "total_return": 0.008271008523418999,
+      "cagr": 0.008325410172226988,
+      "sharpe": 0.3466965528959602,
+      "max_drawdown": -0.02923731648801209,
+      "exposure": 0.033894636595818366,
+      "round_trips": 21.0,
+      "win_rate": 0.42857142857142855,
+      "expectancy": -1.3266031354351529e-05,
+      "profit_factor": 0.9877288028433107
+    }
+  },
+  {
+    "fold": 5.0,
+    "train_from": "2005-01-20",
+    "train_to": "2012-01-19",
+    "test_from": "2012-01-19",
+    "test_to": "2013-01-18",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.08948045424582071,
+    "test": {
+      "total_return": 0.045320478202222736,
+      "cagr": 0.04559978839451806,
+      "sharpe": 2.0552203759771217,
+      "max_drawdown": -0.009034373409251839,
+      "exposure": 0.029247609570371653,
+      "round_trips": 13.0,
+      "win_rate": 0.6923076923076923,
+      "expectancy": 0.0013378233265841728,
+      "profit_factor": 5.207390169016121
+    }
+  },
+  {
+    "fold": 6.0,
+    "train_from": "2005-01-20",
+    "train_to": "2013-01-18",
+    "test_from": "2013-01-18",
+    "test_to": "2014-01-17",
+    "params": {
+      "coil_level": 50.0
+    },
+    "train_score": 0.4023798226175223,
+    "test": {
+      "total_return": 0.021158484302224556,
+      "cagr": 0.021277134028778955,
+      "sharpe": 0.6752933777371042,
+      "max_drawdown": -0.018849326419808632,
+      "exposure": 0.052542812662169175,
+      "round_trips": 29.0,
+      "win_rate": 0.3793103448275862,
+      "expectancy": 0.00022061710905257688,
+      "profit_factor": 1.2928432531227483
+    }
+  },
+  {
+    "fold": 7.0,
+    "train_from": "2005-01-20",
+    "train_to": "2014-01-17",
+    "test_from": "2014-01-19",
+    "test_to": "2015-01-16",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.44451269451837616,
+    "test": {
+      "total_return": 0.021571395019759798,
+      "cagr": 0.021574504825250473,
+      "sharpe": 0.5547620992196981,
+      "max_drawdown": -0.03544744457853222,
+      "exposure": 0.10748849412877973,
+      "round_trips": 59.0,
+      "win_rate": 0.423728813559322,
+      "expectancy": 0.0001087226225604607,
+      "profit_factor": 1.1094260018870201
+    }
+  },
+  {
+    "fold": 8.0,
+    "train_from": "2005-01-20",
+    "train_to": "2015-01-16",
+    "test_from": "2015-01-18",
+    "test_to": "2016-01-18",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.44741881500245106,
+    "test": {
+      "total_return": 0.07534215487962848,
+      "cagr": 0.07480620664156179,
+      "sharpe": 2.2840798998786096,
+      "max_drawdown": -0.014354674801438594,
+      "exposure": 0.08653312262418314,
+      "round_trips": 41.0,
+      "win_rate": 0.5121951219512195,
+      "expectancy": 0.001169659850770606,
+      "profit_factor": 2.855191805663221
+    }
+  },
+  {
+    "fold": 9.0,
+    "train_from": "2005-01-20",
+    "train_to": "2016-01-18",
+    "test_from": "2016-01-18",
+    "test_to": "2017-01-17",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.674201183441696,
+    "test": {
+      "total_return": 0.0,
+      "cagr": 0.0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0,
+      "exposure": 0.0,
+      "round_trips": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "profit_factor": null
+    }
+  },
+  {
+    "fold": 10.0,
+    "train_from": "2005-01-20",
+    "train_to": "2017-01-17",
+    "test_from": "2017-01-17",
+    "test_to": "2018-01-17",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.6450865624746813,
+    "test": {
+      "total_return": 0.08408501098927013,
+      "cagr": 0.08348820214377861,
+      "sharpe": 1.9649263661961798,
+      "max_drawdown": -0.029448050199364473,
+      "exposure": 0.10900392960874765,
+      "round_trips": 57.0,
+      "win_rate": 0.5614035087719298,
+      "expectancy": 0.0007764864088648554,
+      "profit_factor": 2.1811147301674993
+    }
+  },
+  {
+    "fold": 11.0,
+    "train_from": "2005-01-20",
+    "train_to": "2018-01-17",
+    "test_from": "2018-01-17",
+    "test_to": "2019-01-17",
+    "params": {
+      "coil_level": 40.0
+    },
+    "train_score": 0.8048059926993466,
+    "test": {
+      "total_return": 0.04390566060804946,
+      "cagr": 0.04367026162453547,
+      "sharpe": 0.8801011531738047,
+      "max_drawdown": -0.03615773785671794,
+      "exposure": 0.109475935828877,
+      "round_trips": 56.0,
+      "win_rate": 0.39285714285714285,
+      "expectancy": 0.0004314231911594397,
+      "profit_factor": 1.3528082309431797
+    }
+  },
+  {
+    "fold": 12.0,
+    "train_from": "2005-01-20",
+    "train_to": "2019-01-17",
+    "test_from": "2019-01-17",
+    "test_to": "2020-01-17",
+    "params": {
+      "coil_level": 65.0
+    },
+    "train_score": 0.8573917411448573,
+    "test": {
+      "total_return": 0.02290367830421247,
+      "cagr": 0.022805789459835468,
+      "sharpe": 0.7819409375471511,
+      "max_drawdown": -0.01744543670139853,
+      "exposure": 0.05768489572181063,
+      "round_trips": 31.0,
+      "win_rate": 0.4838709677419355,
+      "expectancy": 0.0003895931109615177,
+      "profit_factor": 1.502346449561068
+    }
+  },
+  {
+    "fold": 13.0,
+    "train_from": "2005-01-20",
+    "train_to": "2020-01-17",
+    "test_from": "2020-01-17",
+    "test_to": "2021-01-15",
+    "params": {
+      "coil_level": 65.0
+    },
+    "train_score": 0.8505181498033654,
+    "test": {
+      "total_return": -0.0036589253388640275,
+      "cagr": -0.003656934178518867,
+      "sharpe": -0.08820234097739517,
+      "max_drawdown": -0.03518005033884586,
+      "exposure": 0.029959166129378895,
+      "round_trips": 15.0,
+      "win_rate": 0.4,
+      "expectancy": -1.8970509700907043e-05,
+      "profit_factor": 0.9885768015338242
+    }
+  },
+  {
+    "fold": 14.0,
+    "train_from": "2005-01-20",
+    "train_to": "2021-01-15",
+    "test_from": "2021-01-17",
+    "test_to": "2022-01-14",
+    "params": {
+      "coil_level": 65.0
+    },
+    "train_score": 0.7676627039640428,
+    "test": {
+      "total_return": -0.04137528432954807,
+      "cagr": -0.04081898325299482,
+      "sharpe": -1.346585651768728,
+      "max_drawdown": -0.05595588350127523,
+      "exposure": 0.011452324397692568,
+      "round_trips": 9.0,
+      "win_rate": 0.2222222222222222,
+      "expectancy": -0.001757760711822826,
+      "profit_factor": 0.09054111292570498
+    }
+  },
+  {
+    "fold": 15.0,
+    "train_from": "2005-01-20",
+    "train_to": "2022-01-14",
+    "test_from": "2022-01-16",
+    "test_to": "2023-01-16",
+    "params": {
+      "coil_level": 50.0
+    },
+    "train_score": 0.6429709569615472,
+    "test": {
+      "total_return": -0.010068512765148308,
+      "cagr": -0.009923846867042951,
+      "sharpe": -2.4311505121834966,
+      "max_drawdown": -0.010068512765148308,
+      "exposure": 0.0003390836264993854,
+      "round_trips": 1.0,
+      "win_rate": 0.0,
+      "expectancy": -0.003807062113500903,
+      "profit_factor": 0.0
+    }
+  },
+  {
+    "fold": 16.0,
+    "train_from": "2005-01-20",
+    "train_to": "2023-01-16",
+    "test_from": "2023-01-16",
+    "test_to": "2024-01-16",
+    "params": {
+      "coil_level": 55.0
+    },
+    "train_score": 0.6193548162807211,
+    "test": {
+      "total_return": -0.007998302114342826,
+      "cagr": -0.007865662941130225,
+      "sharpe": -1.5743366296757544,
+      "max_drawdown": -0.007998302114342826,
+      "exposure": 0.0005920663114268798,
+      "round_trips": 2.0,
+      "win_rate": 0.0,
+      "expectancy": -0.00151742609685257,
+      "profit_factor": 0.0
+    }
+  },
+  {
+    "fold": 17.0,
+    "train_from": "2005-01-20",
+    "train_to": "2024-01-16",
+    "test_from": "2024-01-16",
+    "test_to": "2025-01-10",
+    "params": {
+      "coil_level": 55.0
+    },
+    "train_score": 0.58619659984849,
+    "test": {
+      "total_return": -0.03016190014196307,
+      "cagr": -0.03011638654028892,
+      "sharpe": -2.0117752079610054,
+      "max_drawdown": -0.033863658212871406,
+      "exposure": 0.0029199587770525593,
+      "round_trips": 5.0,
+      "win_rate": 0.0,
+      "expectancy": -0.0019663267141145193,
+      "profit_factor": 0.0
+    }
+  }
+]

@@ -105,6 +105,7 @@ def optimize(run_fn, specs, objective="sharpe", train_days=1095, test_days=365,
             fold=fold,
             train_from=str(idx[train_lo])[:10], train_to=str(idx[train_hi - 1])[:10],
             test_from=str(idx[test_lo])[:10], test_to=str(idx[test_hi - 1])[:10],
+            train_bars=[int(train_lo), int(train_hi)], test_bars=[int(test_lo), int(test_hi)],
             params=best_ov, train_score=float(train_score), test=test_seg))
         cursor_t += test_td
 
