@@ -166,8 +166,8 @@
         body.append(cards(rows));
         body.append(el('div', { class: 'section-title' }, `${state.strategy} - ${rows.length} runs`));
         body.append(W.card(null, leaderboard(rows, r => {
-          sessionStorage.setItem('analyzer_run', r.path);
-          location.hash = 'analyzer';
+          sessionStorage.setItem('report_run', r.path);
+          location.hash = 'report';
         })));
 
         const g = el('div', { class: 'grid cols-2', style: 'margin-top:14px;' });
