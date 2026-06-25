@@ -28,7 +28,7 @@
 
   // ===================== PERFORMANCE views =====================
   function kpiStrip(m) {
-    const grid = el('div', { class: 'grid cols-3', style: 'margin-bottom:14px;' });
+    const grid = el('div', { class: 'grid cols-6', style: 'margin-bottom:14px;' });
     KPI.forEach(([k, label]) => {
       const v = m[k];
       const cls = (k === 'sharpe') ? '' : (v >= 0 ? 'pos' : 'neg');
@@ -72,36 +72,36 @@
       ['mc_median_dd', 'Median drawdown'], ['mc_p95_worst_dd', 'Worst-5% drawdown'],
       ['P(dd<-20%)', 'Prob. drawdown < -20%'], ['P(dd<-50%)', 'Prob. drawdown < -50%']]],
   ];
+  function _sectionCard(name, rows, m) {
+    const t = el('table', { class: 'data' });
+    t.append(el('thead', {}, el('tr', {}, el('th', {}, name),
+      el('th', { class: 'num' }, 'All'), el('th', { class: 'num' }, 'Long'), el('th', { class: 'num' }, 'Short'))));
+    const tb = el('tbody');
+    rows.forEach(([k, label]) => {
+      if (!(k in m)) return;
+      const cls = signClass(k, m[k]), val = window.fmtMetric(k, m[k]);
+      tb.append(el('tr', {}, el('td', { title: window.EXPLAIN[k] || '' }, label),
+        el('td', { class: 'num mono ' + cls }, val), el('td', { class: 'num mono ' + cls }, val),
+        el('td', { class: 'num mono dim' }, '-')));
+    });
+    t.append(tb);
+    return W.card(null, el('div', { class: 'tbl-wrap' }, t));
+  }
   async function viewSummary(host, run, path) {
     const m = run.metrics || {};
     host.append(kpiStrip(m));
-    const t = el('table', { class: 'data' });
-    t.append(el('thead', {}, el('tr', {}, el('th', {}, 'Performance'),
-      el('th', { class: 'num' }, 'All trades'), el('th', { class: 'num' }, 'Long trades'),
-      el('th', { class: 'num' }, 'Short trades'))));
-    const tb = el('tbody');
-    const sec = name => tb.append(el('tr', { class: 'sec' }, el('td', { colspan: 4, html: `<b>${name}</b>` })));
+    const cols = el('div', { class: 'report-cols' });
     try {
       const eq = await window.API.get('/api/run/equity?path=' + enc(path));
-      sec('Period');
-      [['Start date', eq.dates[0]], ['End date', eq.dates[eq.dates.length - 1]], ['Trading days', String(eq.dates.length)]]
-        .forEach(([lab, v]) => tb.append(el('tr', {}, el('td', {}, lab), el('td', { class: 'num mono' }, v), el('td', {}, ''), el('td', {}, ''))));
+      const t = el('table', { class: 'data' });
+      t.append(el('thead', {}, el('tr', {}, el('th', {}, 'Period'), el('th', { class: 'num' }, ''))));
+      t.append(el('tbody', {}, ...[['Start date', eq.dates[0]], ['End date', eq.dates[eq.dates.length - 1]], ['Trading days', String(eq.dates.length)]]
+        .map(([lab, v]) => el('tr', {}, el('td', {}, lab), el('td', { class: 'num mono' }, v)))));
+      cols.append(W.card(null, t));
     } catch (e) { /* dates optional */ }
-    PERF_SECTIONS.forEach(([name, rows]) => {
-      sec(name);
-      rows.forEach(([k, label]) => {
-        if (!(k in m)) return;
-        const cls = signClass(k, m[k]), val = window.fmtMetric(k, m[k]);
-        tb.append(el('tr', {},
-          el('td', { title: window.EXPLAIN[k] || '' }, label),
-          el('td', { class: 'num mono ' + cls }, val),
-          el('td', { class: 'num mono ' + cls }, val),       // long-only: Long = All
-          el('td', { class: 'num mono dim' }, '-')));         // Short: none
-      });
-    });
-    t.append(tb);
-    host.append(W.card(null, el('div', { class: 'tbl-wrap' }, t)));
-    host.append(el('div', { class: 'note' }, 'Long-only strategy: Long trades = All trades; Short trades = none. Hover a row label for what it means.'));
+    PERF_SECTIONS.forEach(([name, rows]) => cols.append(_sectionCard(name, rows, m)));
+    host.append(cols);
+    host.append(el('div', { class: 'note' }, 'Long-only strategy: Long = All, Short = none. Hover a row label for what it means.'));
   }
   async function viewTrades(host, path) {
     const ld = W.loading('Loading trades...'); host.append(ld);

@@ -31,7 +31,7 @@
     main.append(el('div', { class: 'page-head' },
       el('h1', {}, 'Analyzer'),
       el('div', { class: 'crumbs' }, 'Build & run - results open in the Run report')));
-    const wrap = el('div', { style: 'max-width:560px;' });
+    const wrap = el('div', { style: 'max-width:760px;margin:0 auto;' });
     main.append(wrap);
 
     const ctx = { strategies: [], dateRange: ['2005-01-11', '2025-01-10'],

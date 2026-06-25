@@ -1,4 +1,13 @@
 /* algoproj-specific additions on top of theme.css */
+/* use the full content width (theme caps .main at 1360 - too narrow on wide monitors) */
+.main { max-width: none; }
+.grid.cols-6 { grid-template-columns: repeat(6, 1fr); }
+@media(max-width:1400px){ .grid.cols-6 { grid-template-columns: repeat(3, 1fr); } }
+/* masonry-style multi-column layout for report section cards */
+.report-cols { column-count: 3; column-gap: 16px; }
+@media(max-width:1500px){ .report-cols { column-count: 2; } }
+@media(max-width:900px){ .report-cols { column-count: 1; } }
+.report-cols > * { break-inside: avoid; margin-bottom: 16px; display: inline-block; width: 100%; }
 .page-head h1 { font-weight: 700; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 6px 0 18px; }
 .tabs .tab { padding: 8px 14px; font-size: 12.5px; color: var(--text-2); cursor: pointer;
