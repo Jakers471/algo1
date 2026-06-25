@@ -97,6 +97,14 @@ def run(cfg=None, **overrides):
     idx = b["idx"]; ppy = len(b["c"]) / ((idx[-1] - idx[0]).days / 365.25)
     stats = metrics.extended_summary(res["rets"], res["trades"], res["in_market"], ppy, b["start"])
 
+    # dollar drawdown + cost totals (NinjaTrader-style report fields)
+    eq = res["equity"]
+    stats["max_drawdown_usd"] = float((eq - np.maximum.accumulate(eq)).min())
+    contracts = sum(t.get("contracts", 0) for t in res["trades"])
+    stats["commission_total"] = float(res.get("total_commission", 0.0))
+    stats["slippage_total"] = float(cfg["slippage_ticks"] * cfg["tick_value"] * 2 * contracts)
+    stats["fees_total"] = stats["commission_total"] + stats["slippage_total"]
+
     from algokit import benchmark as bm
     bench = bm.buy_and_hold(b["o"], b["c"], b["start"], cost=cost, capital=cfg["capital"])
     bench["metrics"]["cagr"] = metrics.cagr(bench["rets"], ppy)

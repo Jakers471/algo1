@@ -214,9 +214,85 @@ def fmt(key, val):
         return str(val)
 
 
+def gross_profit(trades):
+    """Sum of all winning trades' net PnL (USD)."""
+    return float(sum(p for p in _trade_pnls(trades) if p > 0))
+
+
+def gross_loss(trades):
+    """Sum of all losing trades' net PnL as a POSITIVE number (USD)."""
+    return float(-sum(p for p in _trade_pnls(trades) if p < 0))
+
+
+def win_loss_even_counts(trades):
+    r = _trade_returns(trades)
+    return (sum(1 for x in r if x > 0), sum(1 for x in r if x < 0), sum(1 for x in r if x == 0))
+
+
+def largest_win(trades):
+    r = [x for x in _trade_returns(trades) if x > 0]
+    return float(max(r)) if r else 0.0
+
+
+def largest_loss(trades):
+    r = [x for x in _trade_returns(trades) if x < 0]
+    return float(min(r)) if r else 0.0
+
+
+def max_consecutive_wins(trades):
+    best = cur = 0
+    for x in _trade_returns(trades):
+        cur = cur + 1 if x > 0 else 0
+        best = max(best, cur)
+    return best
+
+
+def avg_bars_in_trade(trades):
+    h = [t["exit_i"] - t["entry_i"] for t in trades
+         if isinstance(t, dict) and "exit_i" in t and "entry_i" in t]
+    return float(np.mean(h)) if h else 0.0
+
+
+def ulcer_index(rets):
+    """RMS of the percent-drawdown series — pain/lumpiness of the equity curve."""
+    e = _equity(rets)
+    dd = (e / np.maximum.accumulate(e) - 1.0) * 100.0
+    return float(np.sqrt(np.mean(dd * dd)))
+
+
+def r_squared(rets):
+    """How LINEAR the (log) equity curve is vs time. ~1 = smooth steady climb."""
+    e = _equity(rets)
+    y = np.log(np.clip(e, 1e-9, None))
+    if len(y) < 2 or y.std() == 0:
+        return 0.0
+    c = np.corrcoef(np.arange(len(y), dtype=float), y)[0, 1]
+    return float(c * c) if np.isfinite(c) else 0.0
+
+
+def _drawdown_durations(rets):
+    """(longest underwater run, longest flat run) in BARS."""
+    e = _equity(rets)
+    underwater = e < np.maximum.accumulate(e)
+    rec = cur = 0
+    for u in underwater:
+        cur = cur + 1 if u else 0
+        rec = max(rec, cur)
+    flat = curf = 0
+    for r in rets:
+        curf = curf + 1 if abs(r) < 1e-12 else 0
+        flat = max(flat, curf)
+    return rec, flat
+
+
+def _avg_field(trades, key):
+    v = [t[key] for t in trades if isinstance(t, dict) and key in t]
+    return float(np.mean(v)) if v else None
+
+
 def extended_summary(rets, trades, in_market, ppy, start=0):
     """The full report: returns, risk-adjusted ratios, trade quality, exposure,
-    and a Monte-Carlo drawdown/risk-of-ruin block."""
+    excursions, curve-quality, and a Monte-Carlo drawdown/risk-of-ruin block."""
     d = dict(
         total_return=total_return(rets),
         cagr=cagr(rets, ppy),
@@ -236,6 +312,27 @@ def extended_summary(rets, trades, in_market, ppy, start=0):
         max_consec_losses=max_consecutive_losses(trades),
         total_pnl=total_pnl(trades),
         avg_pnl=avg_pnl(trades),
+    )
+    # --- extended NinjaTrader-style report fields ---
+    years = (len(rets) / ppy) if ppy else 0.0
+    bars_per_day = (ppy / 365.25) if ppy else 1.0
+    w, l, ev = win_loss_even_counts(trades)
+    rec_bars, flat_bars = _drawdown_durations(rets)
+    d.update(
+        gross_profit=gross_profit(trades), gross_loss=gross_loss(trades),
+        n_winners=w, n_losers=l, n_even=ev,
+        largest_win=largest_win(trades), largest_loss=largest_loss(trades),
+        max_consec_winners=max_consecutive_wins(trades),
+        avg_bars_in_trade=avg_bars_in_trade(trades),
+        avg_trades_per_day=(len(trades) / (years * 252) if years else 0.0),
+        profit_per_month=(total_pnl(trades) / (years * 12) if years else 0.0),
+        ulcer_index=ulcer_index(rets),
+        r_squared=r_squared(rets),
+        max_time_to_recover_days=rec_bars / bars_per_day,
+        longest_flat_days=flat_bars / bars_per_day,
+        avg_mae=_avg_field(trades, "mae"),
+        avg_mfe=_avg_field(trades, "mfe"),
+        avg_etd=_avg_field(trades, "etd"),
     )
     d.update(bootstrap_drawdown(trades))
     return d

@@ -37,17 +37,71 @@
     });
     return grid;
   }
-  function viewSummary(host, run) {
+  // only genuinely signed performance metrics get red/green (costs/counts stay neutral)
+  const SIGNED = new Set(['total_pnl', 'total_return', 'cagr', 'sharpe', 'sortino', 'calmar',
+    'expectancy', 'avg_pnl', 'avg_win', 'avg_loss', 'largest_win', 'largest_loss',
+    'profit_per_month', 'max_drawdown', 'max_drawdown_usd', 'gross_profit']);
+  function signClass(k, v) {
+    if (!SIGNED.has(k) || typeof v !== 'number' || !isFinite(v) || v === 0) return '';
+    return v > 0 ? 'pos' : 'neg';
+  }
+  // NinjaTrader-style sectioned performance report
+  const PERF_SECTIONS = [
+    ['Performance', [
+      ['total_pnl', 'Total net profit'], ['gross_profit', 'Gross profit'], ['gross_loss', 'Gross loss'],
+      ['commission_total', 'Commission'], ['slippage_total', 'Total slippage'], ['fees_total', 'Total fees'],
+      ['profit_factor', 'Profit factor'], ['total_return', 'Total return'], ['cagr', 'CAGR'],
+      ['max_drawdown', 'Max. drawdown (%)'], ['max_drawdown_usd', 'Max. drawdown ($)'],
+      ['sharpe', 'Sharpe ratio'], ['sortino', 'Sortino ratio'], ['calmar', 'Calmar ratio'],
+      ['ulcer_index', 'Ulcer index'], ['r_squared', 'R-squared (curve smoothness)'],
+      ['annual_vol', 'Annual volatility']]],
+    ['Trades', [
+      ['round_trips', 'Total # of trades'], ['win_rate', 'Percent profitable'],
+      ['n_winners', '# of winning trades'], ['n_losers', '# of losing trades'], ['n_even', '# of even trades'],
+      ['expectancy', 'Expectancy / trade'], ['avg_pnl', 'Avg. trade'], ['avg_win', 'Avg. winning trade'],
+      ['avg_loss', 'Avg. losing trade'], ['payoff_ratio', 'Ratio avg win / avg loss'],
+      ['max_consec_winners', 'Max consecutive winners'], ['max_consec_losses', 'Max consecutive losers'],
+      ['largest_win', 'Largest winning trade'], ['largest_loss', 'Largest losing trade']]],
+    ['Time & exposure', [
+      ['avg_trades_per_day', 'Avg # of trades per day'], ['exposure', 'Time in market'],
+      ['avg_bars_in_trade', 'Avg bars in trade'], ['profit_per_month', 'Profit per month'],
+      ['max_time_to_recover_days', 'Max time to recover'], ['longest_flat_days', 'Longest flat period']]],
+    ['Excursion (per trade)', [
+      ['avg_mae', 'Avg MAE (adverse)'], ['avg_mfe', 'Avg MFE (favorable)'], ['avg_etd', 'Avg ETD (give-back)']]],
+    ['Risk of ruin (Monte Carlo, reshuffled order)', [
+      ['mc_median_dd', 'Median drawdown'], ['mc_p95_worst_dd', 'Worst-5% drawdown'],
+      ['P(dd<-20%)', 'Prob. drawdown < -20%'], ['P(dd<-50%)', 'Prob. drawdown < -50%']]],
+  ];
+  async function viewSummary(host, run, path) {
     const m = run.metrics || {};
     host.append(kpiStrip(m));
-    const keys = SUMMARY_ORDER.filter(k => k in m).concat(Object.keys(m).filter(k => !SUMMARY_ORDER.includes(k) && !k.startsWith('vs_bench')));
     const t = el('table', { class: 'data' });
-    t.append(el('thead', {}, el('tr', {}, el('th', {}, 'metric'), el('th', { class: 'num' }, 'value'), el('th', {}, 'what it means'))));
+    t.append(el('thead', {}, el('tr', {}, el('th', {}, 'Performance'),
+      el('th', { class: 'num' }, 'All trades'), el('th', { class: 'num' }, 'Long trades'),
+      el('th', { class: 'num' }, 'Short trades'))));
     const tb = el('tbody');
-    keys.forEach(k => tb.append(el('tr', {}, el('td', { html: `<b>${k}</b>` }),
-      el('td', { class: 'num mono' }, window.fmtMetric(k, m[k])), el('td', { class: 'dim' }, window.EXPLAIN[k] || ''))));
+    const sec = name => tb.append(el('tr', { class: 'sec' }, el('td', { colspan: 4, html: `<b>${name}</b>` })));
+    try {
+      const eq = await window.API.get('/api/run/equity?path=' + enc(path));
+      sec('Period');
+      [['Start date', eq.dates[0]], ['End date', eq.dates[eq.dates.length - 1]], ['Trading days', String(eq.dates.length)]]
+        .forEach(([lab, v]) => tb.append(el('tr', {}, el('td', {}, lab), el('td', { class: 'num mono' }, v), el('td', {}, ''), el('td', {}, ''))));
+    } catch (e) { /* dates optional */ }
+    PERF_SECTIONS.forEach(([name, rows]) => {
+      sec(name);
+      rows.forEach(([k, label]) => {
+        if (!(k in m)) return;
+        const cls = signClass(k, m[k]), val = window.fmtMetric(k, m[k]);
+        tb.append(el('tr', {},
+          el('td', { title: window.EXPLAIN[k] || '' }, label),
+          el('td', { class: 'num mono ' + cls }, val),
+          el('td', { class: 'num mono ' + cls }, val),       // long-only: Long = All
+          el('td', { class: 'num mono dim' }, '-')));         // Short: none
+      });
+    });
     t.append(tb);
-    host.append(W.card('Performance & risk', el('div', { class: 'tbl-wrap' }, t)));
+    host.append(W.card(null, el('div', { class: 'tbl-wrap' }, t)));
+    host.append(el('div', { class: 'note' }, 'Long-only strategy: Long trades = All trades; Short trades = none. Hover a row label for what it means.'));
   }
   async function viewTrades(host, path) {
     const ld = W.loading('Loading trades...'); host.append(ld);
@@ -85,7 +139,7 @@
     function draw() {
       bar.innerHTML = ''; bar.append(W.tabs(views, active, v => { active = v; draw(); }));
       body.innerHTML = '';
-      if (active === 'Summary') viewSummary(body, run);
+      if (active === 'Summary') viewSummary(body, run, path);
       else if (active === 'Equity') viewEquity(body, path);
       else if (active === 'Trades') viewTrades(body, path);
       else viewChart(body, path);

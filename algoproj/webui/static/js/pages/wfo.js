@@ -7,15 +7,20 @@
 
   // ---- shared metric formatting (mirrors algokit/metrics.fmt) ----
   const PCT = new Set(['total_return', 'cagr', 'annual_vol', 'max_drawdown', 'exposure',
-    'win_rate', 'expectancy', 'avg_win', 'avg_loss', 'mc_median_dd', 'mc_p95_worst_dd']);
-  const USD = new Set(['total_pnl', 'avg_pnl']);
+    'win_rate', 'expectancy', 'avg_win', 'avg_loss', 'mc_median_dd', 'mc_p95_worst_dd',
+    'largest_win', 'largest_loss', 'avg_mae', 'avg_mfe', 'avg_etd']);
+  const USD = new Set(['total_pnl', 'avg_pnl', 'gross_profit', 'gross_loss', 'commission_total',
+    'slippage_total', 'fees_total', 'profit_per_month', 'max_drawdown_usd']);
+  const COUNT = new Set(['round_trips', 'max_consec_losses', 'max_consec_winners',
+    'n_winners', 'n_losers', 'n_even']);
   function fmtMetric(key, val) {
     if (val == null) return 'n/a';
     if (typeof val === 'string') return val;
+    if (key.endsWith('_days')) return Math.round(val).toLocaleString() + 'd';
     if (key.startsWith('P(dd')) return (val * 100).toFixed(1) + '%';
     if (USD.has(key)) return '$' + Math.round(val).toLocaleString();
     if (PCT.has(key)) return (val * 100).toFixed(2) + '%';
-    if (key === 'round_trips' || key === 'max_consec_losses') return String(Math.round(val));
+    if (COUNT.has(key)) return String(Math.round(val));
     return Number(val).toFixed(2);
   }
   window.fmtMetric = fmtMetric;
@@ -44,6 +49,27 @@
     mc_p95_worst_dd: 'A bad-luck-ordering drawdown (worst 5%).',
     'P(dd<-20%)': 'Chance of a >20% drawdown across reshuffled orders.',
     'P(dd<-50%)': 'Chance of a >50% drawdown across reshuffled orders.',
+    gross_profit: 'Sum of all winning trades (USD).',
+    gross_loss: 'Sum of all losing trades, shown positive (USD).',
+    commission_total: 'Total commission paid across all fills (USD).',
+    slippage_total: 'Total adverse slippage paid across all fills (USD).',
+    fees_total: 'Commission + slippage combined (USD).',
+    max_drawdown_usd: 'Worst peak-to-trough drop in dollars.',
+    n_winners: 'Number of winning trades.', n_losers: 'Number of losing trades.',
+    n_even: 'Number of break-even trades.',
+    largest_win: 'Biggest single winning trade (% return).',
+    largest_loss: 'Biggest single losing trade (% return).',
+    max_consec_winners: 'Longest winning streak.',
+    avg_bars_in_trade: 'Average number of 15m bars a trade is held.',
+    avg_trades_per_day: 'Average completed trades per trading day.',
+    profit_per_month: 'Average net profit per month (USD).',
+    ulcer_index: 'RMS of the drawdown series - pain/lumpiness of the curve (lower better).',
+    r_squared: 'How linear the equity curve is vs time (0-1). Near 1 = smooth steady climb.',
+    max_time_to_recover_days: 'Longest time spent below a prior equity peak.',
+    longest_flat_days: 'Longest stretch with no equity movement (no trades / flat).',
+    avg_mae: 'Avg Maximum Adverse Excursion - how far trades go against you before closing.',
+    avg_mfe: 'Avg Maximum Favorable Excursion - how far in profit trades reach.',
+    avg_etd: 'Avg End Trade Drawdown - profit given back from the trade peak by exit.',
   };
 
   // ---- assemble a result-shaped object from a saved /api/run payload ----

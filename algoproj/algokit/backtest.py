@@ -63,21 +63,29 @@ def run_long_only(open, high, low, close, entry_sig, exit_sig, atr,
     equity = np.full(n, float(capital))
     inmkt = np.zeros(n)
     trades = []
+    total_commission = 0.0
 
     cash = float(capital)        # realized equity
     eq_prev = float(capital)
     pos = 0                      # contracts held (0 = flat)
     entry_px = stop = np.nan
     entry_i = -1
+    trade_lo = trade_hi = np.nan  # running low/high WHILE a trade is open (for MAE/MFE/ETD)
     pending = None               # 'enter' | 'exit', decided last bar
 
     def _close_trade(exit_i, exit_px, reason):
-        nonlocal cash, pos
-        cash += pos * (exit_px - entry_px) * pv - cost.commission(pos)
-        pnl = pos * (exit_px - entry_px) * pv - 2 * cost.commission(pos)
+        nonlocal cash, pos, total_commission
+        comm = cost.commission(pos)
+        cash += pos * (exit_px - entry_px) * pv - comm
+        pnl = pos * (exit_px - entry_px) * pv - 2 * comm
+        total_commission += comm                      # exit-side (entry-side tracked at entry)
         trades.append(dict(entry_i=entry_i, exit_i=exit_i, entry_px=entry_px,
                            exit_px=exit_px, contracts=pos, reason=reason,
-                           ret=exit_px / entry_px - 1, pnl=pnl))
+                           ret=exit_px / entry_px - 1, pnl=pnl,
+                           # excursions as a fraction of entry price (long): adverse / favorable / give-back
+                           mae=(entry_px - trade_lo) / entry_px,
+                           mfe=(trade_hi - entry_px) / entry_px,
+                           etd=(trade_hi - exit_px) / entry_px))
         pos = 0
 
     for i in range(start, n):
@@ -88,14 +96,22 @@ def run_long_only(open, high, low, close, entry_sig, exit_sig, atr,
             c = size(eq_prev, fill, stop_px, pv, cfg)
             if c > 0:
                 pos = c; entry_px = fill; stop = stop_px; entry_i = i
-                cash -= cost.commission(c)
+                trade_lo = low[i]; trade_hi = high[i]
+                comm = cost.commission(c)
+                cash -= comm; total_commission += comm
         elif pending == "exit" and pos > 0:
+            trade_lo = min(trade_lo, low[i]); trade_hi = max(trade_hi, high[i])
             _close_trade(i, execution.exit_fill(open[i], cost), "signal")
         pending = None
 
         # 2) protective stop lives inside the bar (gap-aware, worst-case fill)
         if pos > 0 and low[i] <= stop:
+            trade_lo = min(trade_lo, low[i]); trade_hi = max(trade_hi, high[i])
             _close_trade(i, execution.stop_fill(open[i], stop, cost), "stop")
+
+        # 2b) accrue the excursion for any bar we remain in the position
+        if pos > 0:
+            trade_lo = min(trade_lo, low[i]); trade_hi = max(trade_hi, high[i])
 
         # 3) mark to market -> dollar equity & per-bar return
         eq_i = cash + (pos * (close[i] - entry_px) * pv if pos > 0 else 0.0)
@@ -112,4 +128,5 @@ def run_long_only(open, high, low, close, entry_sig, exit_sig, atr,
                 pending = "exit"
 
     return dict(rets=rets, equity=equity, trades=trades, in_market=inmkt,
-                capital=float(capital), final_equity=float(equity[-1]))
+                capital=float(capital), final_equity=float(equity[-1]),
+                total_commission=float(total_commission))

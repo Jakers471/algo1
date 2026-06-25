@@ -37,6 +37,9 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .flag.off  { background: #20262e; border-color: var(--text-3); }
 
 td.pos, .pos { color: var(--green); } td.neg, .neg { color: var(--red); }
+table.data tr.sec td { background: var(--panel-2); color: var(--text-3); text-transform: uppercase;
+  letter-spacing: .6px; font-size: 10px; font-weight: 700; padding: 7px 10px; cursor: default; }
+table.data tr.sec:hover td { background: var(--panel-2); }
 .cell-hl { background: rgba(245,177,76,.12); }
 .layout-side { display: grid; grid-template-columns: 1fr 300px; gap: 18px; align-items: start; }
 @media(max-width:1100px){ .layout-side { grid-template-columns: 1fr; } }

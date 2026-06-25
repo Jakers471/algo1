@@ -128,6 +128,7 @@ def save_run(result, strategy_name, notes=""):
         t = idx[ei]; et = pd.Timestamp(t, tz="UTC").tz_convert("America/New_York")
         rows.append(dict(entry=t, exit=idx[xi], entry_px=ep, exit_px=xp, ret=xp / ep - 1,
                          pnl=tr.get("pnl"), contracts=tr.get("contracts"),
+                         mae=tr.get("mae"), mfe=tr.get("mfe"), etd=tr.get("etd"),
                          reason=reason, hold_bars=xi - ei, hour_et=et.hour, dow=t.dayofweek,
                          bull15=b["bull15"][ei], consol15=b["consol15"][ei], bull1d=b["bull1d"][ei]))
     pd.DataFrame(rows).to_parquet(os.path.join(d, "trades.parquet"))
