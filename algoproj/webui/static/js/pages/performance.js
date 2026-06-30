@@ -112,12 +112,32 @@
     const dd = eq.equity.map(v => { peak = Math.max(peak, v); return +((v / peak - 1) * 100).toFixed(2); });
     Ch.equityDD(cc.box, { dates: eq.dates, equity: eq.equity, dd });
   }
-  async function viewChart(host, path) {
-    const cc = W.chartCard('Candles + orders', 'xtall'); host.append(cc.card);
+  async function viewChart(host, path, run) {
+    const cfg = (run && run.config) || {};
+    const tf = cfg.ltf_tf ? `${cfg.ltf_tf}${cfg.htf_tf ? ` (HTF ${cfg.htf_tf})` : ''}` : '';
+    const cc = W.chartCard('Candles + orders' + (tf ? ' · ' + tf : ''), 'fill'); host.append(cc.card);
+    // renderer toggle: ECharts (default) or TradingView lightweight-charts
+    const toolbar = el('div', { class: 'toolbar', style: 'margin:0 0 10px;' });
+    cc.card.insertBefore(toolbar, cc.box);
     const ld = W.loading('Building chart (re-running strategy, ~3s)...'); cc.box.append(ld);
     const d = await window.API.get('/api/run/chart?path=' + enc(path));
     ld.remove();
-    Ch.candles(cc.box, d);
+    let mode = 'echarts', tv = null;
+    function render() {
+      Ch.disposeEl(cc.box);
+      if (tv) { tv.remove(); tv = null; }
+      cc.box.innerHTML = '';
+      toolbar.innerHTML = '';
+      ['echarts', 'tv'].forEach(m => {
+        const label = m === 'echarts' ? 'ECharts' : 'Load TV chart';
+        const chip = el('span', { class: 'chip' + (m === mode ? ' active' : '') }, label);
+        chip.addEventListener('click', () => { if (m !== mode) { mode = m; render(); } });
+        toolbar.append(chip);
+      });
+      if (mode === 'tv') tv = Ch.tvCandles(cc.box, d);
+      else Ch.candles(cc.box, d);
+    }
+    render();
   }
 
   async function showDetail(main, path) {
@@ -148,7 +168,7 @@
       if (active === 'Summary') viewSummary(body, run, path);
       else if (active === 'Equity') viewEquity(body, path);
       else if (active === 'Trades') viewTrades(body, path);
-      else viewChart(body, path);
+      else viewChart(body, path, run);
     }
     draw();
   }

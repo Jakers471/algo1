@@ -1,0 +1,193 @@
+{
+  "tf": "15m",
+  "session": [
+    "09:30",
+    "16:00"
+  ],
+  "horizons": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "baselines": {
+    "1": {
+      "mean_bps": 0.05355502243247695,
+      "hit": 0.5035383219596861,
+      "n": 126755
+    },
+    "2": {
+      "mean_bps": 0.09673692817841356,
+      "hit": 0.5121299342105263,
+      "n": 121600
+    },
+    "4": {
+      "mean_bps": 0.17936592084476669,
+      "hit": 0.5217180339653158,
+      "n": 111290
+    },
+    "8": {
+      "mean_bps": 0.26898405878014914,
+      "hit": 0.5315701823074632,
+      "n": 90671
+    }
+  },
+  "top_edges": [
+    {
+      "feature": "body",
+      "horizon": 8,
+      "decile": 1,
+      "n": 9068,
+      "feat_lo": -0.0150052518,
+      "feat_hi": -0.0012002296,
+      "mean_bps": -0.6925674617,
+      "median_bps": 0.973774995,
+      "hit": 0.5087119541,
+      "lift_bps": -0.9615515205,
+      "hit_lift": -0.0228582282
+    },
+    {
+      "feature": "range",
+      "horizon": 8,
+      "decile": 10,
+      "n": 9067,
+      "feat_lo": 0.0031541872,
+      "feat_hi": 0.0291122214,
+      "mean_bps": -0.6251703135,
+      "median_bps": 1.419177823,
+      "hit": 0.5093195103,
+      "lift_bps": -0.8941543723,
+      "hit_lift": -0.022250672
+    },
+    {
+      "feature": "lower_wick",
+      "horizon": 8,
+      "decile": 6,
+      "n": 9067,
+      "feat_lo": 0.243902439,
+      "feat_hi": 0.3043478261,
+      "mean_bps": -0.4743344977,
+      "median_bps": 1.0616838306,
+      "hit": 0.524539539,
+      "lift_bps": -0.7433185565,
+      "hit_lift": -0.0070306433
+    },
+    {
+      "feature": "close_loc",
+      "horizon": 8,
+      "decile": 3,
+      "n": 9067,
+      "feat_lo": 0.2,
+      "feat_hi": 0.3,
+      "mean_bps": -0.4571591118,
+      "median_bps": 1.0783269757,
+      "hit": 0.5238777986,
+      "lift_bps": -0.7261431705,
+      "hit_lift": -0.0076923837
+    },
+    {
+      "feature": "upper_wick",
+      "horizon": 8,
+      "decile": 4,
+      "n": 9067,
+      "feat_lo": 0.125,
+      "feat_hi": 0.1739130435,
+      "mean_bps": 0.9033479038,
+      "median_bps": 2.0034344591,
+      "hit": 0.5407521782,
+      "lift_bps": 0.634363845,
+      "hit_lift": 0.0091819959
+    },
+    {
+      "feature": "lower_wick",
+      "horizon": 8,
+      "decile": 8,
+      "n": 9067,
+      "feat_lo": 0.375,
+      "feat_hi": 0.4666666667,
+      "mean_bps": -0.3586058308,
+      "median_bps": 1.6524555489,
+      "hit": 0.5331421639,
+      "lift_bps": -0.6275898896,
+      "hit_lift": 0.0015719816
+    },
+    {
+      "feature": "upper_wick",
+      "horizon": 8,
+      "decile": 2,
+      "n": 9067,
+      "feat_lo": 0.034965035,
+      "feat_hi": 0.08,
+      "mean_bps": -0.3441624689,
+      "median_bps": 1.43358899,
+      "hit": 0.5272967906,
+      "lift_bps": -0.6131465277,
+      "hit_lift": -0.0042733917
+    },
+    {
+      "feature": "lower_wick",
+      "horizon": 8,
+      "decile": 2,
+      "n": 9067,
+      "feat_lo": 0.037037037,
+      "feat_hi": 0.0869565217,
+      "mean_bps": 0.8520883416,
+      "median_bps": 1.6322089227,
+      "hit": 0.5318186831,
+      "lift_bps": 0.5831042829,
+      "hit_lift": 0.0002485008
+    },
+    {
+      "feature": "body",
+      "horizon": 8,
+      "decile": 9,
+      "n": 9067,
+      "feat_lo": 0.000660265,
+      "feat_hi": 0.0011735692,
+      "mean_bps": 0.8164902123,
+      "median_bps": 2.2691816764,
+      "hit": 0.5406418882,
+      "lift_bps": 0.5475061535,
+      "hit_lift": 0.0090717059
+    },
+    {
+      "feature": "body",
+      "horizon": 8,
+      "decile": 3,
+      "n": 9067,
+      "feat_lo": -0.0006352952,
+      "feat_hi": -0.0003409478,
+      "mean_bps": -0.2555044138,
+      "median_bps": 1.5186028853,
+      "hit": 0.5329215838,
+      "lift_bps": -0.5244884726,
+      "hit_lift": 0.0013514015
+    },
+    {
+      "feature": "body_frac",
+      "horizon": 8,
+      "decile": 6,
+      "n": 9067,
+      "feat_lo": 0.45,
+      "feat_hi": 0.5319148936,
+      "mean_bps": -0.2465046735,
+      "median_bps": 1.0631511801,
+      "hit": 0.5214514172,
+      "lift_bps": -0.5154887323,
+      "hit_lift": -0.0101187651
+    },
+    {
+      "feature": "upper_wick",
+      "horizon": 4,
+      "decile": 2,
+      "n": 11129,
+      "feat_lo": 0.0350877193,
+      "feat_hi": 0.0810810811,
+      "mean_bps": -0.3031570236,
+      "median_bps": 0.8613794376,
+      "hit": 0.5189145476,
+      "lift_bps": -0.4825229445,
+      "hit_lift": -0.0028034864
+    }
+  ]
+}

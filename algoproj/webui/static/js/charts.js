@@ -18,12 +18,16 @@
     '#fda4af', '#93c5fd', '#fcd34d', '#6ee7b7', '#f0abfc', '#fb7185', '#7dd3fc'
   ];
   const instances = new Set();
+  const tvInstances = new Set();   // TradingView lightweight-charts (separate API: .remove(), autoSize)
   function init(el) {
     const inst = echarts.init(el, null, { renderer: 'canvas' });
     instances.add(inst);
     return inst;
   }
-  function disposeAll() { instances.forEach(i => i.dispose()); instances.clear(); }
+  function disposeAll() {
+    instances.forEach(i => i.dispose()); instances.clear();
+    tvInstances.forEach(i => { try { i.remove(); } catch (e) { } }); tvInstances.clear();
+  }
   function disposeEl(el) { const i = echarts.getInstanceByDom(el); if (i) { i.dispose(); instances.delete(i); } }
   function resizeAll() { instances.forEach(i => i.resize()); }
   window.addEventListener('resize', resizeAll);
@@ -342,6 +346,34 @@
     return c;
   }
 
+  // Same candles + order markers, but rendered with TradingView lightweight-charts.
+  // Offered as an alternative to the ECharts `candles` view (the "Load TV chart" button).
+  function tvCandles(eln, { candles, marks }) {
+    const toTs = s => Math.floor(Date.parse(String(s).replace(' ', 'T') + 'Z') / 1000);
+    const chart = LightweightCharts.createChart(eln, {
+      autoSize: true,
+      layout: { background: { color: C.bg }, textColor: C.text2, fontSize: 11 },
+      grid: { vertLines: { color: C.grid }, horzLines: { color: C.grid } },
+      rightPriceScale: { borderColor: C.border },
+      timeScale: { borderColor: C.border, timeVisible: true, secondsVisible: false },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    });
+    const s = chart.addCandlestickSeries({
+      upColor: C.green, downColor: C.red, borderUpColor: C.green, borderDownColor: C.red,
+      wickUpColor: C.green, wickDownColor: C.red,
+    });
+    // API candle row = [time, open, close, low, high]
+    s.setData(candles.map(r => ({ time: toTs(r[0]), open: r[1], close: r[2], low: r[3], high: r[4] })));
+    const markers = (marks || []).map(m => m.side === 'buy'
+      ? { time: toTs(m.t), position: 'belowBar', color: C.green, shape: 'arrowUp', text: 'BUY' }
+      : { time: toTs(m.t), position: 'aboveBar', color: C.red, shape: 'arrowDown', text: m.reason || 'SELL' })
+      .sort((a, b) => a.time - b.time);
+    s.setMarkers(markers);
+    chart.timeScale().fitContent();
+    tvInstances.add(chart);
+    return chart;
+  }
+
   // Equity curve (top) + drawdown area (bottom), shared x-axis.
   function equityDD(eln, { dates, equity, dd }) {
     const c = init(eln);
@@ -370,6 +402,6 @@
     C, SHIFT_COLORS, GROUP_COLORS, PALETTE,
     disposeAll, disposeEl, resizeAll,
     lineArea, stackedArea, stackedBar, donut, hbar, groupedBar, heatmap, activityBars, multiLine, scatter, percentileLine, favorGrid, barAvg,
-    candles, equityDD
+    candles, tvCandles, equityDD
   };
 })();
