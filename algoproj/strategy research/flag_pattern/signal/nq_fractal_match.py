@@ -32,7 +32,7 @@ from algokit.data import load_tf
 from algokit import patterns
 import signal_config as cfg
 
-FINDINGS_DIR = os.path.join(HERE, "..", "findings")
+FINDINGS_DIR = cfg.FINDINGS_DIR      # centralized in the control panel (signal_config)
 COLS = ["open", "high", "low", "close"]
 
 # geometry for one bar-length scale (window = bar count)

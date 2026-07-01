@@ -1,19 +1,32 @@
 """
-flag_pattern — signal definition (single source of truth).
+flag_pattern — signal CONTROL PANEL (single source of truth).
 
-Everything needed to reproduce this signal lives here:
-  • data        — which timeframe / how much history
-  • geometry    — the setup window, pole/flag split, forward window, horizons
-  • templates   — the idealized OHLC shapes (in "% from window open" space)
-  • matching    — distance threshold (no top-N cap) + de-overlap gap
-  • session     — the time-of-day filter (US Eastern)
+This module IS the definition of the strategy/signal. Every script in this strategy
+(signal/nq_fractal_match.py, test/, analysis/, experiments/) imports it, so the signal is
+defined in exactly one place — change it here and everything follows.
 
-nq_fractal_match.py (chart findings), test/, and analysis/ all import THIS module,
-so the signal is defined in exactly one place. Change it here and everything follows.
+DESIGN INTENT (important): as the strategy grows — approach B (swing poles + variable-length
+consolidation), more filters, indicators, multi-scale alignment — ALL of it is controlled from
+HERE. The end goal is to assemble the finished strategy so it can be run as a **backtest in the
+webui**. The webui expects a strategy module (see `strategies/fanning_mtf.py`) whose `DEFAULT`
+dict *is the strategy* plus a `run()`. The planned bridge is a thin `strategies/flag_pattern.py`
+adapter that reads THESE controls, turns signals into entries/exits, and backtests via algokit.
+Keep this config the single assembly point so that bring-together is easy. (See NOTES.md §13.)
+
+Sections: paths · data · geometry · matching · consolidation(fib) · session · templates ·
+future controls (approach B / filters / execution — not wired yet).
 """
+import os
+
 import numpy as np
 
 NAME = "flag_pattern"
+
+# ── paths ────────────────────────────────────────────────
+_HERE = os.path.dirname(os.path.abspath(__file__))
+STRATEGY_DIR = os.path.abspath(os.path.join(_HERE, ".."))   # flag_pattern/
+FINDINGS_DIR = os.path.join(STRATEGY_DIR, "findings")        # where findings JSON is written/read
+# Price data is loaded via algokit.data.load_tf (paths live in algoproj/config.py DATA_DIR).
 
 # ── data ─────────────────────────────────────────────────
 TF = "5m"                 # timeframe scanned
@@ -45,6 +58,15 @@ SESSION_TZ = "America/New_York"
 SESSION_START_HOUR = 8    # 8 AM ET
 SESSION_END_HOUR = 14     # 2 PM ET (inclusive)
 
+# ── approach B — Stage 1: swing pole detection ───────────
+# A pole = a directional SWING that stands out from the noise (the "deviation"). We build an
+# ATR zigzag (reversal confirmed after price retraces >= REV_ATR_MULT x ATR), then keep the legs
+# whose size >= POLE_ATR_MULT x ATR. Everything ATR-relative so it adapts to volatility. Later
+# stages watch the consolidation off each pole and detect the breakout (range-break OR ATR spike).
+ATR_N = 14                # ATR period for the adaptive thresholds
+REV_ATR_MULT = 1.0        # zigzag reversal: confirm a swing pivot after a retrace >= this x ATR
+POLE_ATR_MULT = 3.0       # a swing leg qualifies as a POLE if its size >= this x ATR
+
 # ── templates ────────────────────────────────────────────
 # Idealized 12-bar flag as "% from window open" (open, high, low, close).
 # We MATCH the first WINDOW bars (pole+flag); the remaining bars are the breakout
@@ -64,6 +86,22 @@ SETUP = {
     "bull_flag": (+1, "long",  BULL_FLAG[:WINDOW]),
     "bear_flag": (-1, "short", BEAR_FLAG[:WINDOW]),
 }
+
+# ── FUTURE controls (planned, not wired yet) ─────────────
+# Kept here so the structure invites them — everything the strategy grows into is controlled
+# from this one file, and this is what the webui backtest adapter will read. See NOTES.md.
+#
+# Approach B — swing pole + variable-length consolidation (NOTES §7.3, §12):
+#   SWING_ATR_MULT, SWING_ATR_N   # pole = a swing >= N x ATR (adaptive) — or %-based
+#   BREAK_BUFFER                  # a 0.5-fib break needs a CLOSE beyond by this buffer (wicks don't count)
+#   RANGE_MODE                    # consolidation equilibrium: "midpoint" | "vwap" (anchored pole->end)
+#   BREAKOUT_MODE                 # how the continuation is triggered (e.g. VWAP-range break in pole dir)
+#
+# Multi-scale alignment (NOTES §7.2): SCALES + spatial (containment) / temporal (when) confluence.
+#
+# Execution / cost / sizing — for the webui backtest bridge (cf. strategies/fanning_mtf.py DEFAULT):
+#   capital, sizing, risk_pct, max_contracts, commission_per_side, slippage_ticks,
+#   point_value, tick, tick_value  (entry = breakout, stop = flag low, target = fib extension, ...)
 
 
 def session_mask(ts):

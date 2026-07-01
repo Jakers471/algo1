@@ -293,3 +293,94 @@ Direction feels right — keep refining.
 - Alignment / confluence score across nested scales (§7.2).
 - Range / equilibrium-based consolidation detection (+ indicators).
 - Breakout definition (fizzle vs break) and measuring returns from the breakout bar.
+
+---
+
+## 12. Rant 3 — the consolidation problem & approach B (2026-06-30)
+
+Annotated example: `images/example_bear_flag_387.png` (bear flag, match #387).
+
+### The problem the screenshot exposes
+The **pole** is great — a sharp, clearly-deviating bearish decline (blue band). But because we
+use a **fixed bar-count window**, the "flag" region (everything after the pole) is a static block
+that (a) lumps the whole multi-part consolidation together, and (b) **ends long before the real
+continuation**. The actual breakout/continuation pole (the circled big red candle on the far
+right) happens *way* outside the fixed window — the window can't "wait" for the consolidation to
+resolve. **This is what's dampening the pattern.**
+
+### What a real consolidation looks like (read off the chart)
+- It has an **equilibrium / center** (a near-horizontal range median).
+- It can have **sub-structure / multiple equilibriums**: price chops around one center, drifts a
+  little, forms a second (longer) center — both part of one larger consolidation but with a
+  shifting median (the drawn blue lines).
+- The **0.5 fib acts as resistance** against the pole's opposite direction — price repeatedly
+  fails there. **Wicks above 0.5 do NOT count as a break**; you need a real, decent-size deviation
+  (a CLOSE beyond, maybe with a buffer, e.g. 0.56). Hard "0.5 close-break = cancelled" is the
+  simple version to test first.
+- **Continuation** = price finally **breaks the consolidation range in the pole's direction**
+  (the circled candle) — that's the breakout pole start. Not a fixed number of bars later.
+
+### VWAP idea (candidate indicator)
+Anchor a VWAP (or a VWAP band/range) from the pole start→end. The consolidation is price
+"hovering" around/below the 0.5 mark within that band; the **continuation triggers when the VWAP
+range is broken in the pole's direction**. Gives a volume-weighted equilibrium for the
+consolidation center + a concrete breakout trigger. NOTE: needs volume in the data — verify; if
+absent, use an anchored mean / range median as a proxy.
+
+### Two paths considered
+1. **More windows + alignment** — scan many more sizes, find lots more patterns, then ALIGN them:
+   what is nested inside what, at what window size (**spatial**), and **when** (**temporal**) —
+   both matter. This is the §7.2 nesting layer taken further. BUT it still stacks the same
+   fixed-shape / fixed-ratio unit; it does **not** fix the consolidation problem, it just organizes
+   more flawed units. Valuable as a LATER combination layer, not a fix.
+2. **Approach B** — detect pole and flag as separate, variable-length components. Fixes the
+   consolidation problem at the root.
+
+**Decision: go with B.** The spatial + temporal alignment (path 1's good part) is the next layer
+ON TOP of B, once the unit is clean.
+
+### Approach B — how it actually works (event-driven state machine)
+Not a sliding-window template match anymore — a state machine that walks the bars:
+1. **Find a pole = a swing.** Detect directional swings (pivot/zigzag, or ATR/%-based): a run from
+   swing-low→high (bull) or high→low (bear) that is **noticeably bigger than the moves around it**
+   (the "deviation"). Variable length. Record its fib 0→1.
+2. **Enter consolidation-watch at the pole's end.** Track a range / equilibrium (midpoint, mean,
+   or VWAP). The flag **persists** as long as price holds — does NOT close beyond the 0.5 fib
+   against the pole (with the wick-vs-close / buffer rule). Length is open-ended.
+3. **Resolve (price-driven, variable length):**
+   - price breaks the consolidation range in the **pole direction** → **continuation** (valid
+     pattern; the breakout pole starts here; measure outcome from here), OR
+   - price closes beyond 0.5 against the pole → **cancelled / failed** → rolls into a *larger*
+     consolidation (a higher-scale pattern — fractal).
+4. Pole length, flag length, and the breakout location are all set by **price**, not a bar count.
+   This directly expresses the discretionary definition.
+
+**Tradeoff:** B has more rules/params (swing sensitivity, the 0.5-break rule + buffer, range
+definition, breakout trigger) and is more work than the template — but it captures the real
+structure and is fully adaptive. Then run B at multiple scales and apply path-1 alignment on top.
+
+---
+
+## 13. Integration goal — everything assembles here, then backtests in the webui (2026-06-30)
+
+The strategy is being built in pieces (pole detection, consolidation rules, fib, filters,
+alignment, indicators...). **All of it is controlled from one place: `signal/signal_config.py`**
+— that's the assembly point. As each piece lands, its knobs go into the config, not scattered.
+
+**End goal:** run the finished strategy as a **backtest in the webui** (`algoproj/webui/`). The
+webui already backtests strategies — a strategy there is a module in `algoproj/strategies/`
+(e.g. `strategies/fanning_mtf.py`) with a **`DEFAULT` dict that "is the strategy"** + a
+**`run()`** that returns equity/trades/stats; the webui's chart, report, and run registry all
+read it.
+
+**The bridge (planned, not built):** a thin **`strategies/flag_pattern.py`** adapter that
+- imports the flag_pattern controls (`signal_config`),
+- turns detected signals into **entries/exits** (entry = breakout, stop = flag low, target =
+  fib extension, etc.),
+- runs the backtest via `algokit.backtest` / `costs` / `metrics` (same as fanning_mtf),
+- exposes `DEFAULT` + `run()` so the webui picks it up automatically.
+
+So: **research side** (this folder) discovers/visualises signals → **config** is the single
+control panel → **adapter** turns it into a tradeable, backtestable strategy in the webui. Keep
+the config clean and complete so that final bring-together is easy. Execution/cost/sizing knobs
+are stubbed in the config's "future controls" section for exactly this.
