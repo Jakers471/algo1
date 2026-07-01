@@ -29,7 +29,7 @@ def hour_label(h):
 
 
 def main(tf="5m", H=6):
-    data = json.load(open(os.path.join(HERE, "..", "findings", f"flag_{tf}.json")))
+    data = json.load(open(os.path.join(HERE, "..", "..", "findings", f"flag_{tf}.json")))
     df = pd.DataFrame(data["matches"])
     df["fwd"] = df["fwd"].map(lambda d: d.get(str(H)))
     df = df.dropna(subset=["fwd"])

@@ -384,3 +384,75 @@ So: **research side** (this folder) discovers/visualises signals → **config** 
 control panel → **adapter** turns it into a tradeable, backtestable strategy in the webui. Keep
 the config clean and complete so that final bring-together is easy. Execution/cost/sizing knobs
 are stubbed in the config's "future controls" section for exactly this.
+
+---
+
+## 14. Approach B Stage 1 (swing poles) — tried & ARCHIVED (2026-06-30)
+
+Built a swing/pole detector (ATR zigzag → legs >= POLE_ATR_MULT x ATR = poles) and put the raw
+poles on the chart. It did not work as something to look at:
+- ~**32,000** poles; a single big candle qualifies as a 3x-ATR "pole" → noise, not sustained moves.
+- More fundamentally, **a pole alone is not a pattern.** Dumping every swing is chaos with nothing
+  coherent to recognize. Judging a pole detector visually was the wrong call.
+
+Archived to `_archive/` (`nq_swing_poles.py` + `poles_5m.json`). The full swing-based rebuild is
+shelved. **Pivot:** keep the template detection that already found recognizable flags (the `free`
+version the user liked) and fix ONLY the real complaint — the fixed-length consolidation. See §15.
+
+## 15. Hybrid — template setup + variable-length consolidation watch (2026-06-30)
+
+Keep the mag-free **template match** to find the pole+flag SETUP (recognizable, clean, few). Then,
+instead of a fixed forward window, **WATCH the consolidation forward** from the setup:
+- it must **hold the 0.5 fib** of the pole (closing basis) — else **FAIL** (cancel; rolls into a
+  bigger consolidation, §12),
+- it **BREAKS OUT** when price closes beyond the consolidation range in the pole's direction, OR
+  prints a >= `BREAKOUT_ATR_MULT` x ATR bar that way,
+- capped at `CONSOL_MAX_WATCH` bars (timeout).
+
+Only **breakouts** are kept as valid patterns; the flag band is **variable length**
+(pole_end..breakout), and the forward outcome is measured **from the breakout**. Fixes the
+screenshot problem without the swing chaos. Script: `signal/nq_flag_breakout.py`.
+
+---
+
+## 16. Rant 5 — regime detection as the fractal backbone (2026-06-30)
+
+Key reframe from the user: **pole / flag / breakout IS a regime sequence** — trending up/down
+(pole, breakout) vs consolidation/equilibrium (flag). So regime detection isn't a side quest; it
+may be the adaptive, **no-fixed-bars** way to detect the pattern itself. Also flagged (again):
+*"inherently i don't like having a fixed bar pole... don't like fixed anything really."* The hybrid
+(§15) made the FLAG variable, but the POLE is still the template's fixed 4 bars — that's the open
+tension these ideas could resolve.
+
+Two methods introduced (user prototyped them earlier; not 100% sure how they compute; sources partly lost):
+
+### (a) Multi-scale efficiency decomposition
+Images: `images/idea_mtf_efficiency_heatmap.png`, `images/idea_binary_scale_decomposition.png`
+- Compute a directional **efficiency** score (trend vs chop; ~Kaufman efficiency ratio) at MANY
+  lookback scales and across timeframes (1m/5m/15m/1h/4h). Green = efficient up (bull), red =
+  efficient down (bear), dark = chop. Stack all rows → a fractal regime map. (35 rows = 5 TFs × 7
+  lookbacks in the MTF one.)
+- The "binary" version stacks scales L=1..512 on one series + candle **anatomy** rows (body ratio,
+  close position, wicks), and reports how often ALL scales AGREE ("full agree: 1.3% bull / 3.9% bear").
+- **Why it matters:** this is the scale-free, no-fixed-bars read the user keeps asking for. A pole =
+  a stretch of high UP-efficiency; a flag = a stretch of LOW efficiency (chop/equilibrium); a
+  breakout = efficiency re-igniting in the pole direction → pole/flag/breakout with ZERO fixed bar
+  counts. It's also the **alignment** idea (§7.2): where scales/timeframes agree = strong trend.
+- Source: not pinned down (older quanted-era experiment; likely moved/deleted). Concept captured here.
+
+### (b) 32-MA fan regime
+Images: `images/idea_32ma_fan_regime_1d.png`, `images/idea_32ma_fan_regime_1h.png`
+- A fan of 32 MAs: stacked + expanding = trend (green up / red down), tangled = sideways (yellow);
+  bottom panel = a 0–100 regime score (bull thresh 70).
+- Source: `_archive/research_backup_2026-06-30/regime/nq_mtf_regime.py` (the MTF regime engine we
+  built earlier in algoproj), same family as the live `strategies/fanning_mtf.py`.
+
+### How they'd fit (my read)
+1. **Context / alignment FILTER (near-term, cheap, testable):** only take a hybrid flag when a
+   higher scale / timeframe regime supports the pole direction (trade *with* the bigger trend).
+   This is the user's "alignment score."
+2. **Adaptive detector (long-term, the real prize):** replace the fixed-template pole with an
+   efficiency-based phase read — high-efficiency directional run = pole, low-efficiency = flag,
+   efficiency re-ignites = breakout. Nothing fixed; phases defined by efficiency transitions at
+   whatever scale. This is the answer to "I don't like fixed anything."
+- Keep combining with fib / ATR / VWAP as before (pullback depth, breakout trigger).

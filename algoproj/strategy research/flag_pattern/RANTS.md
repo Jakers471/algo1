@@ -165,3 +165,26 @@ resistance + wick-vs-close break rule, the VWAP idea (+ volume caveat), the two 
 0.5 fib, resolve on range-break = continuation or 0.5-close = cancel → larger consolidation).
 Recommendation: **B fixes the unit; path-1 spatial/temporal alignment is the layer on top, after B.**
 Created this journal + README. (Not yet built — B is the next build.)
+
+---
+
+## Rant 5 — regime detection concepts + "I don't like fixed anything" (2026-06-30)
+
+> so the pole/flag/brekaout is esentially a regime, trending up or down = or conosidation
+> (equilibrium). i want ot introduce 2 concepts for regime detetcion to you [...] binary
+> decomposition heatmaps with alignment at different scales per timeframe, ofc you can stack
+> timeframes. [...] second thing [...] we made a 32 ma fan, i think these are connected to this
+> [...] fanning_mtf.py -- this is another thing we could use somehow for pole/flag.... ofc we will
+> still use alot of the same things ive recommended [...] fib retracment levels, atr, vwap etc.
+> [images: mtf_heatmap_10000bars.png, binary_heatmap_2048bars.png, nq_regime_1d.png, nq_regime_1h.png]
+
+> becaus einherently i dont like having a fixed bar pole, idk like fixed anything relaly
+
+**Claude (summary):** Reframed pole/flag/breakout = regime (trend vs equilibrium). Saved the 4
+images to `images/` and documented both methods in NOTES §16: (a) multi-scale directional
+**efficiency** decomposition (trend-vs-chop at every scale/TF; the scale-free, no-fixed-bars read),
+and (b) the 32-MA **fan regime** (sourced to `_archive/.../regime/nq_mtf_regime.py`, family of
+`strategies/fanning_mtf.py`). Opinion: use them first as a **MTF alignment FILTER** on the hybrid
+flags (the user's "alignment score", cheap + testable), and long-term as the **adaptive detector**
+that replaces the fixed-template pole (efficiency phases → pole/flag/breakout, nothing fixed) —
+directly answering "I don't like fixed anything." Keep fib/ATR/VWAP as the measurement tools.

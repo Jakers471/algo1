@@ -311,11 +311,13 @@ function renderSummary() {
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   if (fwdAll.length) {
     const sum = fwdAll.reduce((x, y) => x + y, 0), mu = sum / fwdAll.length;
-    const win = fwdAll.filter(x => x > 0).length / fwdAll.length * 100;
+    const won = fwdAll.filter(x => x > 0).length, failed = fwdAll.length - won;
+    const win = won / fwdAll.length * 100;
     const sumCol = sum >= 0 ? C.green : C.red, muCol = mu >= 0 ? C.green : C.red;
     totals.innerHTML = `<div class="thead">all ${fwdAll.length} matches · fwd${horizon}</div>`
+      + `<div class="trow">won <b style="color:${C.green}">${won}</b> · failed <b style="color:${C.red}">${failed}</b> · ${win.toFixed(0)}% win</div>`
       + `<div class="trow">total <b style="color:${sumCol}">${sum >= 0 ? '+' : ''}${sum.toFixed(2)}%</b>`
-      + ` · mean <span style="color:${muCol}">${mu >= 0 ? '+' : ''}${mu.toFixed(3)}%</span> · win ${win.toFixed(0)}%</div>`
+      + ` · mean <span style="color:${muCol}">${mu >= 0 ? '+' : ''}${mu.toFixed(3)}%</span></div>`
       + `<div class="tsub">avg MFE ${mfes.length ? '+' + mean(mfes).toFixed(3) + '%' : '–'}`
       + ` · avg MAE ${maes.length ? mean(maes).toFixed(3) + '%' : '–'}</div>`;
   } else totals.innerHTML = '';
@@ -430,6 +432,7 @@ window.addEventListener('keydown', e => {
 
 chart.timeScale().subscribeVisibleLogicalRangeChange(r => {
   if (snapping || !r) return; const st = j(); if (!st) return;
+  if ((r.to - r.from) > 2000) return;   // zoomed too far out: don't runaway-page through history
   if (r.from < TRIGGER) loadOlder();
   if (r.to > st.bars.length - TRIGGER) loadNewer();
 });

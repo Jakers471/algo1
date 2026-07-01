@@ -58,14 +58,19 @@ SESSION_TZ = "America/New_York"
 SESSION_START_HOUR = 8    # 8 AM ET
 SESSION_END_HOUR = 14     # 2 PM ET (inclusive)
 
-# ── approach B — Stage 1: swing pole detection ───────────
-# A pole = a directional SWING that stands out from the noise (the "deviation"). We build an
-# ATR zigzag (reversal confirmed after price retraces >= REV_ATR_MULT x ATR), then keep the legs
-# whose size >= POLE_ATR_MULT x ATR. Everything ATR-relative so it adapts to volatility. Later
-# stages watch the consolidation off each pole and detect the breakout (range-break OR ATR spike).
-ATR_N = 14                # ATR period for the adaptive thresholds
-REV_ATR_MULT = 1.0        # zigzag reversal: confirm a swing pivot after a retrace >= this x ATR
-POLE_ATR_MULT = 3.0       # a swing leg qualifies as a POLE if its size >= this x ATR
+# ── consolidation watch + breakout (the hybrid — NOTES §15) ──
+# After a template setup is found, WATCH the flag forward (variable length) until it resolves:
+# it must HOLD the FIB_HOLD level of the pole (closing basis) or it FAILS (cancel); it BREAKS OUT
+# when price closes beyond the consolidation range in the pole's direction OR prints a
+# >= BREAKOUT_ATR_MULT x ATR bar that way. Only breakouts are kept as valid patterns.
+ATR_N = 14                # ATR period for the adaptive breakout threshold
+CONSOL_MAX_WATCH = 60     # max bars to watch the flag before giving up (timeout)
+FIB_HOLD = 0.5            # flag must hold this fib of the pole (closing basis) or it fails
+BREAK_BUFFER = 0.0        # extra fraction of pole range beyond FIB_HOLD before a fail counts
+BREAKOUT_ATR_MULT = 2.0   # a bar moving >= this x ATR in the pole direction also = a breakout
+#
+# (archived) swing-based pole detection (REV_ATR_MULT / POLE_ATR_MULT) — see _archive/. Standalone
+# swing poles produced 32k noisy fragments (single candles as "poles"); shelved for the hybrid.
 
 # ── templates ────────────────────────────────────────────
 # Idealized 12-bar flag as "% from window open" (open, high, low, close).
