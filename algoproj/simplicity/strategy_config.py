@@ -29,17 +29,19 @@ import os
 #   strategy_config.py       <- THIS FILE (single source of truth)
 #   NOTES.md / RANTS.md      <- concept + raw idea log + findings
 #   VISION.md                <- the full 15-step target system
-#   research/                <- ALL exploration/analysis lives here first
-#       volume_buckets/          hierarchical volume + volatility profile + dashboard
-#       volatility_ranking/      structured most-vs-least-volatile output
-#       volatility_filter/       the calendar volatility gate (research until confirmed)
-#   engine/                  <- confirmed, solidified, live-ready pieces (promotion target)
+#   research/                <- ALL exploration/analysis lives here first (mirrors engine LAYERS)
+#       structure/               volume_profile, session_anchors  (market structure)
+#       gates/                   volatility_filter, profile_shape_filter, zone_calibration, fib_bias
+#       setup/  execution/       future arm/entry/risk/trailing studies
+#       studies/                 pure discovery: volume_buckets, volatility_ranking, session_break_stats
+#       chart/                   the cross-cutting viewer
+#   engine/                  <- confirmed, solidified, live-ready pieces (promotion target; same LAYERS)
 PROJECT = {
-    "research_buckets": "research/volume_buckets/",
-    "research_ranking": "research/volatility_ranking/",
-    "research_vol_filter": "research/volatility_filter/",
-    "dashboard": "research/volume_buckets/output/volume_dashboard.html",
-    "engine": "engine/  (empty until pieces are confirmed & promoted)",
+    "research_buckets": "research/studies/volume_buckets/",
+    "research_ranking": "research/studies/volatility_ranking/",
+    "research_vol_filter": "research/gates/volatility_filter/",
+    "dashboard": "research/studies/volume_buckets/output/volume_dashboard.html",
+    "engine": "engine/  (layers: feed/state/structure/gates/setup/execution)",
 }
 
 # ==================================================================================
@@ -47,7 +49,7 @@ PROJECT = {
 # ==================================================================================
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT, "data")            # simplicity's OWN clean parquets (self-contained)
-BUCKETS_OUT = os.path.join(ROOT, "research", "volume_buckets", "output")  # shared research artifact
+BUCKETS_OUT = os.path.join(ROOT, "research", "studies", "volume_buckets", "output")  # shared research artifact
 # Raw source for the clean data (TradeStation export; volume = Up + Down). build_data.py reads this.
 SOURCE_TXT_DIR = r"C:/Users/jakers/Documents/TradeStation 10.0/Data"
 INSTRUMENT = "NQ"                 # Nasdaq-100 e-mini futures (back-adjusted continuous)

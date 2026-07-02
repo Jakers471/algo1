@@ -10,12 +10,12 @@ __pycache__/
 /research/chart/chart.html
 
 # large regenerable session-anchor breach data (regenerate: session_anchors.py)
-/research/session_anchors/output/
+/research/structure/session_anchors/output/
 # volume-profile output (regenerate: volume_profile.py)
-/research/volume_profile/output/
+/research/structure/volume_profile/output/
 # shape-filter + zone-calibration outputs (regenerate: shape_filter.py / zone_calibration.py / make_examples.py)
-/research/profile_shape_filter/output/
-/research/zone_calibration/output/
+/research/gates/profile_shape_filter/output/
+/research/gates/zone_calibration/output/
 
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet

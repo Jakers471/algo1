@@ -91,7 +91,7 @@ And the key methodology correction, verbatim:
 > low-vol but doesn't beat random, that's a sign the "edge" might just be that low-vol days are
 > unusually bad rather than high-vol being unusually good.
 
-**Claude (summary):** Built `research/volatility_filter/filter_variants.py` — variants over the
+**Claude (summary):** Built `research/gates/volatility_filter/filter_variants.py` — variants over the
 low/med/high regimes (`all`, `high`=the claim, `medium`, `low`=opposite, `high_medium`, `not_high`,
 `extremes`). `evaluate(per-day R)` now tests each against **both** `low` AND a **Monte-Carlo random
 same-size baseline** (null distribution of random day-samples): **H is real only if `high` beats

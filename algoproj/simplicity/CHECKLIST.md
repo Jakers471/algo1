@@ -23,52 +23,52 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[E]` **engine/data_feed.py PROMOTED** — loads all NQ+ES clean parquets (run_engine shows WIRED 1/10)
 
 ## Phase 1 — Calendar volatility (WHEN to trade)
-- `[R]` Bucket data hierarchically: all → year → quarter → month → day → hour/session, total volume per slice — `research/volume_buckets`
-- `[R]` Volatility per bucket: Mean Vol %, HV %, Vol Range %, Avg Daily Range % — `research/volume_buckets`
-- `[R]` Volume + volatility dashboard (charts + full tables + Δ vs prev) — `research/volume_buckets/output/volume_dashboard.html`
+- `[R]` Bucket data hierarchically: all → year → quarter → month → day → hour/session, total volume per slice — `research/studies/volume_buckets`
+- `[R]` Volatility per bucket: Mean Vol %, HV %, Vol Range %, Avg Daily Range % — `research/studies/volume_buckets`
+- `[R]` Volume + volatility dashboard (charts + full tables + Δ vs prev) — `research/studies/volume_buckets/output/volume_dashboard.html`
 - `[R]` Era cutoff — drop the low-vol 2005-2014 decade (recent HV ≈ 2× early) — `strategy_config.ERA_START_YEAR`
-- `[R]` Volatility ranking — structured most-vs-least volatile per level — `research/volatility_ranking`
+- `[R]` Volatility ranking — structured most-vs-least volatile per level — `research/studies/volatility_ranking`
 - `[E]` **When-to-trade filter PROMOTED** — intraday gate (session/hour + optional daily vol-regime, toggleable `FILTER_SESSION/HOUR/DAY_VOL`) → `engine/vol_filter.py` (WIRED 2/10); research copy kept for testing
-- `[R]` Filter variants bank (high / low / medium / not_high / extremes / all) for A/B testing — `research/volatility_filter/filter_variants.py`
+- `[R]` Filter variants bank (high / low / medium / not_high / extremes / all) for A/B testing — `research/gates/volatility_filter/filter_variants.py`
 - `[R]` Random/unconditional baseline in the test (`evaluate()` compares each variant vs a Monte-Carlo same-size random null)
 - `[ ]` **Hypothesis test** — "strategy better in high-vol periods": run `evaluate()` with strategy per-day R; H holds only if `high` beats the **random baseline** (top tail) AND `low` (blocked on the strategy existing)
 
 ## Phase 2 — Session structure (WHERE)
-- `[R]` Session high/low levels + **forward breach tracking** — extend until price closes through (solid=hit / dashed=ongoing), saves when/where/duration (machine-readable) — `research/session_anchors` (+ chart Indicators panel: toggle levels/sessions, color-coded; chart loads 6000 bars)
-- `[R]` Session-break stats + edge test — base rates, conditional lift, breakout follow-through vs drift — `research/session_break_stats`. **Verdict: no directional edge** (lifts ~1, follow-through excess ~0); breach data is a descriptor, not a signal.
+- `[R]` Session high/low levels + **forward breach tracking** — extend until price closes through (solid=hit / dashed=ongoing), saves when/where/duration (machine-readable) — `research/structure/session_anchors` (+ chart Indicators panel: toggle levels/sessions, color-coded; chart loads 6000 bars)
+- `[R]` Session-break stats + edge test — base rates, conditional lift, breakout follow-through vs drift — `research/studies/session_break_stats`. **Verdict: no directional edge** (lifts ~1, follow-through excess ~0); breach data is a descriptor, not a signal.
 
 ## Phase 3 — Volume Profile & Value Area (the zone)
-- `[R]` Volume Profile per session (bounded by session high↔low; real Up+Down volume) — `research/volume_profile`
+- `[R]` Volume Profile per session (bounded by session high↔low; real Up+Down volume) — `research/structure/volume_profile`
 - `[R]` **Volume spread across each bar's H-L (not close-only)** — fixed 2026-07-02: close-only let a
   single high-volume bar steal the POC from a diffuse base (NOTES F5). Engine copy still to re-promote.
 - `[R]` POC + Value Area = the consolidation zone (VAL/VAH, 70%)
 - `[R]` Measure the zone: duration (bars) + height (%) + VA/range%
 - `[R]` Chart overlay: POC (solid) + VAH/VAL (dashed) per session, color-coded (Indicators `profile` toggle)
-- `[~]` Profile shape / tightness rejection — `research/profile_shape_filter`: `score()` (0-100) + visual
+- `[~]` Profile shape / tightness rejection — `research/gates/profile_shape_filter`: `score()` (0-100) + visual
   gallery (`make_examples.py`) built; PROVISIONAL metrics/threshold, refine before promoting
 - `[ ]` **FUTURE / parallel:** `base_profile` — profile the detected tight BASE (leg+base), not the whole
   session; study side-by-side vs `volume_profile`, promote whichever reads better (NOTES F6). Deferred.
 
 ## Phase 4 — Setup calibration & bias
-- `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/zone_calibration`
+- `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`
   (`calibrate()` + shared gallery scorecard built; PROVISIONAL geometry, refine before promoting)
-- `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/fib_bias`
+- `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/gates/fib_bias`
 
 ## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
 *(see `ARCHITECTURE.md` "Runtime model — LIVE session state machine". Everything updates on
 bars-so-far; causality is enforced by construction; setups arm/disarm on stacked confluence.)*
 - `[E]` **Session state machine BUILT** (the spine) — per-bar causal state: current + next session, live hi/lo (+ when made), time-in-session, time-until-next — `engine/session_state.py` (WIRED 5/13)
 - `[ ]` Wire the promoted components as **live readers of state** (run on the session's bars-so-far, not batch)
-- `[ ]` **Zone calibration** — zone size %/bars → entry timeframe + stop distance / R:R (gate) — `research/zone_calibration`
+- `[ ]` **Zone calibration** — zone size %/bars → entry timeframe + stop distance / R:R (gate) — `research/gates/zone_calibration`
 - `[ ]` **setup_arm — the confluence ARM/DISARM engine** — stack gates (shape + fib + zone size/tightness + timing) → ARM (place resting orders) / DISARM (pull them) on validation/invalidation, continuously re-evaluated
 - `[ ]` Causality rule enforced: components only see bars ≤ now (no look-ahead) — same code live + backtest
 
 ## Phase 6 — Entry & exit mechanics (the substance — R:R geometry, not prediction)
-- `[ ]` Entry: **resting orders before the next open** — breakout stops beyond the range and/or fades at the range edge (bias-gated) — `research/entry_trigger`
+- `[ ]` Entry: **resting orders before the next open** — breakout stops beyond the range and/or fades at the range edge (bias-gated) — `research/execution/entry_trigger`
 - `[ ]` Value-Area breakout + volume confirmation (the trigger); entry TF smaller than the range TF
 - `[ ]` Stop placement (range/VA edge = invalidation) · breakeven logic · DCA-into-range (decide)
 - `[ ]` Risk / position sizing — `strategy_config.RISK` + `STARTING_BALANCE`
-- `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/trailing_stops`
+- `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/execution/trailing_stops`
 
 ## Phase 7 — Measurement & backtest (FUTURE — blocked on Phases 5-6)
 - `[R]` **Per-session module cards** — Indicators `modules` on, click a session (NQ 1m/5m) → floating card
@@ -93,12 +93,12 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[R]` Config split DONE — `research_config.py` (run/testing: `ACTIVE_FILTER`, `STARTING_BALANCE`, dates) re-exports `strategy_config`; removed `ACTIVE_FILTER` + dead `TRADEABLE_REGIMES` from `strategy_config` (no duplication)
 - `[R]` Chart config selector (real | research) — top-bar toggle switches vol-day overlay + sidebar to that config
 - `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
-- `[ ]` **Reorg research to mirror engine layers** — `research/{structure,gates,setup,execution}/` for
-  stage-mapped components + `research/studies/` for pure discovery (buckets, rankings, edge tests, session
-  archive) + `research/chart/`. Makes promotion a 1:1 layer move (promotion path in ARCHITECTURE). Proposed
-  map: structure={volume_profile, session_anchors}; gates={volatility_filter, profile_shape_filter,
-  zone_calibration, fib_bias}; execution={entry_trigger, trailing_stops}; studies={volume_buckets,
-  volatility_ranking, session_break_stats}. Currently flat per-component.
+- `[R]` **Research reorganized to mirror the engine LAYERS** (2026-07-02) — `research/{structure,gates,setup,
+  execution}/` for stage-mapped components + `research/studies/` for pure discovery + `research/chart/`.
+  Promotion is now a 1:1 layer move (see ARCHITECTURE "Promotion path"). Map: structure={volume_profile,
+  session_anchors}; gates={volatility_filter, profile_shape_filter, zone_calibration, fib_bias};
+  execution={entry_trigger, trailing_stops}; studies={volume_buckets, volatility_ranking, session_break_stats}.
+  All import paths + `.gitignore` + `BUCKETS_OUT` updated; every script re-verified running; index + per-layer READMEs added.
 
 ## Future / parked ideas (documented, deferred — don't get ahead)
 - `[ ]` **Session Archive** (`research/studies/session_archive`) — persist every session's full causal
@@ -118,7 +118,7 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 | piece | confirmed | from → to |
 |-------|-----------|-----------|
 | data_feed | 2026-07-01 | data build (research) → `engine/data_feed.py` (loads all NQ+ES parquets; WIRED 1/10) |
-| vol_filter | 2026-07-01 | `research/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |
-| session_anchors | 2026-07-02 | `research/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach + boundaries; WIRED 3/10) |
-| volume_profile | 2026-07-02 | `research/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
+| vol_filter | 2026-07-01 | `research/gates/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |
+| session_anchors | 2026-07-02 | `research/structure/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach + boundaries; WIRED 3/10) |
+| volume_profile | 2026-07-02 | `research/structure/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
 | session_state | 2026-07-02 | built directly in engine (the spine) → `engine/session_state.py` (per-bar causal session state; WIRED 5/13) |

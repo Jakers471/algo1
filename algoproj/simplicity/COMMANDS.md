@@ -26,13 +26,13 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 ## research
 | command | does |
 |---|---|
-| `py research/volume_buckets/build_buckets.py` | build volume + volatility buckets (all → year → … → session) |
-| `py research/volume_buckets/make_dashboard.py` | build the dashboard HTML from the buckets |
-| `py research/volatility_ranking/rank_volatility.py` | most-vs-least volatile ranking + era comparison |
-| `py research/volatility_filter/vol_filter.py` | the vol gate: regime thresholds + tradeable-day counts |
-| `py research/volatility_filter/filter_variants.py` | compare filter variants (high/low/…) for the hypothesis test |
-| `py research/volatility_filter/make_selection_report.py` | build the "what each filter selected" HTML report |
-| `py research/session_anchors/session_anchors.py` | build per-session high/low/open anchors (for the chart overlay) |
+| `py research/studies/volume_buckets/build_buckets.py` | build volume + volatility buckets (all → year → … → session) |
+| `py research/studies/volume_buckets/make_dashboard.py` | build the dashboard HTML from the buckets |
+| `py research/studies/volatility_ranking/rank_volatility.py` | most-vs-least volatile ranking + era comparison |
+| `py research/gates/volatility_filter/vol_filter.py` | the vol gate: regime thresholds + tradeable-day counts |
+| `py research/gates/volatility_filter/filter_variants.py` | compare filter variants (high/low/…) for the hypothesis test |
+| `py research/gates/volatility_filter/make_selection_report.py` | build the "what each filter selected" HTML report |
+| `py research/structure/session_anchors/session_anchors.py` | build per-session high/low/open anchors (for the chart overlay) |
 | `py research/chart/build_chart_data.py` | cache ≤2000 bars/TF (NQ+ES) for the chart |
 | `py research/chart/make_chart.py` | build the self-contained `chart.html` |
 
@@ -45,8 +45,8 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 ## view
 | command | does |
 |---|---|
-| open `research/volume_buckets/output/volume_dashboard.html` | the volume + volatility dashboard |
-| open `research/volatility_filter/output/filter_selections.html` | most/least volatile + what each filter selected |
+| open `research/studies/volume_buckets/output/volume_dashboard.html` | the volume + volatility dashboard |
+| open `research/gates/volatility_filter/output/filter_selections.html` | most/least volatile + what each filter selected |
 | open `research/chart/chart.html` | multi-timeframe chart + config sidebar + selection overlay |
 
 ## setup — if `simp` / `py` ever stop working

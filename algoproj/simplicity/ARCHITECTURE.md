@@ -20,11 +20,11 @@ Both trees are organized by the **same job-layers** so promotion is a clean 1:1 
    run/experiment knobs stay in `research_config.py`. One setting, one home.
 3. `run_simplicity.py` auto-discovers the module (recursive) → it flips to **WIRED** in the pipeline.
 4. It's logged in `CHECKLIST.md` (Promotion log) with date + `source → dest`.
-- **Research layout mirrors the engine layers** — `research/{structure,gates,setup,execution}/` for
-  things that map to an engine stage, plus `research/studies/` for pure discovery/analytics that may
-  never promote (buckets, rankings, edge tests, the future session archive), and `research/chart/`
-  (cross-cutting viewer). This is the reorg that makes "how does this get promoted?" obvious.
-  *(Recommended; see CHECKLIST — research is currently flat per-component.)*
+- **Research layout mirrors the engine layers** **[done 2026-07-02]** — `research/{structure,gates,setup,
+  execution}/` for things that map to an engine stage, plus `research/studies/` for pure discovery/analytics
+  that may never promote (buckets, rankings, edge tests, the future session archive), and `research/chart/`
+  (cross-cutting viewer). So promotion is an obvious 1:1 layer move. Each layer has a README; the mapping
+  lives in `research/README.md`.
 
 ## Two configs, feeding ONE engine
 The same engine runs regardless of which config feeds it; only the config differs.

@@ -16,9 +16,9 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 SIM = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, SIM)
-sys.path.insert(0, os.path.join(SIM, "research", "volatility_filter"))
-sys.path.insert(0, os.path.join(SIM, "research", "profile_shape_filter"))
-sys.path.insert(0, os.path.join(SIM, "research", "zone_calibration"))
+sys.path.insert(0, os.path.join(SIM, "research", "gates", "volatility_filter"))
+sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"))
+sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
@@ -105,7 +105,7 @@ def main():
         },
     }
     # session anchors overlay (from research/session_anchors; drawn on 1m/5m where times align)
-    anc_path = os.path.join(HERE, "..", "session_anchors", "output", "session_anchors.json")
+    anc_path = os.path.join(HERE, "..", "structure", "session_anchors", "output", "session_anchors.json")
     levels, sessions, scolors, data_end = [], [], {}, 0
     if os.path.exists(anc_path):
         aj = json.load(open(anc_path))
@@ -120,7 +120,7 @@ def main():
     manifest["data_end"] = data_end
 
     # volume profiles (Phase 3): per-session POC / value area, in the loaded window
-    vp_path = os.path.join(HERE, "..", "volume_profile", "output", "volume_profile.json")
+    vp_path = os.path.join(HERE, "..", "structure", "volume_profile", "output", "volume_profile.json")
     profiles = []
     if os.path.exists(vp_path):
         m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)

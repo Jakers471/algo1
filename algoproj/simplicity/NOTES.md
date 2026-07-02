@@ -102,7 +102,7 @@ balance, dates — **built**) — feeding **one engine**; the chart has a real|r
 a future separate `backtest/` folder stores equity-curve PNGs in different places per config
 (research vs real) so they never mix.
 
-### Job 2 — calendar volatility filter + ranking (`research/volatility_filter`, `volatility_ranking`)  [BUILT 2026-07-01]
+### Job 2 — calendar volatility filter + ranking (`research/gates/volatility_filter`, `volatility_ranking`)  [BUILT 2026-07-01]
 `build_buckets.py` now also computes four volatility stats per slice at every level (Mean Vol %,
 HV %, Vol Range %, Avg Daily Range %) from OHLC — shown in the dashboard as charts + tables.
 `volatility_filter/vol_filter.py` = the WHEN-TO-TRADE gate: filters **intraday bars by session
@@ -277,3 +277,15 @@ keyed by sid + bar index) + a session-level summary table, config-tagged; then `
 The extension signal gets its own component (`research/gates/extension_context/`) once explored.
 **What it adds to the strategy:** a data substrate for pattern discovery + a new context measurement.
 Deferred deliberately (don't get ahead) — revisit after the core gates exist and can feed it.
+
+### F10 — research reorganized to mirror engine LAYERS (2026-07-02)
+research/ was a flat pile of per-component folders while engine/ was organized by job-layer — the
+inconsistency made promotion feel fuzzy. Fixed: research/ now mirrors engine —
+`structure/` (volume_profile, session_anchors), `gates/` (volatility_filter, profile_shape_filter,
+zone_calibration, fib_bias), `execution/` (entry_trigger, trailing_stops), `setup/` (future),
+`studies/` (pure discovery: volume_buckets, volatility_ranking, session_break_stats), `chart/` (viewer).
+Promotion is now a **1:1 layer move** (`research/gates/X` → `engine/gates/X.py`). All import-path
+bootstraps (+1 dirname to reach simplicity/), cross-layer data paths, `build_chart_data` sibling refs,
+`.gitignore`, `strategy_config.BUCKETS_OUT`, and every MD path reference were updated; each script was
+re-run to verify. Added `research/README.md` (the layer map) + a README per layer. See ARCHITECTURE
+"Promotion path".
