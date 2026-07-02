@@ -1,0 +1,45 @@
+{
+ "days": 5157,
+ "baseline_ny_ret": 0.0061,
+ "baseline_up_pct": 53.3,
+ "london": {
+  "high_first_pct": 50.9,
+  "low_first_pct": 47.2,
+  "high_first_ny_ret": 0.154,
+  "high_first_up_pct": 64.3,
+  "high_first_sweep_both_pct": 40.9,
+  "high_first_excess_t": 12.58,
+  "low_first_ny_ret": -0.1565,
+  "low_first_up_pct": 41.3,
+  "low_first_sweep_both_pct": 43.1,
+  "low_first_excess_t": -12.25
+ },
+ "asia": {
+  "high_first_pct": 35.7,
+  "low_first_pct": 42.8,
+  "high_first_ny_ret": -0.4362,
+  "high_first_up_pct": 12.0,
+  "high_first_sweep_both_pct": 0.1,
+  "high_first_excess_t": -34.94,
+  "low_first_ny_ret": 0.3846,
+  "low_first_up_pct": 88.3,
+  "low_first_sweep_both_pct": 0.0,
+  "low_first_excess_t": 38.22
+ },
+ "forward_from_touch": [
+  {
+   "horizon": 12,
+   "mean_pct": -0.0031,
+   "win_pct": 49.5,
+   "t": -0.71,
+   "n": 5060
+  },
+  {
+   "horizon": 36,
+   "mean_pct": 0.0003,
+   "win_pct": 50.0,
+   "t": 0.05,
+   "n": 5060
+  }
+ ]
+}
