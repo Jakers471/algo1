@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Large data parquets — regenerate from the TradeStation source with data/build_data.py
+/data/NQ/*.parquet
+/data/ES/*.parquet
+
+# (research/**/output/*.parquet are small bucket artifacts and ARE tracked)

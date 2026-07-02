@@ -1,0 +1,4 @@
+era,years,mean_HV,mean_avg_range,mean_mean_vol
+full 2005-2024,20,11.6,1.058,0.543
+early 2005-2014,10,7.72,0.728,0.361
+recent 2015-2024,10,15.48,1.389,0.726

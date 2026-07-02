@@ -29,16 +29,22 @@ data = {
     "rth_pct": float(sess.loc[sess.session == "newyork", "pct_of_all"].iloc[0]),
     "peak_year": int(year.loc[year.volume.idxmax(), "year"]),
     "year": [{"k": int(r.year), "v": int(r.volume), "p": float(r.pct_of_all),
-              "d": int(r.trading_days)} for r in year.itertuples()],
+              "d": int(r.trading_days), "mv": float(r.mean_vol), "hv": float(r.hv),
+              "vr": float(r.vol_range), "ar": float(r.avg_range)} for r in year.itertuples()],
     "quarter": [{"k": r.slice, "v": int(r.volume), "p": float(r.pct_of_all),
-                 "d": int(r.trading_days)} for r in qt.itertuples()],
+                 "d": int(r.trading_days), "mv": float(r.mean_vol), "hv": float(r.hv),
+                 "vr": float(r.vol_range), "ar": float(r.avg_range)} for r in qt.itertuples()],
     "month": [{"k": r.slice, "v": int(r.volume), "p": float(r.pct_of_all),
-               "d": int(r.trading_days)} for r in month.itertuples()],
-    "day": [{"k": r.date, "dow": r.dow, "v": int(r.volume)} for r in day.itertuples()],
-    "hour": [{"k": int(r.hour_et), "v": int(r.volume), "p": float(r.pct_of_all)}
-             for r in hour.itertuples()],
-    "sess": [{"k": r.session, "w": r.window_et, "v": int(r.volume), "p": float(r.pct_of_all)}
-             for r in sess.itertuples()],
+               "d": int(r.trading_days), "mv": float(r.mean_vol), "hv": float(r.hv),
+               "vr": float(r.vol_range), "ar": float(r.avg_range)} for r in month.itertuples()],
+    "day": [{"k": r.date, "dow": r.dow, "v": int(r.volume),
+             "mv": float(r.mean_vol), "ar": float(r.avg_range)} for r in day.itertuples()],
+    "hour": [{"k": int(r.hour_et), "v": int(r.volume), "p": float(r.pct_of_all),
+              "mv": float(r.mean_vol), "hv": float(r.hv), "vr": float(r.vol_range),
+              "ar": float(r.avg_range)} for r in hour.itertuples()],
+    "sess": [{"k": r.session, "w": r.window_et, "v": int(r.volume), "p": float(r.pct_of_all),
+              "mv": float(r.mean_vol), "hv": float(r.hv), "vr": float(r.vol_range),
+              "ar": float(r.avg_range)} for r in sess.itertuples()],
 }
 
 HTML = r"""<!DOCTYPE html>
@@ -113,7 +119,13 @@ HTML = r"""<!DOCTYPE html>
   <div class="card"><h2>By session (ET)</h2><p class="cap">real-scaled volume per session</p><div id="c_sess"></div></div>
 </div>
 
-<div class="sec">Detailed tables — every bucketed number</div>
+<div class="sec">Volatility over time</div>
+<div class="grid2">
+  <div class="card"><h2>HV by year</h2><p class="cap">annualized historical volatility — std(log ret)×√252 (%)</p><div id="cv_hv_year"></div></div>
+  <div class="card"><h2>Avg daily range by month</h2><p class="cap">mean (High−Low)/Close per day (%)</p><div id="cv_ar_month"></div></div>
+</div>
+
+<div class="sec">Volume — every bucketed number</div>
 <div class="grid2">
   <div class="tcard"><h2>Year</h2><p class="cap">20 rows</p><div class="tscroll" id="t_year"></div></div>
   <div class="tcard"><h2>Quarter</h2><p class="cap">80 rows</p><div class="tscroll" id="t_quarter"></div></div>
@@ -121,6 +133,16 @@ HTML = r"""<!DOCTYPE html>
   <div class="tcard"><h2>Day</h2><p class="cap" id="t_day_cap"></p><div class="tscroll" id="t_day"></div></div>
   <div class="tcard"><h2>Hour of day (ET)</h2><p class="cap">24 rows — aggregate profile</p><div class="tscroll" id="t_hour"></div></div>
   <div class="tcard"><h2>Session (ET)</h2><p class="cap">4 rows — aggregate profile</p><div class="tscroll" id="t_sess"></div></div>
+</div>
+
+<div class="sec">Volatility — every bucketed number</div>
+<div class="grid2">
+  <div class="tcard"><h2>Year</h2><p class="cap">20 rows</p><div class="tscroll" id="tv_year"></div></div>
+  <div class="tcard"><h2>Quarter</h2><p class="cap">80 rows</p><div class="tscroll" id="tv_quarter"></div></div>
+  <div class="tcard"><h2>Month</h2><p class="cap">240 rows</p><div class="tscroll" id="tv_month"></div></div>
+  <div class="tcard"><h2>Day</h2><p class="cap" id="tv_day_cap"></p><div class="tscroll" id="tv_day"></div></div>
+  <div class="tcard"><h2>Hour of day (ET)</h2><p class="cap">24 rows — aggregate profile</p><div class="tscroll" id="tv_hour"></div></div>
+  <div class="tcard"><h2>Session (ET)</h2><p class="cap">4 rows — aggregate profile</p><div class="tscroll" id="tv_sess"></div></div>
 </div>
 <div class="tip" id="tip"></div>
 <script>
@@ -137,16 +159,17 @@ function showTip(html,x,y){tip.innerHTML=html;tip.style.opacity=1;
   tip.style.left=(x+14)+"px";tip.style.top=(y-10)+"px";}
 function hideTip(){tip.style.opacity=0;}
 
-function barChart(mount,rows,{label,value,pct,soft,dlabEvery,unitPct}){
+function barChart(mount,rows,{label,value,pct,soft,dlabEvery,unitPct,axisPct}){
   const W=mount.clientWidth||520,H=250,mL=44,mR=12,mT=14,mB=34;
   const iw=W-mL-mR, ih=H-mT-mB;
   const svg=el("svg",{viewBox:`0 0 ${W} ${H}`});
+  const yfmt=axisPct?(x=>x.toFixed(1)+"%"):fmt;
   const max=Math.max(...rows.map(value));
   const nice=Math.pow(10,Math.floor(Math.log10(max)));
   const top=Math.ceil(max/nice)*nice;
   for(let i=0;i<=4;i++){const yv=top*i/4, y=mT+ih-ih*i/4;
     svg.appendChild(el("line",{class:"gl",x1:mL,x2:W-mR,y1:y,y2:y}));
-    const t=el("text",{class:"ax",x:mL-8,y:y+3,"text-anchor":"end"});t.textContent=fmt(yv);svg.appendChild(t);}
+    const t=el("text",{class:"ax",x:mL-8,y:y+3,"text-anchor":"end"});t.textContent=yfmt(yv);svg.appendChild(t);}
   const n=rows.length, gap=2, bw=(iw/n)-gap;
   rows.forEach((r,i)=>{
     const v=value(r), h=ih*v/top, x=mL+i*(iw/n)+gap/2, y=mT+ih-h;
@@ -156,7 +179,7 @@ function barChart(mount,rows,{label,value,pct,soft,dlabEvery,unitPct}){
     if(!dlabEvery||i%dlabEvery===0){const t=el("text",{class:"ax",x:x+bw/2,y:H-mB+16,"text-anchor":"middle"});t.textContent=label(r);svg.appendChild(t);}
     const hot=el("rect",{class:"hot",x:mL+i*(iw/n),y:mT,width:iw/n,height:ih});
     hot.addEventListener("mousemove",e=>{
-      const val = unitPct? (pct(r).toFixed(2)+"% · "+fmt(v)) : fmt(v);
+      const val = axisPct? v.toFixed(2)+"%" : (unitPct? (pct(r).toFixed(2)+"% · "+fmt(v)) : fmt(v));
       showTip(`<span class="k">${label(r,true)}</span><br><b>${val}</b>`,e.clientX,e.clientY);});
     hot.addEventListener("mouseleave",hideTip);
     svg.appendChild(hot);
@@ -164,10 +187,11 @@ function barChart(mount,rows,{label,value,pct,soft,dlabEvery,unitPct}){
   mount.appendChild(svg);
 }
 
-function areaChart(mount,rows,{value,label}){
+function areaChart(mount,rows,{value,label,axisPct}){
   const W=mount.clientWidth||520,H=250,mL=44,mR=12,mT=14,mB=34;
   const iw=W-mL-mR, ih=H-mT-mB, n=rows.length;
   const svg=el("svg",{viewBox:`0 0 ${W} ${H}`});
+  const yfmt=axisPct?(x=>x.toFixed(1)+"%"):fmt;
   const max=Math.max(...rows.map(value));
   const nice=Math.pow(10,Math.floor(Math.log10(max)));const top=Math.ceil(max/nice)*nice;
   const defs=el("defs",{});defs.innerHTML=`<linearGradient id="ag" x1="0" x2="0" y1="0" y2="1">
@@ -176,7 +200,7 @@ function areaChart(mount,rows,{value,label}){
   svg.appendChild(defs);
   for(let i=0;i<=4;i++){const yv=top*i/4,y=mT+ih-ih*i/4;
     svg.appendChild(el("line",{class:"gl",x1:mL,x2:W-mR,y1:y,y2:y}));
-    const t=el("text",{class:"ax",x:mL-8,y:y+3,"text-anchor":"end"});t.textContent=fmt(yv);svg.appendChild(t);}
+    const t=el("text",{class:"ax",x:mL-8,y:y+3,"text-anchor":"end"});t.textContent=yfmt(yv);svg.appendChild(t);}
   const X=i=>mL+(n<=1?0:iw*i/(n-1));
   const Y=v=>mT+ih-ih*v/top;
   let ln="",ar=`M${X(0)},${mT+ih} `;
@@ -196,7 +220,8 @@ function areaChart(mount,rows,{value,label}){
     const r=rows[i],x=X(i),y=Y(value(r));
     cross.setAttribute("x1",x);cross.setAttribute("x2",x);cross.setAttribute("opacity",1);
     dot.setAttribute("cx",x);dot.setAttribute("cy",y);dot.setAttribute("opacity",1);
-    showTip(`<span class="k">${label(r)}</span><br><b>${fmt(value(r))}</b>`,e.clientX,e.clientY);});
+    const av=axisPct?value(r).toFixed(2)+"%":fmt(value(r));
+    showTip(`<span class="k">${label(r)}</span><br><b>${av}</b>`,e.clientX,e.clientY);});
   hot.addEventListener("mouseleave",()=>{hideTip();cross.setAttribute("opacity",0);dot.setAttribute("opacity",0);});
   svg.appendChild(hot);
   mount.appendChild(svg);
@@ -247,6 +272,25 @@ document.getElementById("t_day_cap").textContent=D.day.length.toLocaleString()+"
 table("t_day",[{h:"Date",f:r=>r.k},{h:"Weekday",f:r=>r.dow},C_VOL,C_CHG],D.day);
 table("t_hour",[{h:"Hour ET",f:r=>String(r.k).padStart(2,"0")+":00"},C_VOL,C_PCT,C_CHG],D.hour);
 table("t_sess",[{h:"Session",f:r=>r.k},{h:"Window ET",f:r=>r.w},C_VOL,C_PCT,C_CHG],D.sess);
+
+// volatility charts
+barChart(document.getElementById("cv_hv_year"),D.year,{
+  label:(r,full)=>full?("Year "+r.k):("'"+String(r.k).slice(2)),value:r=>r.hv,axisPct:true,dlabEvery:2});
+areaChart(document.getElementById("cv_ar_month"),D.month,{value:r=>r.ar,label:r=>r.k,axisPct:true});
+
+// volatility tables
+const P2=x=>x.toFixed(2)+"%";
+const C_MV={h:"Mean Vol %",f:r=>P2(r.mv)};
+const C_HV={h:"HV %",f:r=>P2(r.hv)};
+const C_VR={h:"Vol Range %",f:r=>P2(r.vr)};
+const C_AR={h:"Avg Range %",f:r=>P2(r.ar)};
+table("tv_year",[{h:"Year",f:r=>r.k},C_MV,C_HV,C_VR,C_AR],D.year);
+table("tv_quarter",[{h:"Quarter",f:r=>r.k},C_MV,C_HV,C_VR,C_AR],D.quarter);
+table("tv_month",[{h:"Month",f:r=>r.k},C_MV,C_HV,C_VR,C_AR],D.month);
+document.getElementById("tv_day_cap").textContent=D.day.length.toLocaleString()+" rows — HV/Vol-Range need >1 day (n/a)";
+table("tv_day",[{h:"Date",f:r=>r.k},{h:"Weekday",f:r=>r.dow},C_MV,C_AR],D.day);
+table("tv_hour",[{h:"Hour ET",f:r=>String(r.k).padStart(2,"0")+":00"},C_MV,C_HV,C_VR,C_AR],D.hour);
+table("tv_sess",[{h:"Session",f:r=>r.k},{h:"Window ET",f:r=>r.w},C_MV,C_HV,C_VR,C_AR],D.sess);
 </script></body></html>"""
 
 out_path = os.path.join(OUT, "volume_dashboard.html")

@@ -71,9 +71,28 @@ all  ->  year  ->  quarter  ->  month  ->  day  ->  hour / session
   are real-contract-*scaled* estimates; their *shape* is real.
 - **Run:** `python simplicity/volume_buckets/build_buckets.py` → 9 files in `output/`.
 
-### Next (not built — decide with user)
-Nothing beyond Job 1 is committed yet. The volume profile is the substrate; where it leads
-(volume-conditioned setups, session selection, volume-anchored R:R) is the next conversation.
+### The full target system (`VISION.md`) + build tracker (`CHECKLIST.md`)
+The end goal is a 15-step system (see `VISION.md`): calendar-volatility filter → session
+hi/lo anchors → **Volume Profile** between them → POC / Value Area → measure zone %/bars →
+calibrate timeframe & risk → reject scattered profiles → node entry → Fib bias →
+session-break stats → Value-Area breakout w/ volume → aggressive trailing stops. Progress is
+tracked in `CHECKLIST.md` (scratch off as we go).
+
+### Structure + workflow  (2026-07-01)
+**research-first.** Every idea is built and tested in `research/` first; a piece is only
+solidified and **promoted into `engine/`** (clean, fast, live-API-ready) after the **user
+explicitly confirms it — the user decides when.** research = discover, engine = execute.
+`strategy_config.py` is the single source of truth (project map, data, era/filter, TBD
+signal/entry/exit/risk slots, execution costs). Layout:
+`research/{volume_buckets, volatility_ranking, volatility_filter, + placeholder step folders}`,
+`engine/` (empty until first promotion).
+
+### Job 2 — calendar volatility filter + ranking (`research/volatility_filter`, `volatility_ranking`)  [BUILT 2026-07-01]
+`build_buckets.py` now also computes four volatility stats per slice at every level (Mean Vol %,
+HV %, Vol Range %, Avg Daily Range %) from OHLC — shown in the dashboard as charts + tables.
+`volatility_filter/vol_filter.py` = a causal daily gate (trailing vol → low/med/high regime,
+tradeable = high). `volatility_ranking/rank_volatility.py` = structured most-vs-least-volatile
+output per level. Status: built in research, **awaiting confirmation to promote** (CHECKLIST `[C]`).
 
 ---
 
@@ -115,9 +134,35 @@ fall straight out of the buckets:
   (**6.15%**) to the 2022 bear peak **8.71%** (2023 8.25%, 2024 7.88%). The last 7 years hold
   ~50% of all 20yr volume — recent NQ is a different, much heavier-traded market (echoes the
   non-stationarity lesson).
-- **RTH is ~90% of everything.** Session split (real-scaled): `newyork` **89.4%**, `close`
-  **6.7%**, `london` **3.3%**, `asia` **0.6%**. Any volume-based idea lives in the US session;
-  overnight is nearly empty. (Consistent with the flag work's 8AM–2PM ET session filter.)
+- **RTH dominates, but less than first thought.** With REAL intraday volume (F4 rebuild) the
+  session split is `newyork` **77.7%**, `london` **10.0%**, `close` **5.9%**, `asia` **4.6%** —
+  overnight carries real volume the earlier anchored-shape estimate (89/3/7/0.6) understated. US
+  session still leads, but London/Asia aren't negligible.
+
+### F4 — the intraday volume IS real; the parquet builder corrupted it (2026-07-01)
+**Root cause found + source located.** The corruption in F1 was NOT missing data — the raw
+TradeStation source (`C:\Users\jakers\Documents\TradeStation 10.0\Data\nq120.txt` 1m /
+`nq520.txt` 5m / `nq6020.txt` 60m / `nq1day20.txt` daily, 2005-01-11..2025-01-10) stores
+intraday volume as **two columns, `Up` and `Down`** (up-tick vs down-tick volume). The parquet
+builder **concatenated them as strings** instead of summing: `Up=5, Down=108 -> "5108"`;
+`Up=100008, Down=968 -> "100008968"` (the fake 100M bar). **Real intraday volume = Up + Down.**
+Verified: 5m Σ(Up+Down) per day = **96-99% of the daily `Vol`** column every day; per-bar
+median 321, max 44k (sane). So the Volume Profile (VISION 4-6, volume-at-price) IS buildable —
+from the TradeStation source, not the current parquets. **DONE (2026-07-01):** `data/build_data.py`
+rebuilds clean parquets from the TradeStation source (`volume = Up + Down`) into
+`data/NQ/` and `data/ES/` (ES 2005-2025, for future cross-instrument breadth/OOS);
+`strategy_config` points at them; buckets re-run on real intraday volume (dropped the
+"real-daily x shape" workaround). Effect: session split shifted from the shape-estimate
+(RTH 89%) to REAL (RTH 77.7%, overnight higher) — see F2. Parquets are gitignored (big);
+regenerate with `build_data.py`. Deps pinned in `requirements.txt`.
+
+### F3 — volatility non-stationarity: cut the calm early decade (2026-07-01)
+The first decade is far calmer than the recent one — mean annualized HV **2005-2014 = 7.72%**
+vs **2015-2024 = 15.48%** (recent is **2.01×**), same story in avg daily range (0.73% → 1.39%).
+Including 2005-2014 in any volatility-based selection dilutes it, so `ERA_START_YEAR = 2015`
+cuts it (configurable). Most-volatile slices: 2020 (COVID; March HV 62.8%, the 16th ranged
+10.3%) and 2022 (bear); least: 2017 (calmest, HV ~6.7%). High-vol months carry ~2× the volume
+of low-vol months — volume and volatility travel together, as expected.
 
 Outputs (`volume_buckets/output/`): `bucket_all.csv` (1), `bucket_year.csv` (20),
 `bucket_quarter.csv` (80), `bucket_month.csv` (240), `bucket_day.parquet` (5,040),

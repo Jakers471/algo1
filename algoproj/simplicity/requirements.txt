@@ -1,0 +1,12 @@
+# simplicity — Python dependencies (for transporting this folder).
+# Built/tested on Python 3.11.9. Install into a venv:
+#   python -m venv .venv && .venv/Scripts/activate   (Windows)
+#   pip install -r requirements.txt
+#
+# Data lives in data/NQ and data/ES (gitignored); regenerate with data/build_data.py,
+# which reads the TradeStation source at strategy_config.SOURCE_TXT_DIR.
+
+pandas==3.0.3
+numpy==2.4.6
+pyarrow==24.0.0    # parquet read/write
+tzdata            # IANA timezone data (America/New_York, America/Chicago) — needed on Windows
