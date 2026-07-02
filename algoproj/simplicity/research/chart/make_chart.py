@@ -220,7 +220,9 @@ function redraw(){
       const r=document.createElementNS(NSV,"rect");
       r.setAttribute("x",xr);r.setAttribute("y",Math.round(y-step/2));
       r.setAttribute("width",Math.max(1,Math.round(b.v/mx*w)));r.setAttribute("height",hh);
-      r.setAttribute("fill",c);r.setAttribute("fill-opacity",b.v>=mx?0.95:(b.va?0.62:0.28));vpsvg.appendChild(r);}
+      r.setAttribute("fill",c);
+      r.setAttribute("fill-opacity",Math.min(0.95,0.12+0.8*(b.v/mx)));  // fade by volume: fog collapses, shape pops
+      vpsvg.appendChild(r);}
     const yp=candle.priceToCoordinate(P.poc);
     if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,c,1.2,1));
   }
