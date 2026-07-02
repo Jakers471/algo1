@@ -35,7 +35,7 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 
 ## Phase 2 — Session structure (WHERE)
 - `[R]` Session high/low levels + **forward breach tracking** — extend until price closes through (solid=hit / dashed=ongoing), saves when/where/duration (machine-readable) — `research/session_anchors` (+ chart Indicators panel: toggle levels/sessions, color-coded; chart loads 6000 bars)
-- `[ ]` Session-break conditional stats — e.g. London-high break → NY-high break probability — `research/session_break_stats`
+- `[R]` Session-break stats + edge test — base rates, conditional lift, breakout follow-through vs drift — `research/session_break_stats`. **Verdict: no directional edge** (lifts ~1, follow-through excess ~0); breach data is a descriptor, not a signal.
 
 ## Phase 3 — Volume Profile & Value Area (the zone)
 - `[ ]` Volume Profile between session anchors (not VWAP) — `research/volume_profile`

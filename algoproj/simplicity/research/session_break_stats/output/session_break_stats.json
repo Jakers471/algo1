@@ -1,0 +1,90 @@
+{
+ "base_hit_pct": {
+  "asia_high": 96.4,
+  "asia_low": 91.3,
+  "london_high": 94.5,
+  "london_low": 88.7,
+  "newyork_high": 91.3,
+  "newyork_low": 81.0
+ },
+ "conditional": [
+  {
+   "given": "london high",
+   "predict": "newyork high",
+   "P_Y": 0.913,
+   "P_Y_given_X": 0.953,
+   "lift": 1.045
+  },
+  {
+   "given": "asia high",
+   "predict": "london high",
+   "P_Y": 0.948,
+   "P_Y_given_X": 0.957,
+   "lift": 1.01
+  },
+  {
+   "given": "london low",
+   "predict": "newyork low",
+   "P_Y": 0.81,
+   "P_Y_given_X": 0.891,
+   "lift": 1.101
+  },
+  {
+   "given": "newyork high",
+   "predict": "newyork low",
+   "P_Y": 0.81,
+   "P_Y_given_X": 0.792,
+   "lift": 0.978
+  }
+ ],
+ "follow_through": [
+  {
+   "horizon": 12,
+   "break": "high",
+   "n": 14554,
+   "mean_pct": 0.005,
+   "win_pct": 49.7,
+   "t": 2.78,
+   "excess_pct": 0.003,
+   "half1": 0.003,
+   "half2": 0.007,
+   "edge_flag": false
+  },
+  {
+   "horizon": 12,
+   "break": "low",
+   "n": 13460,
+   "mean_pct": 0.004,
+   "win_pct": 46.1,
+   "t": 1.69,
+   "excess_pct": 0.005,
+   "half1": 0.002,
+   "half2": 0.006,
+   "edge_flag": false
+  },
+  {
+   "horizon": 36,
+   "break": "high",
+   "n": 14554,
+   "mean_pct": 0.004,
+   "win_pct": 51.6,
+   "t": 1.33,
+   "excess_pct": -0.001,
+   "half1": 0.001,
+   "half2": 0.007,
+   "edge_flag": false
+  },
+  {
+   "horizon": 36,
+   "break": "low",
+   "n": 13460,
+   "mean_pct": 0.002,
+   "win_pct": 46.0,
+   "t": 0.57,
+   "excess_pct": 0.006,
+   "half1": -0.001,
+   "half2": 0.005,
+   "edge_flag": false
+  }
+ ]
+}
