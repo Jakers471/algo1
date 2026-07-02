@@ -490,3 +490,16 @@ we check if gating adds LIFT (same pattern as the vol-filter hypothesis test). N
 loop (step bars, rest orders, fill at confirming close F1, manage stop/TP, record R) -- which is the thing
 that finally answers "is there edge" in real R after costs. So: entry/stop/TP (base scale) -> measure R
 -> setup_arm gates it -> extrapolate the target ladder across scales (F22). ENTRY/EXIT config slots get filled.
+
+### F25 — R:R GEOMETRY (now, from structure) vs REALIZED R (backtest, later): keep separate (2026-07-02)
+User's correction to F24: measuring R:R does NOT need a backtest. R:R is GEOMETRY -- stop + target LEVELS
+derived from the multi-scale readings (stop = the smallest/tightest scale's edge; TARGETS = a LADDER of
+each larger scale's VA edges / POCs / naked levels), and R:R = target-distance / stop-distance. Static,
+computed from price structure NOW (zone_calibration is a crude single-scale version). Stops/TPs get
+"reprogrammed" from the nested readings and stack into a ladder (scale-out targets that come down into
+each other). SEPARATE thing: a precise BACKTEST engine that steps bars, places the orders, manages the
+trade, and records REALIZED R (did price hit the ladder targets or the stop) + trade management -- later.
+NEXT MOVE: the R:R-geometry / TARGET-LADDER engine (research) -- from the enabled scales output a stop
+level + ordered target ladder + R:R per rung; draw the levels on the chart (boxes already show the scales).
+Geometry-only, no simulation. THEN the backtest measures whether those levels get hit (realized R). This
+is the concrete trade DEFINITION (entry/stop/TP geometry) that setup_arm later arms.
