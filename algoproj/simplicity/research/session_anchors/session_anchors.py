@@ -30,7 +30,7 @@ OUT = os.path.join(HERE, "output")
 os.makedirs(OUT, exist_ok=True)
 
 # the three real trading sessions (NOT "close" 16:00-18:00 = post-close + maintenance break)
-COLORS = {"asia": "#9085e9", "london": "#199e70", "newyork": "#3987e5"}
+COLORS = {"asia": "#a68cff", "london": "#1fc98d", "newyork": "#4a9bff"}  # brighter / more saturated
 MAX_FWD_BARS = 4000  # ~14 trading days of 5m; cap on the forward breach scan
 
 
@@ -96,7 +96,8 @@ def main():
     sessions = [{"date": d, "session": s, "sid": f"{d} {s}", "open": int(o), "close": int(closes[(d, s)])}
                 for (d, s), o in opens.items()]
 
-    out = {"colors": COLORS, "data_end": data_end, "max_fwd_bars": MAX_FWD_BARS, "levels": levels}
+    out = {"colors": COLORS, "data_end": data_end, "max_fwd_bars": MAX_FWD_BARS,
+           "levels": levels, "sessions": sessions}
     json.dump(out, open(os.path.join(OUT, "session_anchors.json"), "w"))
 
     n_hit = sum(1 for x in levels if x["hit"])

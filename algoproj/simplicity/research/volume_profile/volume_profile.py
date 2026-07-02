@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))  # simplicity/
 import strategy_config as cfg
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
-N_BINS = 50
+ROW_SIZE = 2.0   # points per profile row -> UNIFORM thin rows across all sessions (wide sessions = more rows)
 VA_PCT = 0.70
 
 
@@ -73,7 +73,8 @@ def main():
         sl, sh = float(g["low"].min()), float(g["high"].max())
         if sh <= sl:
             continue
-        edges = np.linspace(sl, sh, N_BINS + 1)
+        nb = max(3, int(round((sh - sl) / ROW_SIZE)))     # ~ROW_SIZE points per row -> uniform thin rows
+        edges = np.linspace(sl, sh, nb + 1)
         vbin, _ = np.histogram(g["close"].to_numpy(), bins=edges, weights=g["vol"].to_numpy())
         va = _value_area(vbin, edges)
         if va is None:
@@ -81,18 +82,18 @@ def main():
         poc, val, vah = va
         centers = (edges[:-1] + edges[1:]) / 2
         bins = [{"p": round(float(centers[i]), 2), "v": round(float(vbin[i]), 1),
-                 "va": bool(val <= centers[i] <= vah)} for i in range(N_BINS) if vbin[i] > 0]
+                 "va": bool(val <= centers[i] <= vah)} for i in range(nb) if vbin[i] > 0]
         out.append({"date": date, "session": s, "sid": f"{date} {s}",
                     "high": round(sh, 2), "low": round(sl, 2), "poc": poc, "val": val, "vah": vah,
                     "start": int(g["ts"].min()), "end": int(g["ts"].max()), "bars": int(len(g)),
                     "height_pct": round((sh - sl) / sl * 100, 3),
                     "va_pct_of_range": round((vah - val) / (sh - sl) * 100, 1), "bins": bins})
 
-    json.dump({"n_bins": N_BINS, "va_pct": VA_PCT, "profiles": out},
+    json.dump({"row_size": ROW_SIZE, "va_pct": VA_PCT, "profiles": out},
               open(os.path.join(OUT, "volume_profile.json"), "w"))
 
     d = pd.DataFrame(out)
-    print(f"built {len(out):,} session volume profiles ({N_BINS} bins, {int(VA_PCT*100)}% value area)")
+    print(f"built {len(out):,} session volume profiles ({ROW_SIZE}-pt rows, {int(VA_PCT*100)}% value area)")
     print(f"\n  {'session':<9}{'n':>7}{'median height%':>16}{'median VA/range%':>18}{'POC vs mid':>14}")
     for s in ["asia", "london", "newyork"]:
         ds = d[d.session == s]

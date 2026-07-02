@@ -86,7 +86,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">anchors</span><button id="ancMaster">off</button><span class="ind-note" id="ancAvail"></span></div>
         <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="high" class="on">High</button><button data-lvl="low" class="on">Low</button></div>
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
-        <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span class="ind-note">session open/close verticals</span></div>
+        <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span id="timesSess"></span></div>
         <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span id="vpSess"></span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
@@ -172,8 +172,8 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, vpOn=false, vpLines=[], vpSess={};
-SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true;});
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, timesSess={}, vpOn=false, vpSess={};
+SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true; timesSess[s]=true;});
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
   clearAnchors();
@@ -203,9 +203,11 @@ function redraw(){
   if(!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
   const ts=chart.timeScale(), box=chartEl.getBoundingClientRect(), H=box.height;
   vpsvg.setAttribute("viewBox",`0 0 ${box.width} ${H}`);
-  if(timesOn) for(const S of (M.sessions||[])){const c=SC[S.session]||"#888";
-    for(const sp of [[S.open,0.6],[S.close,0.32]]){const x=ts.timeToCoordinate(sp[0]);
-      if(x!=null)vpsvg.appendChild(_ln(x,0,x,H,c,1,sp[1],"2 3"));}}
+  let nT=0, nTvis=0;
+  if(timesOn) for(const S of (M.sessions||[])){if(!timesSess[S.session])continue;const c=SC[S.session]||"#888";
+    for(const sp of [[S.open,0.75],[S.close,0.42]]){nT++;const x=ts.timeToCoordinate(sp[0]);
+      if(x!=null){nTvis++;vpsvg.appendChild(_ln(x,0,x,H,c,1,sp[1],"3 3"));}}}
+  if(timesOn)console.log(`%c[times] sessions=${(M.sessions||[]).length} candidates=${nT} drawn=${nTvis} tf=${tf} inst=${inst}`,"color:#4a9bff");
   if(vpOn) for(const P of (M.profiles||[])){
     if(!vpSess[P.session]||!P.bins||!P.bins.length)continue;
     const x0=ts.timeToCoordinate(P.start), x1=ts.timeToCoordinate(P.end);
@@ -213,13 +215,14 @@ function redraw(){
     const w=Math.max(8,x1-x0), c=SC[P.session]||"#888", mx=Math.max(...P.bins.map(b=>b.v))||1;
     const y0=candle.priceToCoordinate(P.bins[0].p), y1=P.bins.length>1?candle.priceToCoordinate(P.bins[1].p):null;
     const step=(y0!=null&&y1!=null)?Math.max(1,Math.abs(y0-y1)):3;
+    const xr=Math.round(x0), hh=Math.max(1,Math.round(step)-1);  // pixel-snapped + 1px row gap = crisp
     for(const b of P.bins){const y=candle.priceToCoordinate(b.p);if(y==null)continue;
       const r=document.createElementNS(NSV,"rect");
-      r.setAttribute("x",x0);r.setAttribute("y",y-step/2);r.setAttribute("width",Math.max(0.5,b.v/mx*w));
-      r.setAttribute("height",Math.max(1,step-0.5));r.setAttribute("fill",c);
-      r.setAttribute("fill-opacity",b.v>=mx?0.85:(b.va?0.45:0.15));vpsvg.appendChild(r);}
+      r.setAttribute("x",xr);r.setAttribute("y",Math.round(y-step/2));
+      r.setAttribute("width",Math.max(1,Math.round(b.v/mx*w)));r.setAttribute("height",hh);
+      r.setAttribute("fill",c);r.setAttribute("fill-opacity",b.v>=mx?0.95:(b.va?0.62:0.28));vpsvg.appendChild(r);}
     const yp=candle.priceToCoordinate(P.poc);
-    if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,c,1,0.9));
+    if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,c,1.2,1));
   }
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
@@ -231,6 +234,9 @@ document.getElementById("ancSess").innerHTML=SESSN.map(s=>
   `<button data-s="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
 document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";redraw();};
+document.getElementById("timesSess").innerHTML=SESSN.map(s=>
+  `<button data-ts="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
+document.querySelectorAll("[data-ts]").forEach(b=>b.onclick=function(){timesSess[this.dataset.ts]=!timesSess[this.dataset.ts];this.classList.toggle("on",timesSess[this.dataset.ts]);redraw();});
 document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.toggle("on",vpOn);this.textContent=vpOn?"on":"off";redraw();};
 document.getElementById("vpSess").innerHTML=SESSN.map(s=>
   `<button data-vs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
