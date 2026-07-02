@@ -116,6 +116,17 @@ produces equity curves → PNGs stored per-config (above). It is the thing that 
 configs to the engine. **Not built** — and there's nothing to measure yet (no risk management, no
 returns; current focus is visualization only).
 
+## Multi-scale profilers — base < session < HTF **[base+session built; HTF future; NOTES F19]**
+The **profile dict** is a seam: any profiler that emits `{bins, POC, VAL/VAH, high, low, va_pct, …}` is
+scored by the *same* `shape_filter` + `zone_calibration`. So we run the same machinery at **nested time
+scales** in parallel: **base** (the coil, ~min–hrs) ⊂ **session** (hrs) ⊂ **HTF composite** (days/weeks).
+Each scale plays a *different role* in a trade, not just confluence: **base = the tight stop (1R)**,
+**session = the immediate zone/first target**, **HTF = the runway (big target) + context (at value vs
+extended)**. A trade takes its stop from the smallest scale and its runway from the largest (LTF-tight-stop
+/ HTF-runway, generalized). Confluence = when the scales agree → the A+ setup; `setup_arm` reads all three.
+Still geometry/context, not direction; validate the stack in-context (F13). Built: `base_profile` +
+`volume_profile` (they run together on the chart module card). Missing: the HTF composite profiler.
+
 ## Run ledger — scorecards bound to configs/params **[built 2026-07-02; `research/runs/`]**
 Don't tune blind. Every research run that produces numbers appends a **scorecard** to
 `research/runs/runs.jsonl` (append-only): `run_id` · git commit · the component **params** used · a

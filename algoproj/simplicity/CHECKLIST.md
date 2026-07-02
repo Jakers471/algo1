@@ -127,7 +127,10 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   HTF volume profile + a regime score (consolidation / trending / transitioning + extension state) that
   CONDITIONS setup selection & R:R — explicitly NOT a direction call. Building blocks already exist
   (per-session shape/zone/range/dir); new work = sequence-aggregation + composite profile + scoring. (NOTES F14.)
-- `[ ]` **base_profile** — profile the detected tight base (leg+base) vs whole session, side-by-side study, promote the better. (NOTES F6.)
+- `[ ]` **Multi-scale profiler stack** (base ⊂ session ⊂ HTF) — run `base_profile` + `volume_profile` + a
+  future HTF composite profiler in parallel (same profile-dict seam, same gates). Each scale plays a role:
+  base = tight stop (1R), session = zone/first target, HTF = runway + context. Confluence when they agree.
+  base+session already run together on the chart card; HTF composite is the missing third. (NOTES F19)
 - `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
 
 ---

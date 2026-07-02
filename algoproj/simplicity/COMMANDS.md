@@ -23,17 +23,34 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 |---|---|
 | `py data/build_data.py` | rebuild clean NQ + ES parquets (volume = Up+Down) from the TradeStation source |
 
-## research
+## research  (mirrors the engine layers: structure / gates / studies, + chart)
+`[note]` = optional trailing words become the run-ledger note, e.g. `py …/shape_filter.py baseline`.
+
 | command | does |
 |---|---|
-| `py research/studies/volume_buckets/build_buckets.py` | build volume + volatility buckets (all → year → … → session) |
-| `py research/studies/volume_buckets/make_dashboard.py` | build the dashboard HTML from the buckets |
-| `py research/studies/volatility_ranking/rank_volatility.py` | most-vs-least volatile ranking + era comparison |
+| **structure** | |
+| `py research/structure/volume_profile/volume_profile.py` | per-session Volume Profile (POC + value area) |
+| `py research/structure/base_profile/base_profile.py` | profile the detected consolidation BASE (parallel profiler) |
+| `py research/structure/base_profile/make_compare.py` | side-by-side gallery: whole session vs base (same gates) |
+| `py research/structure/session_anchors/session_anchors.py` | per-session high/low/open anchors + breach (chart overlay) |
+| **gates** | |
 | `py research/gates/volatility_filter/vol_filter.py` | the vol gate: regime thresholds + tradeable-day counts |
 | `py research/gates/volatility_filter/filter_variants.py` | compare filter variants (high/low/…) for the hypothesis test |
-| `py research/gates/volatility_filter/make_selection_report.py` | build the "what each filter selected" HTML report |
-| `py research/structure/session_anchors/session_anchors.py` | build per-session high/low/open anchors (for the chart overlay) |
-| `py research/chart/build_chart_data.py` | cache ≤2000 bars/TF (NQ+ES) for the chart |
+| `py research/gates/volatility_filter/make_selection_report.py` | the "what each filter selected" HTML report |
+| `py research/gates/profile_shape_filter/shape_filter.py [note]` | shape score (clean vs foggy); logs a run-ledger scorecard |
+| `py research/gates/profile_shape_filter/make_examples.py` | shape + zone scorecard gallery on real sessions |
+| `py research/gates/zone_calibration/zone_calibration.py [note]` | zone R:R geometry; logs a run-ledger scorecard |
+| `py research/gates/fib_bias/fib_bias.py [note]` | fib directional-edge test (verdict: no edge); logs a scorecard |
+| `py research/gates/fib_bias/make_examples.py` | shows what the fib test sees on real candles |
+| **studies** | |
+| `py research/studies/volume_buckets/build_buckets.py` | volume + volatility buckets (all → year → … → session) |
+| `py research/studies/volume_buckets/make_dashboard.py` | the dashboard HTML from the buckets |
+| `py research/studies/volatility_ranking/rank_volatility.py` | most-vs-least volatile ranking + era comparison |
+| `py research/studies/session_break_stats/session_break_stats.py` | session-break base rates / lift / follow-through (no edge) |
+| **meta / builders** | |
+| `py research/strategy_map/build_map.py` | the decision-tree / neural-net map of the whole strategy |
+| `py research/runs/analyze_runs.py [kind]` | RUN LEDGER: compare every logged run's params + metrics |
+| `py research/chart/build_chart_data.py` | cache ≤6000 bars/TF (NQ+ES) + bake profiles / base / scores for the chart |
 | `py research/chart/make_chart.py` | build the self-contained `chart.html` |
 
 ## engine
@@ -45,9 +62,13 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 ## view
 | command | does |
 |---|---|
+| open `research/chart/chart.html` | multi-TF chart + module cards (+ BASE companion) + replay + chat log |
+| open `research/strategy_map/strategy_map.html` | the strategy decision-tree map |
+| open `research/structure/base_profile/output/compare.html` | base vs whole-session, side by side (same gates) |
+| open `research/gates/profile_shape_filter/output/examples.html` | shape + zone scorecards on real sessions |
+| open `research/gates/fib_bias/output/fib_examples.html` | what the fib edge test sees on real candles |
 | open `research/studies/volume_buckets/output/volume_dashboard.html` | the volume + volatility dashboard |
 | open `research/gates/volatility_filter/output/filter_selections.html` | most/least volatile + what each filter selected |
-| open `research/chart/chart.html` | multi-timeframe chart + config sidebar + selection overlay |
 
 ## setup — if `simp` / `py` ever stop working
 

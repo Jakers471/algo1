@@ -411,3 +411,21 @@ clean: shape 46->80, 42->72, 40->69 (+29..+34), and crucially risk 1R collapses 
 made real; entry TF often drops 5m->1m. Already-clean sessions are a wash (-1) -- no harm. Logged to the
 run ledger (kind=base_profile). PROMOTE-PENDING (user decides): base could replace volume_profile, or
 COMPLEMENT it (multi-scale confluence, F15: score both). Still needs in-context validation (F13) before live.
+
+### F19 — multi-scale nested structure: base < session < HTF (the three timeframes) (2026-07-02)
+User's insight after the base companion card: base_profile and volume_profile COMPLEMENT each other --
+two scales of the SAME price structure, a smaller one (the base/coil) nested INSIDE a larger one (the
+session). Run them as dual profilers simultaneously and you locate the small structure within the large.
+Add the HTF composite (F14/F15: days/weeks combined) and you get a THIRD scale: base (smallest, ~min-hrs)
+< session (medium, hrs) < HTF composite (largest, days/weeks) -- three nested timeframes of the same
+volume-profile machinery. The profile-dict is the seam: the SAME shape/zone gates score all three.
+Sharpening (my add): the scales don't just stack for confluence -- each plays a DIFFERENT ROLE in the
+trade. BASE = the entry trigger + tight stop (1R, small). SESSION = the immediate zone the base sits in
+(first target / the range being broken). HTF = the context/regime + the runway (big target) + "at value
+or extended". So a trade takes its STOP from the smallest scale and its RUNWAY from the largest -- the
+LTF-tight-stop / HTF-runway mechanism generalized across three scales. Confluence = when the scales AGREE
+(clean base, at a session edge, at HTF value) = the A+ setup; setup_arm reads all three. Still geometry /
+context, NOT direction (scales give R:R asymmetry + conviction, not a direction call); validate the stack
+IN-CONTEXT (F13), never in isolation. Architecture: same engine, multiple PROFILER WINDOWS running in
+parallel, each emitting a profile dict -> scored -> combined. base+session already run together on the
+chart card; the HTF composite profiler is the missing third (deferred).
