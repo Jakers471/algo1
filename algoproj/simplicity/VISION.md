@@ -36,6 +36,13 @@ Context / sizing / bias — not a direction predictor. It rides on top of the **
 disk" — then merge across days and mine it with analytics for patterns/rules. Deferred until the core
 gates exist to feed it. (NOTES F9.)
 
+**Open layer (deferred) — a REGIME / CONTEXT gate at the top of the tree.** Chain the per-session
+buckets across time into (a) a composite higher-timeframe volume profile (multi-day/week value + naked
+POCs = a real structural reference) and (b) a regime score from the *sequence* of session characters
+(consolidation / trending / transitioning + extension state). It sits above everything and CONDITIONS
+which setups arm and their R:R — deliberately NOT a bullish/bearish direction call (that's the trap; NQ
+direction isn't predictable). Validate in-context, never in isolation. (NOTES F14.)
+
 
 
 vision re explaiend: 

@@ -8,6 +8,9 @@ __pycache__/
 # generated chart artifacts (regenerate: build_chart_data.py + make_chart.py; lib/ is kept)
 /research/chart/data/
 /research/chart/chart.html
+# generated strategy map (regenerate: build_map.py)
+/research/strategy_map/strategy_map.html
+/research/strategy_map/_mapcheck.png
 
 # large regenerable session-anchor breach data (regenerate: session_anchors.py)
 /research/structure/session_anchors/output/

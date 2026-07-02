@@ -102,6 +102,8 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   blind. Wired: shape_filter, zone_calibration, fib_bias. Complements future session_archive (NOTES F9/F12).
 - `[R]` **fib_bias gallery** (`research/gates/fib_bias/make_examples.py`) — shows on real candles what the
   edge test sees: session + fib lines + close→fpos→zone, then the next session's direction. (NOTES F11)
+- `[R]` **Strategy map** (`research/strategy_map`) — decision-tree / neural-net view of the whole pipeline
+  (context → spine → structure → gates → setup_arm → execution), colored by build status; generated from the pipeline. (NOTES F14)
 - `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
 - `[R]` **Research reorganized to mirror the engine LAYERS** (2026-07-02) — `research/{structure,gates,setup,
   execution}/` for stage-mapped components + `research/studies/` for pure discovery + `research/chart/`.
@@ -118,6 +120,10 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` **Extension context** (`research/gates/extension_context`) — decay / overextension / healthy-extension
   measurement (how far/fast price stretched from value; mean-revert risk), a NEW untested context/bias
   ingredient (like fib). Rides on the Session Archive. (NOTES F9, VISION.)
+- `[ ]` **Regime / context gate** (top of the decision tree) — chain the session buckets into a composite
+  HTF volume profile + a regime score (consolidation / trending / transitioning + extension state) that
+  CONDITIONS setup selection & R:R — explicitly NOT a direction call. Building blocks already exist
+  (per-session shape/zone/range/dir); new work = sequence-aggregation + composite profile + scoring. (NOTES F14.)
 - `[ ]` **base_profile** — profile the detected tight base (leg+base) vs whole session, side-by-side study, promote the better. (NOTES F6.)
 - `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
 

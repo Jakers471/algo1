@@ -325,3 +325,26 @@ reading improve THIS setup's R:R outcome / entry quality?", not "does fib positi
 direction." Same caution applies to shape/zone isolated numbers: judge the system *fully wired*. So:
 DO NOT drop fib on the strength of F11; keep it as chart geometry and defer any bias judgment to
 in-context testing after the setup exists. (This is also why we hunt R:R geometry, not direction.)
+
+### F14 — chained-session REGIME / CONTEXT gate (big FUTURE idea; plan carefully) (2026-07-02)
+User's idea: we've bucketed ALL of price into per-session records (hi/lo, range%, direction, shape,
+POC/VA, volume, R:R). CHAIN them across the timeline -> (a) one composite / higher-timeframe volume
+profile (a giant sideways heatmap = multi-day/week value + naked POCs = a real structural reference),
+and (b) a REGIME score from the SEQUENCE of session characters: e.g. a tall directional session then a
+tight consolidation = impulse+base; a run of overlapping balanced ranges = rangebound; successive
+higher session hi/lo = trend. It sits at the TOP of the decision tree as a context/bias gate that
+COLORS everything downstream.
+My take (kept honest): frame it as REGIME / CONTEXT, NOT a direction call. "consolidation vs trending
+vs transitioning" + extension state (healthy vs over-extended, F9) is the defensible, valuable part; a
+"bullish/bearish" DIRECTION score is the exact trap we keep hitting (fib, session-break, poles all died
+there — direction isn't predictable on NQ). So the regime gate should CONDITION setup selection + R:R
+(which setups arm, how wide the target, fade vs continuation), NOT pick trade direction. The composite
+HTF-profile half is solidly real (longer-horizon value / naked POCs are genuine references). Validate
+IN-CONTEXT (F13): judge whether regime-conditioning improves the WIRED setup's outcomes — never the
+regime score in isolation vs next-direction. The building blocks already exist (per-session shape /
+zone / range / dir); the new work is the sequence-aggregation + composite profile + the scoring.
+Connects to base_profile (F6), extension_context (F9), session_archive (F9/F12). Likely lands as a new
+top-of-tree layer (a `research/context/` or `research/gates/regime`) feeding setup_arm. Deferred.
+
+Also built (2026-07-02): `research/strategy_map/` — a decision-tree map of the whole strategy (the
+"see it on a tree/neural-net" request), generated from the pipeline, colored by build status.
