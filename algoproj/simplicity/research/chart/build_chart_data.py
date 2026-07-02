@@ -19,12 +19,14 @@ sys.path.insert(0, SIM)
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "volatility_filter"))
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"))
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
+sys.path.insert(0, os.path.join(SIM, "research", "structure", "base_profile"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
 import filter_variants as fvar
 import shape_filter as sf
 import zone_calibration as zc
+import base_profile as bpm
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
@@ -135,6 +137,18 @@ def main():
             P["next_session"] = nxt["session"] if nxt else None
             P["next_open"] = nxt["start"] if nxt else None
             P["duration_sec"] = int(P["end"] - P["start"])
+        # base_profile companion (same dict shape, scored by the same gates) for module-vs-module compare
+        try:
+            base_list, _ = bpm.compute(tail=8000)
+            base_by = {b["sid"]: b for b in base_list}
+            for P in profiles:
+                b = base_by.get(P["sid"])
+                if b:
+                    b["shape"] = sf.score(b) or {}
+                    b["zone"] = zc.calibrate(b) or {}
+                    P["base"] = b
+        except Exception as e:
+            print("  base companion skipped:", e)
     manifest["profiles"] = profiles
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))

@@ -69,7 +69,7 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 .loaded .dot{width:8px;height:8px;border-radius:50%;background:var(--up);
 box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.smod{position:absolute;z-index:9;top:52px;left:52px;width:604px;background:rgba(20,22,27,.985);
+.smod{position:absolute;z-index:9;top:52px;left:52px;width:544px;background:rgba(20,22,27,.985);
 border:1px solid var(--ring);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.6);display:none}
 .smod-h{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ring);cursor:move;user-select:none}
 .smod-h b{font-weight:600}.smod-h .mut{color:var(--mut);font-size:11px}
@@ -128,6 +128,7 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
     <div id="chart"></div>
     <svg id="vpsvg" class="vpsvg"></svg>
     <div class="smod" id="smod"></div>
+    <div class="smod" id="smodB"></div>
     <div class="ind" id="ind">
       <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
       <div class="ind-b" id="indBody">
@@ -312,7 +313,7 @@ document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[t
 
 // ---- per-session MODULE cards (click a session -> crisp profile + timing + scores) ----
 let modOn=false, modPt={x:400,y:70};
-const smod=document.getElementById("smod");
+const smod=document.getElementById("smod"), smodB=document.getElementById("smodB");
 document.getElementById("modBtn").onclick=function(){modOn=!modOn;this.classList.toggle("on",modOn);
   this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)smod.style.display="none";};
 function _profAt(t){return (M.profiles||[]).find(P=>t>=P.start&&t<=P.end&&P.bins&&P.bins.length);}
@@ -338,7 +339,7 @@ function moduleSVG(P,cs){
     e+=`<rect x="${(VPR-w).toFixed(1)}" y="${(Y(b.p)-barH/2).toFixed(1)}" width="${w.toFixed(1)}" height="${barH.toFixed(1)}" fill="${col}" fill-opacity="${(0.3+0.65*(b.v/mx)).toFixed(2)}"/>`;}
   return `<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="xMidYMid meet">${e}</svg>`;
 }
-function cardHTML(meta,prof,cs,extra,isReplay){
+function cardHTML(meta,prof,cs,extra,isReplay,isBase){
   const s=prof.shape||{}, z=prof.zone||{}, col=SC[meta.session]||"#888", okc=v=>v?"var(--up)":"var(--dn)";
   const gap=meta.next_open!=null?meta.next_open-meta.end:null;
   const timing=mrow("opened",fmtET(meta.start))+mrow("closed",fmtET(meta.end))+mrow("duration",fmtDur(meta.duration_sec))
@@ -349,12 +350,15 @@ function cardHTML(meta,prof,cs,extra,isReplay){
     +mrow("height",z.height_pct+"%")+mrow("entry tf",z.entry_tf)):mrow("&mdash;","forming");
   const verdict=(s.shape_score==null)?"forming…":((s.shape_ok?"clean single-peak":"scattered / not clean")+" &middot; R:R "+(z.rr!=null?z.rr:"?")
     +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:""));
-  const rbtn=isReplay?'':'<span class="smod-chat" id="smodReplay" style="margin-left:6px">replay</span>';
   const rlab=isReplay?' &middot; <b style="color:#f0b000">REPLAY</b>':'';
-  return `<div class="smod-h" id="smodH">
-      <span class="smod-tag" style="color:${col};border-color:${col}">${meta.session}</span>
-      <b>${meta.date}</b><span class="mut">${meta.bars} x ${tf}${rlab}</span>
-      <span class="smod-chat" id="smodChat" style="margin-left:auto">chat about</span>${rbtn}<span class="smod-x" id="smodX">&times;</span></div>
+  const tag=isBase?`<span class="smod-tag" style="color:#e0a94a;border-color:#e0a94a">${meta.session} &middot; BASE</span>`
+                  :`<span class="smod-tag" style="color:${col};border-color:${col}">${meta.session}</span>`;
+  const chatbtn=isBase?'':'<span class="smod-chat" data-act="chat" style="margin-left:auto">chat about</span>';
+  const rbtn=(isReplay||isBase)?'':'<span class="smod-chat" data-act="replay" style="margin-left:6px">replay</span>';
+  const xstyle=isBase?' style="margin-left:auto"':'';
+  return `<div class="smod-h">
+      ${tag}<b>${meta.date}</b><span class="mut">${meta.bars} x ${tf}${rlab}</span>
+      ${chatbtn}${rbtn}<span class="smod-x"${xstyle}>&times;</span></div>
     <div class="smod-svg">${moduleSVG(prof,cs)}</div>
     <div class="smod-cols"><div class="mcol"><div class="mttl">Timing (ET)</div>${timing}</div>
       <div class="mcol"><div class="mttl">Shape</div>${shape}</div>
@@ -362,20 +366,30 @@ function cardHTML(meta,prof,cs,extra,isReplay){
     <div class="smod-v">${verdict}</div>${extra||''}`;
 }
 function positionShow(){const box=chartEl.getBoundingClientRect();
-  smod.style.left=Math.min(Math.max(8,modPt.x-300),Math.max(8,box.width-612))+"px";
+  smod.style.left=Math.min(Math.max(8,modPt.x-270),Math.max(8,box.width-552))+"px";
   smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-360))+"px";
   smod.style.display="block";}
-function wireCard(P){
-  document.getElementById("smodX").onclick=()=>{smod.style.display="none";replayStop();};
-  const cb=document.getElementById("smodChat");if(cb)cb.onclick=()=>addToChat(P);
-  const rb=document.getElementById("smodReplay");if(rb)rb.onclick=()=>replayStart(P);
-  _dragify(document.getElementById("smodH"));
+function placeCards(){const box=chartEl.getBoundingClientRect(), twin=smodB.style.display==="block";
+  const L=Math.min(Math.max(8,modPt.x-(twin?556:270)),Math.max(8,box.width-(twin?1112:552)));
+  const T=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-360));
+  smod.style.left=L+"px";smod.style.top=T+"px";smod.style.display="block";
+  if(twin){smodB.style.left=(L+554)+"px";smodB.style.top=T+"px";}}
+function wireCard(el,P){
+  el.querySelector(".smod-x").onclick=()=>{el.style.display="none";if(el===smod){smodB.style.display="none";replayStop();}};
+  const cb=el.querySelector('[data-act="chat"]');if(cb)cb.onclick=()=>addToChat(P);
+  const rb=el.querySelector('[data-act="replay"]');if(rb)rb.onclick=()=>replayStart(P);
+  _dragify(el.querySelector(".smod-h"),el);
 }
 function openModule(P){
   replayStop();
   const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
-  smod.innerHTML=cardHTML(P,P,cs,"",false);
-  positionShow();wireCard(P);
+  smod.innerHTML=cardHTML(P,P,cs,"",false,false);
+  if(P.base){const b=P.base,bcs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=b.start&&c.time<=b.end);
+    const bm={session:P.session,date:P.date,start:b.start,end:b.end,duration_sec:b.end-b.start,
+      next_session:P.next_session,next_open:P.next_open,bars:b.bars};
+    smodB.innerHTML=cardHTML(bm,b,bcs,"",false,true);smodB.style.display="block";wireCard(smodB,P);
+  }else smodB.style.display="none";
+  wireCard(smod,P);placeCards();
 }
 // ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----
 function computeProfile(bars){
@@ -420,7 +434,7 @@ function replayStop(){if(RP.timer){clearInterval(RP.timer);RP.timer=null;}RP.act
 function replayStart(P){const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
   if(cs.length<3)return;if(RP.timer)clearInterval(RP.timer);
   RP={active:true,P,bars:cs,k:Math.min(cs.length,5),N:cs.length,playing:false,timer:null,speed:RP.speed||1};
-  replayRender();}
+  smodB.style.display="none";replayRender();}
 function replayRender(){const cs=RP.bars.slice(0,RP.k);
   const prof=computeProfile(cs)||{high:RP.P.high,low:RP.P.low,poc:RP.P.poc,val:RP.P.val,vah:RP.P.vah,bins:[],va_pct_of_range:0,height_pct:0,shape:{},zone:{},bars:cs.length};
   const first=cs[0],last=cs[cs.length-1];
@@ -434,9 +448,9 @@ function replayRender(){const cs=RP.bars.slice(0,RP.k);
     <input type="range" id="rpScrub" min="1" max="${RP.N}" value="${RP.k}">
     <span class="rpinfo">bar ${RP.k}/${RP.N} &middot; ${tlab}</span>
     <select id="rpSpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select></div>`;
-  smod.innerHTML=cardHTML(meta,prof,cs,ctrls,true);
+  smod.innerHTML=cardHTML(meta,prof,cs,ctrls,true,false);
   if(smod.style.display!=="block")positionShow();
-  wireCard(RP.P);
+  wireCard(smod,RP.P);
   smod.querySelectorAll("[data-rp]").forEach(x=>x.onclick=()=>replayGo(x.dataset.rp));
   const pl=document.getElementById("rpPlay");if(pl)pl.onclick=replayToggle;
   const sc=document.getElementById("rpScrub");if(sc)sc.oninput=()=>{RP.k=+sc.value;replayRender();};
@@ -451,9 +465,9 @@ function replayPause(){RP.playing=false;if(RP.timer){clearInterval(RP.timer);RP.
 function drawNow(){const old=document.getElementById("_nowln");if(old)old.remove();
   if(!RP.active||!RP.bars[RP.k-1])return;const x=chart.timeScale().timeToCoordinate(RP.bars[RP.k-1].time);
   if(x==null)return;const box=chartEl.getBoundingClientRect();const l=_ln(x,0,x,box.height,"#f0b000",1.3,0.9);l.setAttribute("id","_nowln");vpsvg.appendChild(l);}
-function _dragify(handle){let sx,sy,ox,oy,drag=false;
-  handle.onmousedown=e=>{if(e.target.id==="smodX"||e.target.id==="smodChat")return;drag=true;sx=e.clientX;sy=e.clientY;ox=smod.offsetLeft;oy=smod.offsetTop;e.preventDefault();};
-  const mv=e=>{if(!drag)return;smod.style.left=(ox+e.clientX-sx)+"px";smod.style.top=(oy+e.clientY-sy)+"px";};
+function _dragify(handle,el){let sx,sy,ox,oy,drag=false;
+  handle.onmousedown=e=>{if(e.target.classList.contains("smod-x")||e.target.classList.contains("smod-chat"))return;drag=true;sx=e.clientX;sy=e.clientY;ox=el.offsetLeft;oy=el.offsetTop;e.preventDefault();};
+  const mv=e=>{if(!drag)return;el.style.left=(ox+e.clientX-sx)+"px";el.style.top=(oy+e.clientY-sy)+"px";};
   window.addEventListener("mousemove",mv);window.addEventListener("mouseup",()=>drag=false);}
 chart.subscribeClick(p=>{if(!modOn||p.time==null||!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
   if(p.point)modPt=p.point;const P=_profAt(p.time);if(P)openModule(P);});

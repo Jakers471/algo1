@@ -11,6 +11,9 @@ what's LOADED (instrument/tf/bars/range/max-cache) and the full CONFIG on the ch
 trail, regime pctiles, active filter, tradeable, sessions, costs) · OVERLAY toggle drawing the
 `ACTIVE_FILTER` selected volatile periods. Library vendored in `lib/` (works offline). Data inlined so
 it opens off disk; loads fast (≤6000 bars/TF).
+**Base companion (module-vs-module):** clicking a session opens the whole-session card AND a `· BASE`
+companion card beside it — `base_profile` (the detected consolidation) scored by the *same* gates — so
+you compare session-vs-base geometry (shape, R:R, tighter stop) side by side per session. (NOTES F18)
 **Per-session MODULE cards** (Indicators → `modules` on; NQ 1m/5m): click any session's candles and a
 floating, draggable, closeable card pops up — the session's own crisp mini volume-profile (candles +
 two-tone bars + POC/VA, examples-quality because it's zoomed to that session), its **timing** (open /
