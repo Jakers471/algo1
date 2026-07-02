@@ -469,3 +469,24 @@ New pieces vs F19: (a) geometric ladder design, (b) NESTING/containment test (sm
 "nested" needs a formal containment rule; more scales = more compute/overfit risk; validate in-context.
 Visualize as an N-card scale ladder (module stack extended) or nested VA boxes on the chart. Deferred --
 the end-state of the base/session/HTF direction; build after the 3-scale confluence + setup_arm exist.
+
+### F23 — scales must be config-TOGGLEABLE + proportions configurable (2026-07-02)
+Requirement (user): every scale/dimension must be independently ON/OFF in config -- backtest or trade on
+ONE dimension, or any subset, by shutting off the other scales' gates. And the geometric ladder's
+PROPORTIONS (ratio r + count, each scale's lookback) must be easily editable in config. So when the
+geometric scale-ladder (F22) is built it's driven by a config block, e.g. SCALES = [{name, on, lookback,
+...}] -- enable/disable per scale + tune the ratio, all in strategy_config (source of truth, F20).
+Applies to the current 3 scales too (base/session/HTF each toggleable). setup_arm reads only the ENABLED
+scales' scores. Keeps the multi-scale system flexible + testable one dimension at a time.
+
+### F24 — sequencing: build the TRADE (entry/stop/TP) at one scale BEFORE setup_arm (2026-07-02)
+User's instinct (agreed): build entry/stop/take-profit at the smallest dimension first -> you have a
+complete, MEASURABLE trade, then replicate/extrapolate outward across scales. Why this order is right:
+(1) setup_arm's job is to ARM/pull RESTING ORDERS -- it needs a trade (entry/stop/TP) to exist first;
+(2) zone_calibration already gives 80% of it (stop = VA/base edge = 1R, room = target, R:R, entry_tf) --
+we make it a concrete tradeable def + a fill model + the target ladder + the entry trigger; (3) correct
+METHODOLOGY: measure the UNCONDITIONAL trade population's R first (base rate), THEN setup_arm filters and
+we check if gating adds LIFT (same pattern as the vol-filter hypothesis test). Needs a minimal backtest
+loop (step bars, rest orders, fill at confirming close F1, manage stop/TP, record R) -- which is the thing
+that finally answers "is there edge" in real R after costs. So: entry/stop/TP (base scale) -> measure R
+-> setup_arm gates it -> extrapolate the target ladder across scales (F22). ENTRY/EXIT config slots get filled.
