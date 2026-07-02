@@ -220,11 +220,11 @@ function redraw(){
       const r=document.createElementNS(NSV,"rect");
       r.setAttribute("x",xr);r.setAttribute("y",Math.round(y-step/2));
       r.setAttribute("width",Math.max(1,Math.round(b.v/mx*w)));r.setAttribute("height",hh);
-      r.setAttribute("fill",c);
-      r.setAttribute("fill-opacity",Math.min(0.95,0.12+0.8*(b.v/mx)));  // fade by volume: fog collapses, shape pops
+      r.setAttribute("fill", b.p<=P.poc?"#3f8cff":"#e08a3c");                 // C: blue below POC, orange above
+      r.setAttribute("fill-opacity",Math.min(0.9,0.14+0.78*(b.v/mx)));        // fade by volume -> stays clean when spread
       vpsvg.appendChild(r);}
     const yp=candle.priceToCoordinate(P.poc);
-    if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,c,1.2,1));
+    if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,"#e34948",1.2,0.95));        // POC line (red)
   }
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
