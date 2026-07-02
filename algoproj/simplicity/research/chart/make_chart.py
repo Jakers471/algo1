@@ -118,7 +118,7 @@ const _tick=(t,type)=>{const d=new Date(t*1000);
 const chart=LightweightCharts.createChart(document.getElementById("chart"),{
   autoSize:true,
   layout:{background:{color:"#1a1a19"},textColor:"#c3c2b7"},
-  grid:{vertLines:{color:"#2c2c2a"},horzLines:{color:"#2c2c2a"}},
+  grid:{vertLines:{visible:false},horzLines:{visible:false}},
   rightPriceScale:{borderColor:"#383835"},
   timeScale:{borderColor:"#383835",timeVisible:true,secondsVisible:false,tickMarkFormatter:_tick},
   localization:{timeFormatter:t=>new Date(t*1000).toLocaleString("en-US",
