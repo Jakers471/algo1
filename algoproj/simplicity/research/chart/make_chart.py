@@ -84,7 +84,8 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">anchors</span><button id="ancMaster">off</button><span class="ind-note" id="ancAvail"></span></div>
         <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="high" class="on">High</button><button data-lvl="low" class="on">Low</button></div>
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
-        <div class="ind-note">solid = hit &middot; dashed = ongoing</div>
+        <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span class="ind-note">session open/close verticals</span></div>
+        <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
     </div>
   </div>
@@ -123,6 +124,8 @@ const chart=LightweightCharts.createChart(document.getElementById("chart"),{
 // shade sits behind candles (added first), full-height via its own hidden scale
 const shade=chart.addHistogramSeries({priceScaleId:"shade",priceLineVisible:false,lastValueVisible:false,base:0});
 chart.priceScale("shade").applyOptions({scaleMargins:{top:0,bottom:0},visible:false});
+const vsess=chart.addHistogramSeries({priceScaleId:"vlines",priceLineVisible:false,lastValueVisible:false,base:0});
+chart.priceScale("vlines").applyOptions({scaleMargins:{top:0,bottom:0},visible:false});
 const candle=chart.addCandlestickSeries({upColor:"#199e70",downColor:"#e66767",
   borderUpColor:"#199e70",borderDownColor:"#e66767",wickUpColor:"#199e70",wickDownColor:"#e66767"});
 const vol=chart.addHistogramSeries({priceFormat:{type:"volume"},priceScaleId:"vol"});
@@ -149,7 +152,7 @@ function updateShade(){
 function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
 function load(){
   const s=SERIES[inst+"_"+tf], meta=avail[inst][tf];
-  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors();
+  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors(); updateTimes();
   chart.timeScale().fitContent();
   document.getElementById("loaded").innerHTML=
     kv("instrument",inst)+kv("timeframe",tf)+kv("bars",meta.bars)+
@@ -167,8 +170,9 @@ document.getElementById("shSess").onclick=function(){shSess=!shSess;this.classLi
 document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.toggle("on",shVol);this.classList.toggle("warm",shVol);updateShade();};
 
 // ---- session anchors (minimizable Indicators module) ----
-const SESSN=["asia","london","newyork","close"], SC=M.session_colors||{};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={asia:true,london:true,newyork:true,close:true}, ancLines=[];
+const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false;
+SESSN.forEach(s=>ancSess[s]=true);
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
   clearAnchors();
@@ -181,8 +185,20 @@ function updateAnchors(){
     const s=chart.addLineSeries({color:SC[L.session]||"#888",lineWidth:1,priceLineVisible:false,
       lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:L.hit?0:2});  // solid=hit, dashed=ongoing
     s.setData([{time:Math.max(L.start,tmin),value:L.level},{time:(L.hit?L.stop:tmax),value:L.level}]);
+    s.setMarkers([{time:Math.max(L.start,tmin),position:L.type==="high"?"aboveBar":"belowBar",
+      color:SC[L.session]||"#888",shape:"circle",text:CODE[L.session]+" "+(L.type==="high"?"H":"L")}]);
     ancLines.push(s);
   }
+}
+function updateTimes(){
+  const avail=timesOn&&inst==="NQ"&&(tf==="1m"||tf==="5m");
+  if(!avail){vsess.setData([]);return;}
+  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time, seen={};
+  for(const S of (M.sessions||[])){const c=SC[S.session]||"#888";
+    if(S.open>=tmin&&S.open<=tmax)seen[S.open]={time:S.open,value:1,color:c+"66"};   // open (brighter)
+    if(S.close>=tmin&&S.close<=tmax)seen[S.close]={time:S.close,value:1,color:c+"2e"}; // close (dim)
+  }
+  vsess.setData(Object.keys(seen).map(Number).sort((a,b)=>a-b).map(t=>seen[t]));
 }
 document.getElementById("indMin").onclick=function(){const m=document.getElementById("indBody").classList.toggle("min");this.textContent=m?"+":"–";};
 document.getElementById("ancMaster").onclick=function(){ancOn=!ancOn;this.classList.toggle("on",ancOn);this.textContent=ancOn?"on":"off";updateAnchors();};
@@ -190,6 +206,7 @@ document.querySelectorAll("[data-lvl]").forEach(b=>b.onclick=function(){ancLvl[t
 document.getElementById("ancSess").innerHTML=SESSN.map(s=>
   `<button data-s="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
+document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";updateTimes();};
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}

@@ -29,7 +29,8 @@ import strategy_config as cfg
 OUT = os.path.join(HERE, "output")
 os.makedirs(OUT, exist_ok=True)
 
-COLORS = {"asia": "#9085e9", "london": "#199e70", "newyork": "#3987e5", "close": "#d95926"}
+# the three real trading sessions (NOT "close" 16:00-18:00 = post-close + maintenance break)
+COLORS = {"asia": "#9085e9", "london": "#199e70", "newyork": "#3987e5"}
 MAX_FWD_BARS = 4000  # ~14 trading days of 5m; cap on the forward breach scan
 
 
@@ -55,6 +56,7 @@ def main():
     f = pd.DataFrame({"date": pd.DatetimeIndex(sdate).strftime("%Y-%m-%d"), "session": sess,
                       "high": df["high"].to_numpy(), "low": df["low"].to_numpy(),
                       "ts": ts})
+    f = f[f["session"] != "close"].reset_index(drop=True)  # anchors: real sessions only
     grp = f.groupby(["date", "session"], sort=False)
     hi = f.loc[grp["high"].idxmax()][["date", "session", "high", "ts"]].rename(columns={"ts": "high_ts"})
     lo = f.loc[grp["low"].idxmin()][["date", "session", "low", "ts"]].rename(columns={"ts": "low_ts"})
@@ -85,9 +87,14 @@ def main():
         for typ, lvl, ext_ts, direction in (("high", r.high, r.high_ts, "up"),
                                             ("low", r.low, r.low_ts, "down")):
             b = breach(lvl, r.end, direction)
-            levels.append({"date": r.date, "session": r.session, "type": typ,
-                           "level": round(float(lvl), 2), "start": int(ext_ts),
+            levels.append({"date": r.date, "session": r.session, "sid": f"{r.date} {r.session}",
+                           "type": typ, "level": round(float(lvl), 2), "start": int(ext_ts),
                            "formed": int(r.end), **b})
+
+    # per-session boundaries (for the vertical open/close lines on the chart)
+    opens, closes = grp["ts"].min(), grp["ts"].max()
+    sessions = [{"date": d, "session": s, "sid": f"{d} {s}", "open": int(o), "close": int(closes[(d, s)])}
+                for (d, s), o in opens.items()]
 
     out = {"colors": COLORS, "data_end": data_end, "max_fwd_bars": MAX_FWD_BARS, "levels": levels}
     json.dump(out, open(os.path.join(OUT, "session_anchors.json"), "w"))

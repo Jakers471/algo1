@@ -102,14 +102,16 @@ def main():
     }
     # session anchors overlay (from research/session_anchors; drawn on 1m/5m where times align)
     anc_path = os.path.join(HERE, "..", "session_anchors", "output", "session_anchors.json")
-    levels, scolors, data_end = [], {}, 0
+    levels, sessions, scolors, data_end = [], [], {}, 0
     if os.path.exists(anc_path):
         aj = json.load(open(anc_path))
         scolors = aj["colors"]; data_end = aj.get("data_end", 0)
         m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
         cutoff = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
         levels = [L for L in aj["levels"] if L["start"] >= cutoff]  # formed within the loaded window
+        sessions = [S for S in aj.get("sessions", []) if S["open"] >= cutoff]
     manifest["levels"] = levels
+    manifest["sessions"] = sessions
     manifest["session_colors"] = scolors
     manifest["data_end"] = data_end
 
