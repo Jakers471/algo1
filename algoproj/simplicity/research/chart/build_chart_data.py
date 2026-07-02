@@ -100,6 +100,18 @@ def main():
                          "selected_days": rsch_days, "selected_runs": rsch_runs},
         },
     }
+    # session anchors overlay (from research/session_anchors; drawn on 1m/5m where times align)
+    anc_path = os.path.join(HERE, "..", "session_anchors", "output", "session_anchors.json")
+    anchors, scolors = [], {}
+    if os.path.exists(anc_path):
+        aj = json.load(open(anc_path))
+        scolors = aj["colors"]
+        m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
+        cutoff = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
+        anchors = [a for a in aj["anchors"] if a["end"] >= cutoff]
+    manifest["anchors"] = anchors
+    manifest["session_colors"] = scolors
+
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")
     for s in series_meta:

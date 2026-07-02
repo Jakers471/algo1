@@ -32,6 +32,7 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 | `py research/volatility_filter/vol_filter.py` | the vol gate: regime thresholds + tradeable-day counts |
 | `py research/volatility_filter/filter_variants.py` | compare filter variants (high/low/…) for the hypothesis test |
 | `py research/volatility_filter/make_selection_report.py` | build the "what each filter selected" HTML report |
+| `py research/session_anchors/session_anchors.py` | build per-session high/low/open anchors (for the chart overlay) |
 | `py research/chart/build_chart_data.py` | cache ≤2000 bars/TF (NQ+ES) for the chart |
 | `py research/chart/make_chart.py` | build the self-contained `chart.html` |
 

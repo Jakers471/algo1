@@ -40,7 +40,19 @@ padding:5px 11px;border-radius:7px;cursor:pointer}button.on{background:var(--acc
 button.on.warm{background:var(--dn);border-color:var(--dn)}
 button:disabled{opacity:.3;cursor:default}
 .main{flex:1;display:flex;min-height:0;min-width:0}
-#chart{flex:1 1 auto;min-width:0}
+.chartwrap{flex:1 1 auto;min-width:0;position:relative}
+#chart{position:absolute;inset:0}
+.ind{position:absolute;top:8px;left:8px;z-index:5;background:rgba(26,26,25,.94);border:1px solid var(--ring);
+border-radius:8px;font-size:11.5px;min-width:150px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.ind-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 9px;border-bottom:1px solid var(--ring)}
+.ind-h b{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2)}
+.ind-b{padding:8px 9px;display:flex;flex-direction:column;gap:7px}
+.ind-b.min{display:none}
+.ind-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.ind-lab{color:var(--mut);width:54px;font-size:11px}
+.ind button{font-size:11px;padding:2px 8px}
+.sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+.ind-note{color:var(--mut);font-size:10px}
 .side{flex:0 0 290px;border-left:1px solid var(--ring);padding:14px 16px;overflow:auto;font-size:12.5px}
 @media(max-width:860px){.side{flex-basis:230px}}
 @media(max-width:640px){.side{flex-basis:190px;font-size:11.5px}}
@@ -64,7 +76,17 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
   <div class="grp"><span class="lab">shade</span><button id="shSess">session</button><button id="shVol">vol days</button></div>
 </div>
 <div class="main">
-  <div id="chart"></div>
+  <div class="chartwrap">
+    <div id="chart"></div>
+    <div class="ind" id="ind">
+      <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
+      <div class="ind-b" id="indBody">
+        <div class="ind-row"><span class="ind-lab">anchors</span><button id="ancMaster">off</button><span class="ind-note" id="ancAvail"></span></div>
+        <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="hl" class="on">High/Low</button><button data-lvl="open">Open</button></div>
+        <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
+      </div>
+    </div>
+  </div>
   <div class="side">
     <h2>Config</h2><div id="cfgSel" class="cfgbtns"></div><div id="cfgLoaded" class="loaded"></div>
     <h2>Loaded</h2><div id="loaded"></div>
@@ -126,7 +148,7 @@ function updateShade(){
 function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
 function load(){
   const s=SERIES[inst+"_"+tf], meta=avail[inst][tf];
-  candle.setData(s.candles); vol.setData(s.volume); updateShade();
+  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors();
   chart.timeScale().fitContent();
   document.getElementById("loaded").innerHTML=
     kv("instrument",inst)+kv("timeframe",tf)+kv("bars",meta.bars)+
@@ -142,6 +164,35 @@ function renderTfs(){document.getElementById("tfs").innerHTML=TFO.map(t=>
   document.querySelectorAll("[data-t]").forEach(b=>{if(!b.disabled)b.onclick=()=>{tf=b.dataset.t;load();};});}
 document.getElementById("shSess").onclick=function(){shSess=!shSess;this.classList.toggle("on",shSess);updateShade();};
 document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.toggle("on",shVol);this.classList.toggle("warm",shVol);updateShade();};
+
+// ---- session anchors (minimizable Indicators module) ----
+const SESSN=["asia","london","newyork","close"], SC=M.session_colors||{};
+let ancOn=false, ancLvl={hl:true,open:false}, ancSess={asia:true,london:true,newyork:true,close:true}, ancSeries={};
+function buildAnchorSeries(){
+  for(const s of SESSN)for(const lv of ["high","low","open"])
+    ancSeries[s+"_"+lv]=chart.addLineSeries({color:SC[s]||"#888",lineWidth:1,priceLineVisible:false,
+      lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:(lv==="open"?2:0)});
+}
+function updateAnchors(){
+  if(!Object.keys(ancSeries).length)buildAnchorSeries();
+  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
+  const avail=ancOn&&inst==="NQ"&&(tf==="1m"||tf==="5m"), step=(tf==="1m"?60:300);
+  document.getElementById("ancAvail").textContent=ancOn?(avail?"":"1m/5m NQ only"):"";
+  for(const s of SESSN)for(const lv of ["high","low","open"]){
+    const ser=ancSeries[s+"_"+lv], want=(lv==="open"?ancLvl.open:ancLvl.hl);
+    if(!(avail&&ancSess[s]&&want)){ser.setData([]);continue;}
+    const pts=[];
+    for(const a of M.anchors){if(a.session!==s||a.end<tmin||a.start>tmax)continue;
+      pts.push({time:a.start,value:a[lv]});pts.push({time:a.end,value:a[lv]});pts.push({time:a.end+step});}
+    ser.setData(pts);
+  }
+}
+document.getElementById("indMin").onclick=function(){const m=document.getElementById("indBody").classList.toggle("min");this.textContent=m?"+":"–";};
+document.getElementById("ancMaster").onclick=function(){ancOn=!ancOn;this.classList.toggle("on",ancOn);this.textContent=ancOn?"on":"off";updateAnchors();};
+document.querySelectorAll("[data-lvl]").forEach(b=>b.onclick=function(){ancLvl[this.dataset.lvl]=!ancLvl[this.dataset.lvl];this.classList.toggle("on",ancLvl[this.dataset.lvl]);updateAnchors();});
+document.getElementById("ancSess").innerHTML=SESSN.map(s=>
+  `<button data-s="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
+document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}
