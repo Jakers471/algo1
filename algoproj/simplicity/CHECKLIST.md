@@ -34,7 +34,7 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[ ]` **Hypothesis test** — "strategy better in high-vol periods": run `evaluate()` with strategy per-day R; H holds only if `high` beats the **random baseline** (top tail) AND `low` (blocked on the strategy existing)
 
 ## Phase 2 — Session structure (WHERE)
-- `[R]` Session high/low/open anchors — Asia/London/NY/Close, color-coded — `research/session_anchors` (+ chart overlay in a minimizable Indicators panel, toggleable levels/sessions)
+- `[R]` Session high/low levels + **forward breach tracking** — extend until price closes through (solid=hit / dashed=ongoing), saves when/where/duration (machine-readable) — `research/session_anchors` (+ chart Indicators panel: toggle levels/sessions, color-coded; chart loads 6000 bars)
 - `[ ]` Session-break conditional stats — e.g. London-high break → NY-high break probability — `research/session_break_stats`
 
 ## Phase 3 — Volume Profile & Value Area (the zone)

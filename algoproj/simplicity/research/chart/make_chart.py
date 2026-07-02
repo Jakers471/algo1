@@ -82,8 +82,9 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
       <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
       <div class="ind-b" id="indBody">
         <div class="ind-row"><span class="ind-lab">anchors</span><button id="ancMaster">off</button><span class="ind-note" id="ancAvail"></span></div>
-        <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="hl" class="on">High/Low</button><button data-lvl="open">Open</button></div>
+        <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="high" class="on">High</button><button data-lvl="low" class="on">Low</button></div>
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
+        <div class="ind-note">solid = hit &middot; dashed = ongoing</div>
       </div>
     </div>
   </div>
@@ -167,24 +168,20 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SESSN=["asia","london","newyork","close"], SC=M.session_colors||{};
-let ancOn=false, ancLvl={hl:true,open:false}, ancSess={asia:true,london:true,newyork:true,close:true}, ancSeries={};
-function buildAnchorSeries(){
-  for(const s of SESSN)for(const lv of ["high","low","open"])
-    ancSeries[s+"_"+lv]=chart.addLineSeries({color:SC[s]||"#888",lineWidth:1,priceLineVisible:false,
-      lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:(lv==="open"?2:0)});
-}
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={asia:true,london:true,newyork:true,close:true}, ancLines=[];
+function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
-  if(!Object.keys(ancSeries).length)buildAnchorSeries();
-  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
-  const avail=ancOn&&inst==="NQ"&&(tf==="1m"||tf==="5m"), step=(tf==="1m"?60:300);
+  clearAnchors();
+  const avail=ancOn&&inst==="NQ"&&(tf==="1m"||tf==="5m");
   document.getElementById("ancAvail").textContent=ancOn?(avail?"":"1m/5m NQ only"):"";
-  for(const s of SESSN)for(const lv of ["high","low","open"]){
-    const ser=ancSeries[s+"_"+lv], want=(lv==="open"?ancLvl.open:ancLvl.hl);
-    if(!(avail&&ancSess[s]&&want)){ser.setData([]);continue;}
-    const pts=[];
-    for(const a of M.anchors){if(a.session!==s||a.end<tmin||a.start>tmax)continue;
-      pts.push({time:a.start,value:a[lv]});pts.push({time:a.end,value:a[lv]});pts.push({time:a.end+step});}
-    ser.setData(pts);
+  if(!avail)return;
+  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
+  for(const L of M.levels){
+    if(!ancSess[L.session]||!ancLvl[L.type]||L.stop<tmin||L.start>tmax)continue;
+    const s=chart.addLineSeries({color:SC[L.session]||"#888",lineWidth:1,priceLineVisible:false,
+      lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:L.hit?0:2});  // solid=hit, dashed=ongoing
+    s.setData([{time:Math.max(L.start,tmin),value:L.level},{time:(L.hit?L.stop:tmax),value:L.level}]);
+    ancLines.push(s);
   }
 }
 document.getElementById("indMin").onclick=function(){const m=document.getElementById("indBody").classList.toggle("min");this.textContent=m?"+":"–";};

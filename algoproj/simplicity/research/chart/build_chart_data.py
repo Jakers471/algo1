@@ -24,7 +24,7 @@ import filter_variants as fvar
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
-MAX_BARS = 2000
+MAX_BARS = 6000  # ~3x for more visible examples
 
 
 def _series(df):
@@ -102,15 +102,16 @@ def main():
     }
     # session anchors overlay (from research/session_anchors; drawn on 1m/5m where times align)
     anc_path = os.path.join(HERE, "..", "session_anchors", "output", "session_anchors.json")
-    anchors, scolors = [], {}
+    levels, scolors, data_end = [], {}, 0
     if os.path.exists(anc_path):
         aj = json.load(open(anc_path))
-        scolors = aj["colors"]
+        scolors = aj["colors"]; data_end = aj.get("data_end", 0)
         m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
         cutoff = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
-        anchors = [a for a in aj["anchors"] if a["end"] >= cutoff]
-    manifest["anchors"] = anchors
+        levels = [L for L in aj["levels"] if L["start"] >= cutoff]  # formed within the loaded window
+    manifest["levels"] = levels
     manifest["session_colors"] = scolors
+    manifest["data_end"] = data_end
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")

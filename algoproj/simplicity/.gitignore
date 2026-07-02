@@ -9,6 +9,9 @@ __pycache__/
 /research/chart/data/
 /research/chart/chart.html
 
+# large regenerable session-anchor breach data (regenerate: session_anchors.py)
+/research/session_anchors/output/
+
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet
 /data/ES/*.parquet
