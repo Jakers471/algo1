@@ -29,8 +29,8 @@ Strategy (filters, entry/exit, sizing *rule*, frictions) → `strategy_config`. 
 ## One engine, selectable config
 - `engine/` pipeline (see `run_engine.bat`): `data_feed → session_state → vol_filter →
   session_anchors → volume_profile → shape_filter → zone_calibration → fib_bias → setup_arm →
-  entry → risk → execution → trailing_stop`. Wired so far: **data_feed, vol_filter,
-  session_anchors, volume_profile** (4/13). The rest promote in as confirmed.
+  entry → risk → execution → trailing_stop`. Wired so far: **data_feed, session_state, vol_filter,
+  session_anchors, volume_profile** (5/13). The rest promote in as confirmed.
 - You **SELECT the config** (research | real) and run it through the same engine. Both the chart
   and the (future) backtest take a config selection — swap the inputs, not the engine.
 

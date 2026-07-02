@@ -20,4 +20,4 @@ zone_calibration → fib_bias → setup_arm → entry → risk → execution →
 **the user decides when.** research = discover; engine = execute. Every promotion is logged in
 `../CHECKLIST.md` (Promotion log).
 
-**Wired so far (4/13):** `data_feed`, `vol_filter`, `session_anchors`, `volume_profile`.
+**Wired so far (5/13):** `data_feed`, `session_state` (the spine), `vol_filter`, `session_anchors`, `volume_profile`.

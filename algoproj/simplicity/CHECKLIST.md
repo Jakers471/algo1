@@ -51,7 +51,7 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 ## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
 *(see `ARCHITECTURE.md` "Runtime model — LIVE session state machine". Everything updates on
 bars-so-far; causality is enforced by construction; setups arm/disarm on stacked confluence.)*
-- `[ ]` **Session state machine** (the spine) — current + next session, live hi/lo (+ when made), time-in-session, time-until-next; same template per session — `engine/session_state`
+- `[E]` **Session state machine BUILT** (the spine) — per-bar causal state: current + next session, live hi/lo (+ when made), time-in-session, time-until-next — `engine/session_state.py` (WIRED 5/13)
 - `[ ]` Wire the promoted components as **live readers of state** (run on the session's bars-so-far, not batch)
 - `[ ]` **Zone calibration** — zone size %/bars → entry timeframe + stop distance / R:R (gate) — `research/zone_calibration`
 - `[ ]` **setup_arm — the confluence ARM/DISARM engine** — stack gates (shape + fib + zone size/tightness + timing) → ARM (place resting orders) / DISARM (pull them) on validation/invalidation, continuously re-evaluated
@@ -91,3 +91,4 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 | vol_filter | 2026-07-01 | `research/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |
 | session_anchors | 2026-07-02 | `research/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach + boundaries; WIRED 3/10) |
 | volume_profile | 2026-07-02 | `research/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
+| session_state | 2026-07-02 | built directly in engine (the spine) → `engine/session_state.py` (per-bar causal session state; WIRED 5/13) |
