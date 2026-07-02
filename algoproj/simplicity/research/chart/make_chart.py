@@ -42,6 +42,7 @@ button:disabled{opacity:.3;cursor:default}
 .main{flex:1;display:flex;min-height:0;min-width:0}
 .chartwrap{flex:1 1 auto;min-width:0;position:relative}
 #chart{position:absolute;inset:0}
+.vpsvg{position:absolute;inset:0;pointer-events:none;z-index:3}
 .ind{position:absolute;top:8px;left:8px;z-index:5;background:rgba(26,26,25,.94);border:1px solid var(--ring);
 border-radius:8px;font-size:11.5px;min-width:150px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
 .ind-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 9px;border-bottom:1px solid var(--ring)}
@@ -78,6 +79,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
 <div class="main">
   <div class="chartwrap">
     <div id="chart"></div>
+    <svg id="vpsvg" class="vpsvg"></svg>
     <div class="ind" id="ind">
       <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
       <div class="ind-b" id="indBody">
@@ -125,8 +127,6 @@ const chart=LightweightCharts.createChart(document.getElementById("chart"),{
 // shade sits behind candles (added first), full-height via its own hidden scale
 const shade=chart.addHistogramSeries({priceScaleId:"shade",priceLineVisible:false,lastValueVisible:false,base:0});
 chart.priceScale("shade").applyOptions({scaleMargins:{top:0,bottom:0},visible:false});
-const vsess=chart.addHistogramSeries({priceScaleId:"vlines",priceLineVisible:false,lastValueVisible:false,base:0});
-chart.priceScale("vlines").applyOptions({scaleMargins:{top:0,bottom:0},visible:false});
 const candle=chart.addCandlestickSeries({upColor:"#199e70",downColor:"#e66767",
   borderUpColor:"#199e70",borderDownColor:"#e66767",wickUpColor:"#199e70",wickDownColor:"#e66767"});
 const vol=chart.addHistogramSeries({priceFormat:{type:"volume"},priceScaleId:"vol"});
@@ -153,7 +153,7 @@ function updateShade(){
 function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
 function load(){
   const s=SERIES[inst+"_"+tf], meta=avail[inst][tf];
-  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors(); updateTimes(); updateVP();
+  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors(); redraw();
   chart.timeScale().fitContent();
   document.getElementById("loaded").innerHTML=
     kv("instrument",inst)+kv("timeframe",tf)+kv("bars",meta.bars)+
@@ -191,43 +191,50 @@ function updateAnchors(){
     ancLines.push(s);
   }
 }
-function updateTimes(){
-  const avail=timesOn&&inst==="NQ"&&(tf==="1m"||tf==="5m");
-  if(!avail){vsess.setData([]);return;}
-  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time, seen={};
-  for(const S of (M.sessions||[])){const c=SC[S.session]||"#888";
-    if(S.open>=tmin&&S.open<=tmax)seen[S.open]={time:S.open,value:1,color:c+"66"};   // open (brighter)
-    if(S.close>=tmin&&S.close<=tmax)seen[S.close]={time:S.close,value:1,color:c+"2e"}; // close (dim)
-  }
-  vsess.setData(Object.keys(seen).map(Number).sort((a,b)=>a-b).map(t=>seen[t]));
-}
-function clearVP(){vpLines.forEach(s=>chart.removeSeries(s));vpLines=[];}
-function updateVP(){  // per-session volume profile: POC (solid) + value area VAH/VAL (dashed)
+// SVG overlay: vertical session lines (times) + per-session volume-profile histogram
+const NSV="http://www.w3.org/2000/svg", vpsvg=document.getElementById("vpsvg"), chartEl=document.getElementById("chart");
+function clearVP(){while(vpsvg.firstChild)vpsvg.removeChild(vpsvg.firstChild);}
+function _ln(x1,y1,x2,y2,c,w,op,dash){const l=document.createElementNS(NSV,"line");
+  l.setAttribute("x1",x1);l.setAttribute("y1",y1);l.setAttribute("x2",x2);l.setAttribute("y2",y2);
+  l.setAttribute("stroke",c);l.setAttribute("stroke-width",w);l.setAttribute("stroke-opacity",op);
+  if(dash)l.setAttribute("stroke-dasharray",dash);return l;}
+function redraw(){
   clearVP();
-  const avail=vpOn&&inst==="NQ"&&(tf==="1m"||tf==="5m");
-  if(!avail)return;
-  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
-  for(const P of (M.profiles||[])){
-    if(!vpSess[P.session]||P.end<tmin||P.start>tmax)continue;
-    const c=SC[P.session]||"#888", a=Math.max(P.start,tmin), b=Math.min(P.end,tmax);
-    for(const spec of [[P.poc,0,2],[P.vah,2,1],[P.val,2,1]]){
-      const s=chart.addLineSeries({color:c,lineWidth:spec[2],priceLineVisible:false,
-        lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:spec[1]});
-      s.setData([{time:a,value:spec[0]},{time:b,value:spec[0]}]); vpLines.push(s);
-    }
+  if(!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
+  const ts=chart.timeScale(), box=chartEl.getBoundingClientRect(), H=box.height;
+  vpsvg.setAttribute("viewBox",`0 0 ${box.width} ${H}`);
+  if(timesOn) for(const S of (M.sessions||[])){const c=SC[S.session]||"#888";
+    for(const sp of [[S.open,0.6],[S.close,0.32]]){const x=ts.timeToCoordinate(sp[0]);
+      if(x!=null)vpsvg.appendChild(_ln(x,0,x,H,c,1,sp[1],"2 3"));}}
+  if(vpOn) for(const P of (M.profiles||[])){
+    if(!vpSess[P.session]||!P.bins||!P.bins.length)continue;
+    const x0=ts.timeToCoordinate(P.start), x1=ts.timeToCoordinate(P.end);
+    if(x0==null||x1==null)continue;
+    const w=Math.max(8,x1-x0), c=SC[P.session]||"#888", mx=Math.max(...P.bins.map(b=>b.v))||1;
+    const y0=candle.priceToCoordinate(P.bins[0].p), y1=P.bins.length>1?candle.priceToCoordinate(P.bins[1].p):null;
+    const step=(y0!=null&&y1!=null)?Math.max(1,Math.abs(y0-y1)):3;
+    for(const b of P.bins){const y=candle.priceToCoordinate(b.p);if(y==null)continue;
+      const r=document.createElementNS(NSV,"rect");
+      r.setAttribute("x",x0);r.setAttribute("y",y-step/2);r.setAttribute("width",Math.max(0.5,b.v/mx*w));
+      r.setAttribute("height",Math.max(1,step-0.5));r.setAttribute("fill",c);
+      r.setAttribute("fill-opacity",b.v>=mx?0.85:(b.va?0.45:0.15));vpsvg.appendChild(r);}
+    const yp=candle.priceToCoordinate(P.poc);
+    if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,c,1,0.9));
   }
 }
+chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+new ResizeObserver(redraw).observe(chartEl);
 document.getElementById("indMin").onclick=function(){const m=document.getElementById("indBody").classList.toggle("min");this.textContent=m?"+":"–";};
 document.getElementById("ancMaster").onclick=function(){ancOn=!ancOn;this.classList.toggle("on",ancOn);this.textContent=ancOn?"on":"off";updateAnchors();};
 document.querySelectorAll("[data-lvl]").forEach(b=>b.onclick=function(){ancLvl[this.dataset.lvl]=!ancLvl[this.dataset.lvl];this.classList.toggle("on",ancLvl[this.dataset.lvl]);updateAnchors();});
 document.getElementById("ancSess").innerHTML=SESSN.map(s=>
   `<button data-s="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
-document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";updateTimes();};
-document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.toggle("on",vpOn);this.textContent=vpOn?"on":"off";updateVP();};
+document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";redraw();};
+document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.toggle("on",vpOn);this.textContent=vpOn?"on":"off";redraw();};
 document.getElementById("vpSess").innerHTML=SESSN.map(s=>
   `<button data-vs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
-document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=function(){vpSess[this.dataset.vs]=!vpSess[this.dataset.vs];this.classList.toggle("on",vpSess[this.dataset.vs]);updateVP();});
+document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=function(){vpSess[this.dataset.vs]=!vpSess[this.dataset.vs];this.classList.toggle("on",vpSess[this.dataset.vs]);redraw();});
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}

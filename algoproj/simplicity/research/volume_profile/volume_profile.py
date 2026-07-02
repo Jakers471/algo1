@@ -79,11 +79,14 @@ def main():
         if va is None:
             continue
         poc, val, vah = va
+        centers = (edges[:-1] + edges[1:]) / 2
+        bins = [{"p": round(float(centers[i]), 2), "v": round(float(vbin[i]), 1),
+                 "va": bool(val <= centers[i] <= vah)} for i in range(N_BINS) if vbin[i] > 0]
         out.append({"date": date, "session": s, "sid": f"{date} {s}",
                     "high": round(sh, 2), "low": round(sl, 2), "poc": poc, "val": val, "vah": vah,
                     "start": int(g["ts"].min()), "end": int(g["ts"].max()), "bars": int(len(g)),
                     "height_pct": round((sh - sl) / sl * 100, 3),
-                    "va_pct_of_range": round((vah - val) / (sh - sl) * 100, 1)})
+                    "va_pct_of_range": round((vah - val) / (sh - sl) * 100, 1), "bins": bins})
 
     json.dump({"n_bins": N_BINS, "va_pct": VA_PCT, "profiles": out},
               open(os.path.join(OUT, "volume_profile.json"), "w"))
