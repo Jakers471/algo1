@@ -1,6 +1,6 @@
 # zone_calibration
 
-**Purpose:** Use zone height% / duration to pick the entry timeframe + stop distance / R:R before entry.
-**Plan:** Map range quality (tight+short vs wide+long) to the LTF to watch and to stop/target sizing.
-**Attached to:** VISION 7 · CHECKLIST Phase 4
-**Status:** [ ] not started (placeholder)
+**Purpose:** Zone size %/bars → entry timeframe + stop distance / R:R, decided before entry.
+**Role:** gate/component in the LIVE state machine — runs on the session's bars-so-far, feeds the arm/disarm confluence (see `../../ARCHITECTURE.md` "Runtime model").
+**Attached to:** VISION 7 · CHECKLIST Phase 5 (gate)
+**Status:** [ ] not started

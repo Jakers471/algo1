@@ -11,5 +11,7 @@ poc, val, vah, start, end, bars, height_pct, va_pct_of_range}`.
 each session, color-coded (NY/London/Asia); respects the session toggles. 1m/5m NQ.
 **Findings (2026-07-02):** 15,475 profiles. Median session height Asia 0.23% / London 0.33% / NY 0.66%;
 value area ≈ 54% of the full range; POC sits ~mid (≈0.51) — sessions are, on average, balanced.
+**Runtime:** promoted to `engine/volume_profile.py`; in the live engine it runs on the session's
+**bars-so-far** (a *running* profile), causality by construction — see ARCHITECTURE.md "Runtime model".
 **Attached to:** VISION 4-6 · CHECKLIST Phase 3
 **Status:** [R] built (POC + value area per session + chart overlay). Next: shape/tightness filter, entry.

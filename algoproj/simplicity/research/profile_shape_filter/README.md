@@ -1,6 +1,6 @@
 # profile_shape_filter
 
-**Purpose:** Reject scattered / multi-peaked profiles; keep tight, single-peaked, organized ones.
-**Plan:** A shape/tightness metric on the profile; a rejection gate independent of the calendar volatility filter.
-**Attached to:** VISION 8 · CHECKLIST Phase 3
-**Status:** [ ] not started (placeholder)
+**Purpose:** Turn the clean-vs-foggy profile look into a NUMBER — reject scattered / multi-peak zones, keep clean single-peak (concentration around POC, va_pct_of_range, peakedness → shape_ok).
+**Role:** gate/component in the LIVE state machine — runs on the session's bars-so-far, feeds the arm/disarm confluence (see `../../ARCHITECTURE.md` "Runtime model").
+**Attached to:** VISION 8 · CHECKLIST Phase 5 (gate)
+**Status:** [ ] not started

@@ -10,5 +10,7 @@ each toggleable in `strategy_config` (`FILTER_SESSION` / `FILTER_HOUR` / `FILTER
 - `filter_variants.evaluate(per-day R)` — the real test: each variant vs LOW **and vs a RANDOM
   same-size baseline**. H holds only if `high` beats random (top tail), not merely `low`.
 **Outputs:** `output/filter_variants.csv`
+**Runtime:** promoted to `engine/vol_filter.py`; the WHEN gate, evaluated live per bar — see
+ARCHITECTURE.md "Runtime model".
 **Attached to:** VISION 2 · CHECKLIST Phase 1
 **Status:** [C] `vol_filter` awaiting promotion to engine/ · [R] variants + baseline built (test blocked on the strategy)

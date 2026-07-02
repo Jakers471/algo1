@@ -13,5 +13,7 @@ ongoing** (extends to now). Color-coded per session; toggle levels (High/Low) an
 Shows on 1m/5m NQ (times align to the bar grid).
 **Details:** ET sessions; Asia's 00:00–03:00 folds onto the prior day. Breach is CLOSE-based on 5m;
 forward scan capped at `MAX_FWD_BARS` (deep-history only).
+**Runtime:** promoted to `engine/session_anchors.py` (+ `sessions()` boundaries); runs live on the
+session's bars-so-far — see ARCHITECTURE.md "Runtime model".
 **Attached to:** VISION 3 / 11 · CHECKLIST Phase 2
 **Status:** [R] built — 40,942 levels; 91.7% hit, median ~5.8h to breach; chart overlay wired.

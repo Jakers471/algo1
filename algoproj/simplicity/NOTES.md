@@ -78,6 +78,15 @@ calibrate timeframe & risk → reject scattered profiles → node entry → Fib 
 session-break stats → Value-Area breakout w/ volume → aggressive trailing stops. Progress is
 tracked in `CHECKLIST.md` (scratch off as we go).
 
+**Runtime model (2026-07-02, refined with the user).** The strategy is a **live, bar-by-bar range-
+breakout engine** (full spec in `ARCHITECTURE.md`): a **session-state spine** tracks current + next
+session (live hi/lo, time-in/until); every component recomputes on the session's **bars-so-far** →
+causality is enforced by construction (backtest passes bars ≤ now; same code runs live). Setups
+**ARM/DISARM on stacked confluence** (shape + fib + zone size/tightness + timing), resting orders
+before the next open, aggressive trailing on the way out. **The edge is confluence + R:R geometry, not
+prediction** — the isolated components test flat (diagnostics, not verdicts); judge the system *fully
+wired*, since the mechanics (stop placement, resting orders, breakeven, trailing, DCA) are the substance.
+
 ### Structure + workflow  (2026-07-01)
 **research-first.** Every idea is built and tested in `research/` first; a piece is only
 solidified and **promoted into `engine/`** (clean, fast, live-API-ready) after the **user

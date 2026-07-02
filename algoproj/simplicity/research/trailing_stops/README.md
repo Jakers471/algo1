@@ -1,6 +1,6 @@
 # trailing_stops
 
-**Purpose:** Aggressive trailing stop management (mechanical, OHLC-based).
-**Plan:** Trail below/above the prior candle or the consolidation range; trail as price confirms the move.
-**Attached to:** VISION 15 · CHECKLIST Phase 5
-**Status:** [ ] not started (placeholder)
+**Purpose:** Aggressive volume-based trailing stop + breakeven; trail down/up as the move confirms.
+**Role:** gate/component in the LIVE state machine — runs on the session's bars-so-far, feeds the arm/disarm confluence (see `../../ARCHITECTURE.md` "Runtime model").
+**Attached to:** VISION 15 · CHECKLIST Phase 6
+**Status:** [ ] not started

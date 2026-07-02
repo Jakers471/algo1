@@ -97,19 +97,28 @@ MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None
 # The gate's day-vol regimes are FILTER_DAY_VOL["regimes"] above (there is no TRADEABLE_REGIMES).
 
 # ==================================================================================
-# SIGNAL / ENTRY / EXIT                                                        [TBD]
+# SETUP (arm/disarm) / ENTRY / EXIT  --  LIVE state machine (see ARCHITECTURE.md)  [TBD]
 # ==================================================================================
-# The strategy itself is not built yet. These slots are reserved so that, once the
-# signal exists, its exact rules live here and nowhere else.
-SIGNAL = None                    # e.g. the setup detector + its parameters
-ENTRY = {                        # how a signal becomes a position
-    "trigger": None,             # e.g. "breakout_close" / "stop_order_at_level"
-    "side": None,                # "long" / "short" / "both"
+# The strategy is a live, bar-by-bar range-breakout engine: a session-state spine + gates that
+# ARM/DISARM a setup on stacked confluence, resting orders before the next open, aggressive trail.
+# Not built yet -- slots reserved so the exact rules live here and nowhere else.
+SETUP = {                        # the confluence gates that must align to ARM a setup
+    "gates": None,               # e.g. shape_ok, fib_bias, zone_size vs range, tightness, time_in/until
+    "arm_rule": None,            # how the gates combine to arm
+    "invalidate": None,          # what disarms + pulls the resting orders
+}
+ENTRY = {
+    "type": None,                # "breakout_stop" (beyond range) | "edge_fade" | both
+    "side": None,                # "long" | "short" | "both" (bias-gated by fib)
+    "resting": None,             # place resting orders before the next session opens
+    "entry_tf": None,            # smaller TF than the range's TF
+    "dca": None,                 # DCA into the range? (decide)
 }
 EXIT = {
-    "stop": None,                # invalidation level rule (1R)
-    "target": None,              # reward rule (R multiple or level)
-    "time_stop": None,           # max hold, if any
+    "stop": None,                # invalidation = range / value-area edge (1R)
+    "breakeven": None,           # move to BE after X
+    "trail": None,               # aggressive volume-based trailing
+    "target": None,              # R multiple / next level, if used
 }
 
 # ==================================================================================

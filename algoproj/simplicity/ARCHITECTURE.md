@@ -27,11 +27,40 @@ Strategy (filters, entry/exit, sizing *rule*, frictions) → `strategy_config`. 
 (starting balance, dates, variant selector, sweeps) → `research_config`.
 
 ## One engine, selectable config
-- `engine/` pipeline (see `run_engine.bat`): `data_feed → vol_filter → session_anchors →
-  volume_profile → shape_filter → zone_calibration → entry → risk → execution → trailing_stop`.
-  Wired so far: **data_feed, vol_filter** (WIRED 2/10). The rest promote in as confirmed.
+- `engine/` pipeline (see `run_engine.bat`): `data_feed → session_state → vol_filter →
+  session_anchors → volume_profile → shape_filter → zone_calibration → fib_bias → setup_arm →
+  entry → risk → execution → trailing_stop`. Wired so far: **data_feed, vol_filter,
+  session_anchors, volume_profile** (4/13). The rest promote in as confirmed.
 - You **SELECT the config** (research | real) and run it through the same engine. Both the chart
   and the (future) backtest take a config selection — swap the inputs, not the engine.
+
+## Runtime model — LIVE session state machine **[design; not built yet]**
+The strategy is a **live, event-driven, bar-by-bar range-breakout engine.** One **session-state
+object** is the spine; every component is a function of *state-at-this-bar*, recomputed as bars arrive.
+
+- **Session state machine.** Always knows the CURRENT session and the NEXT one — when each opened, its
+  **live** high/low (and *when* each extreme was made, re-updating), time elapsed in-session, and time
+  until the next open. Same template per session (Asia / London / NY), tracking the next one too.
+- **Everything updates live.** Anchors, the **running** volume profile (POC / value area), shape /
+  tightness, fib, and the zone size/tightness metrics all recompute each bar — and **each is a GATE.**
+- **Causality by construction (no look-ahead).** Components run on the session's **bars-so-far**; the
+  backtest replays bars and only ever passes bars **≤ now**, so look-ahead is *impossible* and the SAME
+  code runs backtest and live. (The batch research functions already work on any window → they double
+  as the incremental engine — feed them the session-so-far.)
+- **Arm / disarm confluence engine (the "lock").** A setup is **not** locked at a fixed time. Gates
+  STACK — shape filter + fib bias + zone size vs the session range + range/tightness calc + zone
+  calibration + time-in-session + time-until-next-open — and when they **align**, the setup **ARMS**:
+  an entry decision / **resting orders** (breakout stops beyond the range, or fades at the range edge)
+  are placed **before the next session opens**. If a validation breaks, it **DISARMS** and the resting
+  orders are pulled. Continuously re-evaluated each bar — validations arm, invalidations disarm.
+- **The trade.** The incoming session's volume triggers the resting order; manage with **aggressive
+  volume-based trailing** (+ breakeven). Entry timeframe is smaller than the range's timeframe.
+
+**Edge framing.** The edge is **not** a predictive component (the isolated components test flat — treat
+those as *diagnostics*, not verdicts). It's the **confluence + R:R geometry** of a tight, well-defined
+range breakout: small defined invalidation vs room to run. **Judge the system fully wired, not piece by
+piece** — the mechanics (stop placement, resting orders, breakeven, aggressive trailing, DCA) are the
+substance, not "how far price drifts after a break."
 
 ## Chart — config-selectable **[built]**
 `research/chart` visualizes what a config covers: multi-TF candles+volume + dark shade overlays

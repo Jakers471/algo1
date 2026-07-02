@@ -35,17 +35,22 @@ MAG = "\033[35m"; GREY = "\033[90m"; WHITE = "\033[97m"
 _ANSI = re.compile(r"\033\[[0-9;]*m")
 
 # ---- the engine execution pipeline (sequence). module = expected file in engine/ --
+# live, bar-by-bar state machine (see ARCHITECTURE.md "Runtime model"). Everything updates on
+# bars-so-far; setups ARM/DISARM on stacked-confluence, not a fixed clock.
 PIPELINE = [
     ("data_feed",        "market data feed (bars in)"),
-    ("vol_filter",       "calendar volatility gate  --  WHEN to trade"),
-    ("session_anchors",  "session high/low anchors (London / NY / Asia)"),
-    ("volume_profile",   "volume profile + POC / value area  --  the zone"),
-    ("shape_filter",     "profile shape / tightness rejection"),
-    ("zone_calibration", "zone height% / duration -> timeframe + stop / R:R"),
-    ("entry",            "entry trigger (value-area breakout + volume confirm)"),
+    ("session_state",    "session state machine  --  current/next session, live hi/lo, time-in/until"),
+    ("vol_filter",       "volatility/session gate  --  WHEN to trade"),
+    ("session_anchors",  "session high/low anchors + breach (live)"),
+    ("volume_profile",   "running volume profile + POC / value area  --  the zone"),
+    ("shape_filter",     "profile shape / tightness  --  reject scattered zones (gate)"),
+    ("zone_calibration", "zone size %/bars -> entry timeframe + stop / R:R (gate)"),
+    ("fib_bias",         "fib off session hi/lo -> directional lean (gate)"),
+    ("setup_arm",        "confluence ARM/DISARM  --  stack gates -> arm or pull resting orders"),
+    ("entry",            "resting breakout/edge orders (value-area breakout + volume)"),
     ("risk",             "position sizing / risk management"),
     ("execution",        "order routing / fills (commission, slippage)"),
-    ("trailing_stop",    "aggressive trailing stop management"),
+    ("trailing_stop",    "aggressive trailing stop + breakeven"),
 ]
 
 
@@ -107,7 +112,7 @@ def config_stage(log):
     log.dbg(f"costs: pt=${cfg.POINT_VALUE} tick={cfg.TICK} comm=${cfg.COMMISSION_PER_SIDE}/side "
             f"slip={cfg.SLIPPAGE_TICKS}t fill={cfg.FILL_RULE}")
     # flag TBD strategy slots (config-level, not engine wiring)
-    tbd = [k for k, v in [("SIGNAL", cfg.SIGNAL), ("ENTRY.trigger", cfg.ENTRY.get("trigger")),
+    tbd = [k for k, v in [("SETUP.arm_rule", cfg.SETUP.get("arm_rule")), ("ENTRY.type", cfg.ENTRY.get("type")),
                           ("EXIT.stop", cfg.EXIT.get("stop")), ("RISK.sizing", cfg.RISK.get("sizing"))] if v is None]
     if tbd:
         log.warn(f"config slots still TBD: {', '.join(tbd)}")

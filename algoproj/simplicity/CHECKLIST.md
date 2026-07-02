@@ -48,12 +48,23 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[ ]` Height% / duration → entry timeframe + stop distance / R:R — `research/zone_calibration`
 - `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/fib_bias`
 
-## Phase 5 — Entry & exit
-- `[ ]` Entry trigger at a specific volume node — `research/entry_trigger`
-- `[ ]` Value-Area breakout + volume confirmation = the entry signal
-- `[ ]` Aggressive trailing stop management (off prior candle / range) — `research/trailing_stops`
+## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
+*(see `ARCHITECTURE.md` "Runtime model — LIVE session state machine". Everything updates on
+bars-so-far; causality is enforced by construction; setups arm/disarm on stacked confluence.)*
+- `[ ]` **Session state machine** (the spine) — current + next session, live hi/lo (+ when made), time-in-session, time-until-next; same template per session — `engine/session_state`
+- `[ ]` Wire the promoted components as **live readers of state** (run on the session's bars-so-far, not batch)
+- `[ ]` **Zone calibration** — zone size %/bars → entry timeframe + stop distance / R:R (gate) — `research/zone_calibration`
+- `[ ]` **setup_arm — the confluence ARM/DISARM engine** — stack gates (shape + fib + zone size/tightness + timing) → ARM (place resting orders) / DISARM (pull them) on validation/invalidation, continuously re-evaluated
+- `[ ]` Causality rule enforced: components only see bars ≤ now (no look-ahead) — same code live + backtest
 
-## Phase 6 — Measurement & backtest (FUTURE — blocked on entry/exit + risk mgmt)
+## Phase 6 — Entry & exit mechanics (the substance — R:R geometry, not prediction)
+- `[ ]` Entry: **resting orders before the next open** — breakout stops beyond the range and/or fades at the range edge (bias-gated) — `research/entry_trigger`
+- `[ ]` Value-Area breakout + volume confirmation (the trigger); entry TF smaller than the range TF
+- `[ ]` Stop placement (range/VA edge = invalidation) · breakeven logic · DCA-into-range (decide)
+- `[ ]` Risk / position sizing — `strategy_config.RISK` + `STARTING_BALANCE`
+- `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/trailing_stops`
+
+## Phase 7 — Measurement & backtest (FUTURE — blocked on Phases 5-6)
 - `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
 - `[ ]` Equity curve (+ drawdown)
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)
