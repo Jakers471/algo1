@@ -39,9 +39,11 @@ button{background:var(--s);border:1px solid var(--ring);color:var(--ink2);font:i
 padding:5px 11px;border-radius:7px;cursor:pointer}button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 button.on.warm{background:var(--dn);border-color:var(--dn)}
 button:disabled{opacity:.3;cursor:default}
-.main{flex:1;display:flex;min-height:0}
-#chart{flex:1;min-width:0}
-.side{width:290px;border-left:1px solid var(--ring);padding:14px 16px;overflow:auto;font-size:12.5px}
+.main{flex:1;display:flex;min-height:0;min-width:0}
+#chart{flex:1 1 auto;min-width:0}
+.side{flex:0 0 290px;border-left:1px solid var(--ring);padding:14px 16px;overflow:auto;font-size:12.5px}
+@media(max-width:860px){.side{flex-basis:230px}}
+@media(max-width:640px){.side{flex-basis:190px;font-size:11.5px}}
 .side h2{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;
 border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{margin-top:0}
 .kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
@@ -87,6 +89,7 @@ const _tick=(t,type)=>{const d=new Date(t*1000);
   if(type===1)return d.toLocaleDateString("en-US",{..._TZ,month:"short"});
   return d.toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});};
 const chart=LightweightCharts.createChart(document.getElementById("chart"),{
+  autoSize:true,
   layout:{background:{color:"#1a1a19"},textColor:"#c3c2b7"},
   grid:{vertLines:{color:"#2c2c2a"},horzLines:{color:"#2c2c2a"}},
   rightPriceScale:{borderColor:"#383835"},
@@ -148,15 +151,26 @@ document.getElementById("filters").innerHTML=
   kv("day_vol "+onoff(C.filter_day_vol), C.filter_day_vol.on?C.filter_day_vol.regimes.join(","):"—");
 function renderCfg(){document.getElementById("cfgSel").innerHTML=Object.keys(M.configs).map(k=>
   `<button data-c="${k}" class="${k==cfgSel?'on':''}">${k}</button>`).join("");
-  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();renderCfgSidebar();updateShade();});
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();renderCfgSidebar();updateShade();logConfig();});
   document.getElementById("cfgLoaded").innerHTML=`<span class="dot"></span>${cfgSel} attached &amp; loaded`;}
+function logConfig(){const cc=M.configs[cfgSel];
+  console.log(`%c[simplicity] CONFIG LOADED -> ${cfgSel}`,"color:#199e70;font-weight:bold;font-size:13px");
+  console.table({
+    source:cc.label, note:cc.note,
+    "vol-day overlay (days)":cc.selected_days.length, "vol-day overlay (periods)":cc.selected_runs.length,
+    "session filter":C.filter_session.on?C.filter_session.allow.join(","):"off",
+    "hour filter":C.filter_hour.on?C.filter_hour.allow.join(","):"off",
+    "day_vol filter":C.filter_day_vol.on?C.filter_day_vol.regimes.join(","):"off",
+    era_start:C.era_start, vol_metric:C.vol_metric, trail_window:C.trail_window+"d",
+    instrument:inst, timeframe:tf});
+  console.log("  first selected days:",cc.selected_days.slice(0,8),`... (${cc.selected_days.length} total)`);}
 function renderCfgSidebar(){const cc=M.configs[cfgSel];
   document.getElementById("cfg").innerHTML=
     kv("config",`<span class="pill">${cfgSel}</span>`)+kv("&rarr;",cc.label)+
     kv("vol-days",cc.selected_days.length+" d / "+cc.selected_runs.length+" periods")+
     kv("note",cc.note)+kv("era start",C.era_start)+kv("vol metric",C.vol_metric)+
     kv("trail window",C.trail_window+"d")+kv("regime pctiles",C.regime_pctiles.join(" / "));}
-renderCfg(); renderCfgSidebar();
+renderCfg(); renderCfgSidebar(); logConfig();
 document.getElementById("sess").innerHTML=Object.entries(C.sessions).map(([k,v])=>kv(k,v[0]+"–"+v[1])).join("");
 document.getElementById("costs").innerHTML=
   kv("point value","$"+C.point_value)+kv("tick",C.tick)+kv("commission","$"+C.commission_per_side+"/side")+
