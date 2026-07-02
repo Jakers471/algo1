@@ -68,6 +68,15 @@ substance, not "how far price drifts after a break."
 research)** in the top bar switches the vol-day overlay + sidebar to that config — real uses
 `FILTER_DAY_VOL` regimes, research uses `ACTIVE_FILTER`. (Both snapshot into the manifest at build.)
 
+**Replay mode [planned] — the engine's visual frontend / backtest inspector.** Cut price back to any
+point and step **forward bar-by-bar**. Because the engine runs on bars-so-far, replay = the live engine
+driven interactively: at each bar a **modular state panel** shows the running numbers — session timing
+(in / until next), live hi/lo, running profile POC / value area, zone size & tightness, fib bias, each
+**gate's strength / alignment**, and the setup's **ARM / DISARM** state with the validation/invalidation
+that flipped it. You watch *why* it armed, placed resting orders, entered, trailed. It's the **same
+causal engine** as backtest + live, so the replay IS the backtest unfolding step-by-step, with trades
+marked on the chart (cf. Prior art: `algoproj/webui` chart + BUY/SELL markers + equity).
+
 ## Outputs — separated by config **[planned]**
 Runs store artifacts (equity-curve PNGs, backtest results) in **different places per track**, so
 research and real never mix:

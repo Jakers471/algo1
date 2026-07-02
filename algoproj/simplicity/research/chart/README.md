@@ -12,5 +12,9 @@ trail, regime pctiles, active filter, tradeable, sessions, costs) · OVERLAY tog
 `ACTIVE_FILTER` selected volatile periods. Library vendored in `lib/` (works offline). Data inlined so
 it opens off disk; loads fast (≤2000 bars/TF).
 **Outputs:** `data/<INST>_<tf>.json`, `data/manifest.json`, `chart.html` (generated — gitignored)
-**Attached to:** VISION (visualization for all steps) · CHECKLIST Cross-cutting
-**Status:** [~] core built (multi-TF + config sidebar + selected-period overlay); more overlays as pieces land
+**Planned — REPLAY mode:** scrub price back + step forward bar-by-bar; a modular state panel shows the
+running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias,
+gate strengths, ARM/DISARM + the validation/invalidation that flipped it). Because the engine runs on
+bars-so-far, replay = the live engine driven interactively = the backtest unfolding. See ARCHITECTURE.md.
+**Attached to:** VISION (visualization for all steps) · CHECKLIST Cross-cutting + Phase 7
+**Status:** [~] core built (multi-TF + config sidebar + anchors/times/profile/fib overlays); replay mode = planned

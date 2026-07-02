@@ -65,6 +65,7 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/trailing_stops`
 
 ## Phase 7 — Measurement & backtest (FUTURE — blocked on Phases 5-6)
+- `[ ]` **Chart REPLAY mode** — scrub back + step forward bar-by-bar; a **modular state panel** shows the running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it). The engine's visual frontend = the backtest unfolding (same causal engine) — `research/chart`
 - `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
 - `[ ]` Equity curve (+ drawdown)
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)
