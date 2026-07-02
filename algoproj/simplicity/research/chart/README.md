@@ -17,6 +17,11 @@ two-tone bars + POC/VA, examples-quality because it's zoomed to that session), i
 close / duration / next session + gap, ET), and its **shape + R:R scores**. This is the on-demand way
 to see the profile crisp on the chart AND how each session hands to the next; it's also the seed of the
 planned replay state panel. (`#demo` in the URL auto-opens the latest card for a quick look.)
+**Chat log** — each module has a `chat about` button that records the session's full snapshot (timing +
+profile + shape/R:R scores) into a persistent per-session drawer (top-right `chat log (N)`, saved in
+`localStorage`). Each entry has a notes box for your question and a `copy for chat` button that copies a
+clean markdown block (all the numbers + your note) to paste into a conversation; `copy all` / `json`
+export the set. This is how you flag specific sessions and ask targeted questions about them.
 **Outputs:** `data/<INST>_<tf>.json`, `data/manifest.json`, `chart.html` (generated — gitignored)
 **Planned — REPLAY mode:** scrub price back + step forward bar-by-bar; a modular state panel shows the
 running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias,

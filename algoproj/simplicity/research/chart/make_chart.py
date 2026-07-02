@@ -81,12 +81,41 @@ border:1px solid var(--ring);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,
 .mr{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .mr span{color:var(--mut)}.mr b{font-weight:600}
 .smod-v{padding:7px 14px;border-top:1px solid var(--ring);color:var(--ink2);font-size:11.5px}
+.smod-chat{cursor:pointer;color:var(--acc);font-size:10.5px;border:1px solid var(--acc);border-radius:6px;
+padding:2px 8px;background:rgba(57,135,229,.14);white-space:nowrap}.smod-chat:hover{background:var(--acc);color:#fff}
+.chatd{position:fixed;top:0;right:0;height:100%;width:376px;background:#141419;border-left:1px solid var(--ring);
+z-index:20;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s ease;box-shadow:-8px 0 30px rgba(0,0,0,.55)}
+.chatd.open{transform:none}
+.chatd-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--ring)}
+.chatd-h b{font-size:13px}.chatd-h .mut{color:var(--mut);font-size:11px}
+.chatd-tools{margin-left:auto;display:flex;gap:5px}
+.chatd-b{flex:1;overflow:auto;padding:10px 11px;display:flex;flex-direction:column;gap:10px}
+.chatd-empty{color:var(--mut);font-size:12px;padding:26px 16px;text-align:center;line-height:1.6}
+.centry{border:1px solid var(--ring);border-radius:8px;background:rgba(255,255,255,.02)}
+.centry-h{display:flex;align-items:center;gap:7px;padding:7px 9px;border-bottom:1px solid var(--ring)}
+.centry-h b{font-weight:600}.centry-h .mut{color:var(--mut);font-size:11px}
+.centry-stat{padding:7px 9px;font-size:11px;color:var(--ink2);display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
+.centry-stat span{color:var(--mut)}
+.centry textarea{width:100%;border:1px solid var(--ring);background:#0d0d0d;color:var(--ink);border-radius:6px;
+font:inherit;font-size:11.5px;padding:6px;resize:vertical;min-height:42px}
+.centry-f{display:flex;gap:6px;padding:7px 9px}
+.mini2{font-size:11px;padding:3px 9px}
+#_toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--up);color:#fff;
+padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.4);opacity:0;transition:opacity .3s}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span style="color:var(--mut);font-weight:400">chart</span></h1>
   <div class="grp"><span class="lab">inst</span><span id="insts"></span></div>
   <div class="grp"><span class="lab">tf</span><span id="tfs"></span></div>
   <div class="grp"><span class="lab">shade</span><button id="shSess">session</button><button id="shVol">vol days</button></div>
+  <div class="grp" style="margin-left:auto"><button id="chatBtn">chat log (0)</button></div>
+</div>
+<div class="chatd" id="chatd">
+  <div class="chatd-h"><b>Chat log</b><span class="mut" id="chatCount">0 saved</span>
+    <div class="chatd-tools"><button class="mini2" id="chatCopyAll">copy all</button>
+      <button class="mini2" id="chatDl">json</button><button class="mini2" id="chatClear">clear</button>
+      <button class="mini2" id="chatClose">close</button></div></div>
+  <div class="chatd-b" id="chatBody"></div>
 </div>
 <div class="main">
   <div class="chartwrap">
@@ -316,7 +345,8 @@ function openModule(P){
     +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:"");
   smod.innerHTML=`<div class="smod-h" id="smodH">
       <span class="smod-tag" style="color:${col};border-color:${col}">${P.session}</span>
-      <b>${P.date}</b><span class="mut">${P.bars} x ${tf}</span><span class="smod-x" id="smodX">&times;</span></div>
+      <b>${P.date}</b><span class="mut">${P.bars} x ${tf}</span>
+      <span class="smod-chat" id="smodChat" style="margin-left:auto">chat about</span><span class="smod-x" id="smodX">&times;</span></div>
     <div class="smod-svg">${moduleSVG(P,cs)}</div>
     <div class="smod-cols"><div class="mcol"><div class="mttl">Timing (ET)</div>${timing}</div>
       <div class="mcol"><div class="mttl">Shape</div>${shape}</div>
@@ -327,19 +357,74 @@ function openModule(P){
   smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-330))+"px";
   smod.style.display="block";
   document.getElementById("smodX").onclick=()=>smod.style.display="none";
+  document.getElementById("smodChat").onclick=()=>addToChat(P);
   _dragify(document.getElementById("smodH"));
 }
 function _dragify(handle){let sx,sy,ox,oy,drag=false;
-  handle.onmousedown=e=>{if(e.target.id==="smodX")return;drag=true;sx=e.clientX;sy=e.clientY;ox=smod.offsetLeft;oy=smod.offsetTop;e.preventDefault();};
+  handle.onmousedown=e=>{if(e.target.id==="smodX"||e.target.id==="smodChat")return;drag=true;sx=e.clientX;sy=e.clientY;ox=smod.offsetLeft;oy=smod.offsetTop;e.preventDefault();};
   const mv=e=>{if(!drag)return;smod.style.left=(ox+e.clientX-sx)+"px";smod.style.top=(oy+e.clientY-sy)+"px";};
   window.addEventListener("mousemove",mv);window.addEventListener("mouseup",()=>drag=false);}
 chart.subscribeClick(p=>{if(!modOn||p.time==null||!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
   if(p.point)modPt=p.point;const P=_profAt(p.time);if(P)openModule(P);});
 // #demo -> auto-open the latest session card (for screenshots / quick check)
-if(location.hash==="#demo")window.addEventListener("load",()=>{tf="5m";load();
+if(location.hash.startsWith("#demo"))window.addEventListener("load",()=>{tf="5m";load();
   const b=document.getElementById("modBtn");modOn=true;b.classList.add("on");b.textContent="on";
   const P=(M.profiles||[]).filter(p=>p.bins&&p.bins.length).slice(-1)[0];
-  if(P)setTimeout(()=>{modPt={x:700,y:70};openModule(P);},250);});
+  if(P)setTimeout(()=>{modPt={x:560,y:70};openModule(P);if(location.hash==="#demo2"){addToChat(P);}},250);});
+
+// ---- CHAT LOG: "chat about" a session -> save its full snapshot to a persistent per-session drawer ----
+const CHKEY="simplicity_chat_v1";
+let chatLog=JSON.parse(localStorage.getItem(CHKEY)||"[]");
+const chatd=document.getElementById("chatd");
+function chatSave(){localStorage.setItem(CHKEY,JSON.stringify(chatLog));updateChatCount();}
+function updateChatCount(){document.getElementById("chatBtn").textContent=`chat log (${chatLog.length})`;
+  document.getElementById("chatCount").textContent=chatLog.length+" saved";}
+function copyText(txt,btn,label){const done=()=>{if(btn){btn.textContent="copied!";setTimeout(()=>btn.textContent=label,1200);}};
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(done).catch(()=>_fbcopy(txt,done));}
+  else _fbcopy(txt,done);}
+function _fbcopy(txt,done){const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="position:fixed;opacity:0";
+  document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);done&&done();}
+function flash(m){let t=document.getElementById("_toast");if(!t){t=document.createElement("div");t.id="_toast";document.body.appendChild(t);}
+  t.textContent=m;t.style.opacity="1";clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity="0",1500);}
+function snapOf(P){return {sid:P.sid,session:P.session,date:P.date,tf,start:P.start,end:P.end,
+  duration_sec:P.duration_sec,next_session:P.next_session,next_open:P.next_open,high:P.high,low:P.low,
+  poc:P.poc,val:P.val,vah:P.vah,height_pct:P.height_pct,va_pct:P.va_pct_of_range,bars:P.bars,
+  shape:P.shape||{},zone:P.zone||{},note:""};}
+function addToChat(P){
+  if(chatLog.some(e=>e.sid===P.sid&&e.tf===tf)){openDrawer();renderDrawer();flash("already in chat log");return;}
+  chatLog.push(snapOf(P));chatSave();renderDrawer();openDrawer();flash("saved to chat log");}
+function chatMarkdown(e){const s=e.shape||{},z=e.zone||{};
+  const nxt=e.next_session?`${e.next_session} in ${fmtDur(e.next_open-e.end)} (opens ${fmtET(e.next_open)})`:"—";
+  return `## ${e.date} ${e.session}  (${e.tf})
+Timing (ET): opened ${fmtET(e.start)}, closed ${fmtET(e.end)}, duration ${fmtDur(e.duration_sec)}; next: ${nxt}
+Range: H ${e.high} / L ${e.low}  (${(e.high-e.low).toFixed(1)} pt, ${e.height_pct}%)
+Volume profile: POC ${e.poc}, value area ${e.val}-${e.vah} (${e.va_pct}% of range), ${e.bars} bars
+Shape: ${s.shape_score}/100 (${s.shape_ok?"clean":"foggy"}) - VA% ${s.va_pct}, prominence ${s.prominence}x, peaks ${s.n_peaks}, POC pos ${s.poc_pos}, top-bin ${s.top_share_pct}%
+Zone R:R: ${z.rr} (${z.rr_ok?"ok":"thin"}) - risk 1R ${z.risk_pts}pt, room ${z.room_pts}pt, entry tf ${z.entry_tf}
+My question: ${e.note||"(none yet)"}`;}
+function renderDrawer(){const b=document.getElementById("chatBody");
+  if(!chatLog.length){b.innerHTML=`<div class="chatd-empty">No sessions saved yet.<br>Open a session module and hit <b style="color:var(--acc)">chat about</b> to record it here.</div>`;return;}
+  b.innerHTML=chatLog.map((e,i)=>{const col=SC[e.session]||"#888",s=e.shape||{},z=e.zone||{};
+    return `<div class="centry"><div class="centry-h">
+      <span class="smod-tag" style="color:${col};border-color:${col}">${e.session}</span>
+      <b>${e.date}</b><span class="mut">${e.tf}</span><span class="smod-x" data-rm="${i}" style="margin-left:auto">&times;</span></div>
+      <div class="centry-stat">
+        <div><span>shape</span> ${s.shape_score}/100 ${s.shape_ok?"clean":"foggy"}</div><div><span>R:R</span> ${z.rr} ${z.rr_ok?"ok":"thin"}</div>
+        <div><span>POC</span> ${e.poc}</div><div><span>VA%range</span> ${e.va_pct}%</div>
+        <div><span>duration</span> ${fmtDur(e.duration_sec)}</div><div><span>entry tf</span> ${z.entry_tf||"-"}</div></div>
+      <div style="padding:7px 9px 0"><textarea data-note="${i}" placeholder="your question about this session...">${e.note||""}</textarea></div>
+      <div class="centry-f"><button class="mini2" data-copy="${i}">copy for chat</button></div></div>`;}).join("");
+  b.querySelectorAll("[data-rm]").forEach(x=>x.onclick=()=>{chatLog.splice(+x.dataset.rm,1);chatSave();renderDrawer();});
+  b.querySelectorAll("[data-note]").forEach(t=>t.oninput=()=>{chatLog[+t.dataset.note].note=t.value;chatSave();});
+  b.querySelectorAll("[data-copy]").forEach(x=>x.onclick=()=>copyText(chatMarkdown(chatLog[+x.dataset.copy]),x,"copy for chat"));}
+function openDrawer(){chatd.classList.add("open");}
+document.getElementById("chatBtn").onclick=()=>{chatd.classList.toggle("open");renderDrawer();};
+document.getElementById("chatClose").onclick=()=>chatd.classList.remove("open");
+document.getElementById("chatClear").onclick=()=>{if(chatLog.length&&confirm("Clear all saved sessions?")){chatLog=[];chatSave();renderDrawer();}};
+document.getElementById("chatCopyAll").onclick=function(){if(chatLog.length)copyText(chatLog.map(chatMarkdown).join("\n\n---\n\n"),this,"copy all");};
+document.getElementById("chatDl").onclick=()=>{if(!chatLog.length)return;const blob=new Blob([JSON.stringify(chatLog,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="simplicity_chat_log.json";a.click();};
+updateChatCount();
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}
