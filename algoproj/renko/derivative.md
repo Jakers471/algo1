@@ -353,3 +353,5 @@ User Avatar
 derivativesnyc
 6:23 PM
 It's not longevity, it's the correctness of technique/toolset. Catapulted into stratosphere real fast once finetuned the grail
+
+
