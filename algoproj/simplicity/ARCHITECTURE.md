@@ -116,6 +116,15 @@ produces equity curves → PNGs stored per-config (above). It is the thing that 
 configs to the engine. **Not built** — and there's nothing to measure yet (no risk management, no
 returns; current focus is visualization only).
 
+## Run ledger — scorecards bound to configs/params **[built 2026-07-02; `research/runs/`]**
+Don't tune blind. Every research run that produces numbers appends a **scorecard** to
+`research/runs/runs.jsonl` (append-only): `run_id` · git commit · the component **params** used · a
+**strategy_config snapshot** · the output **metrics** · a note. Change a knob → re-run → both before
+and after are kept forever. `runlog.record(kind, params, metrics, note)` enrolls a script (each also
+exposes its tunables in one `PARAMS` block); `analyze_runs.py` reads the ledger and shows how metrics
+moved as params changed. Wired: `shape_filter`, `zone_calibration`, `fib_bias`. This is per-**run**
+provenance; the Session Archive (below) is the per-**bar** record — together, nothing is lost.
+
 ## Session Archive — the causal record substrate **[future — documented, not built; NOTES F9]**
 `research/studies/session_archive/` — "replay, written to disk." A builder steps every session
 bar-by-bar (the same causal math as chart replay, reusing the engine components incrementally) and

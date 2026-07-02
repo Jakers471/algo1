@@ -22,7 +22,9 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # simplicity/
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "research", "runs"))
 import strategy_config as cfg  # noqa: F401
+import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 VP = os.path.join(HERE, "..", "..", "structure", "volume_profile", "output", "volume_profile.json")
@@ -67,6 +69,11 @@ def main():
     print(f"  rr_ok (>= {RR_MIN}): {d.rr_ok.mean()*100:.0f}%")
     print("  entry_tf split:", d.entry_tf.value_counts().to_dict())
     print("wrote", os.path.join(OUT, "zone_calibration.csv"))
+    runlog.record("zone_calibration",
+                  {"rr_min": RR_MIN, "tf_bands": [[(b[0] if b[0] != float("inf") else "inf"), b[1]] for b in TF_BANDS]},
+                  {"n": int(len(d)), "median_rr": round(float(d.rr.median()), 2),
+                   "rr_ok_pct": round(float(d.rr_ok.mean() * 100), 1),
+                   "entry_tf_split": {k: int(v) for k, v in d.entry_tf.value_counts().to_dict().items()}})
 
 
 if __name__ == "__main__":

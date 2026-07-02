@@ -299,3 +299,15 @@ didn't bark, consistent with the core thesis (direction isn't predictable; hunt 
 `setup_arm` gets NO fib direction gate; the fib chart overlay stays as geometry-only visual reference.
 Gates confirmed for setup_arm so far: shape_filter (quality) + zone_calibration (R:R) + vol/session
 timing. Direction stays unpredicted by design.
+
+### F12 — run ledger: scorecards bound to configs/params (2026-07-02)
+Before tuning anything, built `research/runs/` so we never change blindly or lose info. Every research
+run appends a SCORECARD to append-only `runs.jsonl`: run_id + git commit + the component PARAMS it used
++ a strategy_config snapshot + the output METRICS + a note. `runlog.record(kind, params, metrics, note)`
+enrolls a script; each tunable script now exposes its knobs in one PARAMS block (shape_filter WEIGHTS/
+TIGHT_DEN/PROM_DEN/SHAPE_OK; zone RR_MIN/TF_BANDS; fib EDGES). `analyze_runs.py` reads the ledger and
+shows params+metrics per run in order → a before/after tune is two rows you diff by eye. Baselines
+seeded (git 4db5fda78): shape median 39 / ok 21.1%; zone median R:R 1.85 / ok 44%; fib base 54.3% /
+spread 4.6pts. This is per-RUN provenance; the future session_archive (F9) is the per-BAR record —
+together nothing is lost. How the tuning loop works: run (logs baseline) → change a PARAM → run with a
+note → `analyze_runs`.

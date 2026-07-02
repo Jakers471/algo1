@@ -20,7 +20,9 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # simplicity/
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "research", "runs"))
 import strategy_config as cfg
+import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 TRADING = ("asia", "london", "newyork")
@@ -99,6 +101,11 @@ def main():
     print("  (* = zone rate >2-sigma from base; geometry-only Fib overlay stays on the chart regardless)")
     json.dump(report, open(os.path.join(OUT, "fib_bias.json"), "w"), indent=1)
     print("wrote", os.path.join(OUT, "fib_bias.json"))
+    runlog.record("fib_bias",
+                  {"edges": EDGES, "era_start": cfg.ERA_START_YEAR, "next_target": "next-session open->close dir"},
+                  {"n": report["n"], "base_rate_pct": round(report["base_rate"] * 100, 1),
+                   "max_minus_min_p_pts": round(report["max_minus_min_p"] * 100, 1),
+                   "verdict": report["verdict"]})
 
 
 if __name__ == "__main__":

@@ -95,6 +95,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[R]` Config filter selector `ACTIVE_FILTER` (pick which variant tv/backtest uses) — `strategy_config`
 - `[R]` Config split DONE — `research_config.py` (run/testing: `ACTIVE_FILTER`, `STARTING_BALANCE`, dates) re-exports `strategy_config`; removed `ACTIVE_FILTER` + dead `TRADEABLE_REGIMES` from `strategy_config` (no duplication)
 - `[R]` Chart config selector (real | research) — top-bar toggle switches vol-day overlay + sidebar to that config
+- `[R]` **Run ledger** (`research/runs/`) — every research run logs a scorecard (params + config snapshot +
+  metrics + note) to append-only `runs.jsonl`; `analyze_runs.py` compares across runs. Tune measured, not
+  blind. Wired: shape_filter, zone_calibration, fib_bias. Complements future session_archive (NOTES F9/F12).
+- `[R]` **fib_bias gallery** (`research/gates/fib_bias/make_examples.py`) — shows on real candles what the
+  edge test sees: session + fib lines + close→fpos→zone, then the next session's direction. (NOTES F11)
 - `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
 - `[R]` **Research reorganized to mirror the engine LAYERS** (2026-07-02) — `research/{structure,gates,setup,
   execution}/` for stage-mapped components + `research/studies/` for pure discovery + `research/chart/`.
