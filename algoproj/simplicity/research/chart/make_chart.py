@@ -378,7 +378,7 @@ function _meta(P,cs,extra){return Object.assign({session:P.session,date:P.date,s
 function renderStack(P,rp){
   const sess=SERIES["NQ_5m"].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
   let html="";
-  if(P.htf){const h=P.htf, hcs=(SERIES["NQ_1d"]?SERIES["NQ_1d"].candles:[]).filter(c=>c.time>=h.start&&c.time<=h.end);
+  if(P.htf){const h=P.htf, hcs=SERIES["NQ_5m"].candles.filter(c=>c.time>=h.start&&c.time<=h.end);
     const hm={session:P.session,date:P.date,start:h.start,end:h.end,duration_sec:h.end-h.start,
       next_session:P.next_session,next_open:P.next_open,bars:h.htf_bars,barsLabel:h.htf_days+"d week (context)"};
     html+=cardHTML(hm,h,hcs,"htf",{});}                                   // HTF is fixed pre-session context
@@ -419,27 +419,33 @@ function computeProfile(bars){
     bins,height_pct:+(rng/lo*100).toFixed(3),va_pct_of_range:+(va/rng*100).toFixed(1),bars:bars.length};
   prof.shape=computeShape(prof);prof.zone=computeZone(prof);return prof;
 }
+// gate params from config (injected by build_chart_data) so replay/scoring match strategy_config exactly
+const GT=(C.gates&&C.gates.SHAPE)||{weights:{tight:.4,peak:.3,single:.2,central:.1},tight_peak:40,tight_hi:85,prom_den:2,single_2:.5,single_else:.15,shape_ok:50};
+const GZ=(C.gates&&C.gates.ZONE)||{rr_min:2,tf_bands:[[0.25,"1m"],[0.60,"5m"],[null,"15m"]]};
+const GB=(C.gates&&C.gates.BASE)||{band_mult:5,min_bars:8};
 function computeShape(p){const bins=p.bins;if(bins.length<3)return{};
   const v=bins.map(b=>b.v),total=v.reduce((a,b)=>a+b,0),pocv=Math.max(...v),meanv=total/v.length;
   const vav=bins.filter(b=>b.va).map(b=>b.v),vam=vav.length?vav.reduce((a,b)=>a+b,0)/vav.length:meanv;
   const prom=vam>0?pocv/vam:0;let peaks=0;
   for(let i=0;i<v.length;i++){const l=i>0?v[i-1]:-1,r=i<v.length-1?v[i+1]:-1;if(v[i]>=l&&v[i]>=r&&v[i]>0.5*pocv)peaks++;}
   const va_pct=p.va_pct_of_range,rng=p.high-p.low,pos=rng>0?(p.poc-p.low)/rng:0.5,bal=Math.abs(pos-0.5),top=pocv/total*100;
-  const tight=(va_pct<=40)?(va_pct/40):Math.max(0,1-(va_pct-40)/(85-40)),peakc=Math.min(1,Math.max(0,(prom-1)/2)),single=peaks<=1?1:(peaks==2?0.5:0.15),central=Math.max(0,1-bal/0.5);
-  const score=Math.round(100*(0.4*tight+0.3*peakc+0.2*single+0.1*central));
-  return{shape_score:score,va_pct:+va_pct.toFixed(1),prominence:+prom.toFixed(2),n_peaks:peaks,poc_pos:+pos.toFixed(2),top_share_pct:+top.toFixed(1),shape_ok:score>=50};
+  const W=GT.weights,tp=GT.tight_peak,th=GT.tight_hi;
+  const tight=(va_pct<=tp)?(va_pct/tp):Math.max(0,1-(va_pct-tp)/(th-tp)),peakc=Math.min(1,Math.max(0,(prom-1)/GT.prom_den)),
+    single=peaks<=1?1:(peaks==2?GT.single_2:GT.single_else),central=Math.max(0,1-bal/0.5);
+  const score=Math.round(100*(W.tight*tight+W.peak*peakc+W.single*single+W.central*central));
+  return{shape_score:score,va_pct:+va_pct.toFixed(1),prominence:+prom.toFixed(2),n_peaks:peaks,poc_pos:+pos.toFixed(2),top_share_pct:+top.toFixed(1),shape_ok:score>=GT.shape_ok};
 }
 function computeZone(p){const rng=p.high-p.low,va=p.vah-p.val;if(rng<=0||va<=0)return{};
-  const rr=+(rng/va).toFixed(2),h=p.height_pct,etf=h<0.25?"1m":(h<0.60?"5m":"15m");
-  return{height_pct:+h.toFixed(3),bars:p.bars,risk_pts:+va.toFixed(1),room_pts:+rng.toFixed(1),rr,entry_tf:etf,rr_ok:rr>=2};
+  const rr=+(rng/va).toFixed(2),h=p.height_pct;let etf="15m";for(const b of GZ.tf_bands){if(b[0]==null||h<b[0]){etf=b[1];break;}}
+  return{height_pct:+h.toFixed(3),bars:p.bars,risk_pts:+va.toFixed(1),room_pts:+rng.toFixed(1),rr,entry_tf:etf,rr_ok:rr>=GZ.rr_min};
 }
 // ---- base detector (JS port of base_profile.detect) so the base card recomputes live in replay ----
-function computeBase(bars){const n=bars.length;if(n<8)return null;
-  const rr=bars.map(b=>b.high-b.low).slice().sort((a,b)=>a-b), med=rr[Math.floor(n/2)], band=5*med;
+function computeBase(bars){const mb=GB.min_bars,n=bars.length;if(n<mb)return null;
+  const rr=bars.map(b=>b.high-b.low).slice().sort((a,b)=>a-b), med=rr[Math.floor(n/2)], band=GB.band_mult*med;
   let end=n-1,wl=bars[end].low,wh=bars[end].high,start=end;
   for(let i=end-1;i>=0;i--){const nwl=Math.min(wl,bars[i].low),nwh=Math.max(wh,bars[i].high);
     if(nwh-nwl>band)break;wl=nwl;wh=nwh;start=i;}
-  return (end-start+1>=8)?bars.slice(start,end+1):null;}
+  return (end-start+1>=mb)?bars.slice(start,end+1):null;}
 // ---- REPLAY: step the session bar-by-bar; session + base recompute on bars-so-far, HTF is static context ----
 let RP={active:false,P:null,bars:[],k:0,N:0,playing:false,timer:null,speed:1};
 function replayStop(){if(RP.timer){clearInterval(RP.timer);RP.timer=null;}RP.active=false;RP.playing=false;drawNow();}

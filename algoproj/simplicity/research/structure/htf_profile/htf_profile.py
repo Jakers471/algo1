@@ -33,10 +33,10 @@ import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 
-# --- tunable PARAMS (logged to the run ledger) ---
-HTF_DAYS = 7        # trailing calendar days composited into the HTF profile (~one week)
-HTF_BINS = 70       # fixed bin count for the composite (a week's range needs coarser rows than a session)
-MIN_HTF_BARS = 200  # need at least this many 5m bars in the window to form a composite
+# --- tunable PARAMS: sourced from strategy_config.HTF (single source of truth; tune THERE) ---
+HTF_DAYS = cfg.HTF["days"]        # trailing calendar days composited into the HTF profile (~one week)
+HTF_BINS = cfg.HTF["bins"]        # fixed bin count for the composite (a week needs coarser rows than a session)
+MIN_HTF_BARS = cfg.HTF["min_bars"]
 
 
 def _profile(hi, lo, vol):

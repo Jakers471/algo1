@@ -26,8 +26,8 @@ import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 TRADING = ("asia", "london", "newyork")
-# fib retracement bands (where the close sits in the range); labelled by the zone they fall in
-EDGES = [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0001]
+# fib retracement bands (where the close sits in the range) -- sourced from strategy_config.FIB
+EDGES = cfg.FIB["edges"]
 LABELS = ["0-23.6 (deep low)", "23.6-38.2", "38.2-50", "50-61.8", "61.8-78.6", "78.6-100 (deep high)"]
 
 

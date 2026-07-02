@@ -27,8 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # s
 import strategy_config as cfg
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
-ROW_SIZE = 2.0   # points per profile row -> UNIFORM thin rows across all sessions (wide sessions = more rows)
-VA_PCT = 0.70
+ROW_SIZE = cfg.PROFILE["row_size"]   # points per profile row (strategy_config.PROFILE; tune THERE)
+VA_PCT = cfg.PROFILE["va_pct"]
 
 
 def _spread_volume(low, high, vol, edges):

@@ -29,9 +29,10 @@ import runlog
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 VP = os.path.join(HERE, "..", "..", "structure", "volume_profile", "output", "volume_profile.json")
 
-RR_MIN = 2.0
-# height_pct thresholds -> which lower timeframe supplies the entry/stop
-TF_BANDS = [(0.25, "1m"), (0.60, "5m"), (float("inf"), "15m")]
+# sourced from strategy_config.ZONE (single source of truth; tune THERE)
+RR_MIN = cfg.ZONE["rr_min"]
+# height_pct thresholds -> which lower timeframe supplies the entry/stop (None in config = inf)
+TF_BANDS = [((float("inf") if b[0] is None else b[0]), b[1]) for b in cfg.ZONE["tf_bands"]]
 
 
 def _entry_tf(height_pct):

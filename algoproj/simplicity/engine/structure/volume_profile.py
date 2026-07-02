@@ -30,8 +30,8 @@ import strategy_config as cfg
 import data_feed
 
 DESCRIBE = "per-session volume profile: POC + value area (VAL/VAH)"
-ROW_SIZE = 2.0
-VA_PCT = 0.70
+ROW_SIZE = cfg.PROFILE["row_size"]   # single source of truth = strategy_config.PROFILE
+VA_PCT = cfg.PROFILE["va_pct"]
 
 
 def _sessions(et):

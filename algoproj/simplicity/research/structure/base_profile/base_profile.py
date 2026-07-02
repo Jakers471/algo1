@@ -36,9 +36,9 @@ import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 
-# --- tunable PARAMS (logged to the run ledger) ---
-BAND_MULT = 5.0    # base window range must stay <= BAND_MULT x the session's median bar-range (adaptive to vol)
-MIN_BARS = 8       # need >= this many bars to call it a base
+# --- tunable PARAMS: sourced from strategy_config.BASE (single source of truth; tune THERE) ---
+BAND_MULT = cfg.BASE["band_mult"]   # base window range <= BAND_MULT x the session's median bar-range
+MIN_BARS = cfg.BASE["min_bars"]     # need >= this many bars to call it a base
 
 
 def detect(hi, lo):

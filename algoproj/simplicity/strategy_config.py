@@ -99,6 +99,26 @@ MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None
 # The gate's day-vol regimes are FILTER_DAY_VOL["regimes"] above (there is no TRADEABLE_REGIMES).
 
 # ==================================================================================
+# GATE PARAMS  --  the tunable knobs for the profilers + gates.                [TUNING]
+# ==================================================================================
+# SINGLE SOURCE OF TRUTH for everything we tune. research reads these; a PROMOTED engine
+# module reads the SAME dicts -> identical behavior, clean promotion, nothing breaks. The
+# chart injects them into the manifest so replay/scoring stay in sync. Every run snapshots
+# them to the run ledger (research/runs). Tune HERE, re-run, compare in the ledger.
+PROFILE = {"row_size": 2.0, "va_pct": 0.70}          # volume_profile + base_profile binning
+BASE = {"band_mult": 5.0, "min_bars": 8}             # base detector (causal contraction scan)
+HTF = {"days": 7, "bins": 70, "min_bars": 200}       # trailing-week composite profiler
+SHAPE = {                                            # shape_filter "clean vs foggy" (NOTES F16/F17)
+    "weights": {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10},
+    "tight_peak": 40.0, "tight_hi": 85.0,            # peaked tightness curve on va_pct (F16)
+    "prom_den": 2.0,                                 # (prominence-1)/prom_den; prominence = POC / mean(VA bins) (F17)
+    "single_2": 0.5, "single_else": 0.15,            # single-peak score for 2 / 3+ peaks
+    "shape_ok": 50,                                  # score >= this = "clean" (threshold -- tune next)
+}
+ZONE = {"rr_min": 2.0, "tf_bands": [[0.25, "1m"], [0.60, "5m"], [None, "15m"]]}  # None = inf; height% -> entry TF
+FIB = {"edges": [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0001]}   # fib zones (edge test: no dir edge, F11/F13)
+
+# ==================================================================================
 # SETUP (arm/disarm) / ENTRY / EXIT  --  LIVE state machine (see ARCHITECTURE.md)  [TBD]
 # ==================================================================================
 # The strategy is a live, bar-by-bar range-breakout engine: a session-state spine + gates that

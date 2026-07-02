@@ -32,17 +32,14 @@ import runlog
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 VP = os.path.join(HERE, "..", "..", "structure", "volume_profile", "output", "volume_profile.json")
 
-# --- tunable PARAMS (every shape knob in one place; snapshotted to the run ledger each run) ---
-WEIGHTS = {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10}
-# tightness is a PEAKED curve on va_pct (VA width / range): a clean bell coil sits ~TIGHT_PEAK and
-# scores 1.0; it falls to 0 toward va_pct=0 (a spike-and-run, not a consolidation) AND toward
-# TIGHT_HI (scattered / bimodal). This fixes the old monotonic 1-va_pct/80, which perversely REWARDED
-# range expansion (breakout) and maxed out on spikes (NOTES F16).
-TIGHT_PEAK = 40.0                    # va_pct of a clean bell consolidation -> tightness = 1.0
-TIGHT_HI = 85.0                      # va_pct where tightness falls back to 0 (scattered/bimodal)
-PROM_DEN = 2.0                       # prominence = POC / mean(value-area bins); (prominence-1)/PROM_DEN -> peakc
-SINGLE_2, SINGLE_ELSE = 0.5, 0.15    # single-peak score for exactly-2-peaks / 3+-peaks
-SHAPE_OK = 50                        # score >= this = "clean"
+# --- tunable PARAMS: sourced from strategy_config.SHAPE (single source of truth; tune THERE) ---
+# tightness = a PEAKED curve on va_pct (clean bell coil ~TIGHT_PEAK -> 1.0, falls to 0 at va_pct=0
+# spike AND at TIGHT_HI scatter; NOTES F16). prominence = POC / mean(VA bins), breakout-robust (F17).
+WEIGHTS = cfg.SHAPE["weights"]
+TIGHT_PEAK, TIGHT_HI = cfg.SHAPE["tight_peak"], cfg.SHAPE["tight_hi"]
+PROM_DEN = cfg.SHAPE["prom_den"]
+SINGLE_2, SINGLE_ELSE = cfg.SHAPE["single_2"], cfg.SHAPE["single_else"]
+SHAPE_OK = cfg.SHAPE["shape_ok"]
 
 
 def score(p):
