@@ -348,3 +348,20 @@ top-of-tree layer (a `research/context/` or `research/gates/regime`) feeding set
 
 Also built (2026-07-02): `research/strategy_map/` — a decision-tree map of the whole strategy (the
 "see it on a tree/neural-net" request), generated from the pipeline, colored by build status.
+
+### F15 — composite profile = the SAME scoring machinery at a larger scale (refines F14) (2026-07-02)
+User sharpened the composite-profile half of F14, and it's the strongest part: combine a week (N
+sessions) of volume profiles into ONE composite profile, then run the SAME shape_filter + zone_calibration
+on it — a weekly clean/foggy score + weekly POC/VA + weekly R:R. Two powers fall out:
+  1. SCALE-DEPENDENT R:R. At the bottom (or top) edge of a massive weekly consolidation, the local stop
+     is still tight (nearby structure) but the ROOM is the whole weekly range -> R:R measured at the
+     composite scale is far larger than the same setup vs its session alone. = the LTF-tight-stop /
+     HTF-runway mechanism extended one level up. Where you sit within the composite range sets the R:R.
+  2. MULTI-SCALE CONFLUENCE = a bigger setup score. A setup clean/good at BOTH the session scale AND the
+     weekly composite scale is much higher-conviction. Same code composes across timeframes -> stack the
+     scores. This is real multi-timeframe volume-profile confluence, built from parts we already have.
+Still CONTEXT/GEOMETRY, not direction: "bear consolidation" is a structural label; the edge position gives
+R:R asymmetry BOTH ways (long has room up / breakdown short has room down) — we score geometry, never
+predict the break (thesis intact). Open design Qs: window (fixed week vs rolling vs adaptive), off-hours
+gaps (F9), and — per F13 — validate IN-CONTEXT (does the multi-scale score improve the WIRED setup's
+outcomes?), never in isolation. Deferred; this is how F14's composite-profile piece actually gets built.
