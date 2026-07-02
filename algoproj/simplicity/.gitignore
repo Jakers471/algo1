@@ -13,6 +13,9 @@ __pycache__/
 /research/session_anchors/output/
 # volume-profile output (regenerate: volume_profile.py)
 /research/volume_profile/output/
+# shape-filter + zone-calibration outputs (regenerate: shape_filter.py / zone_calibration.py / make_examples.py)
+/research/profile_shape_filter/output/
+/research/zone_calibration/output/
 
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet
