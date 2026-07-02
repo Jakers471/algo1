@@ -294,6 +294,7 @@ function redraw(){
       vpsvg.appendChild(_ln(x0,y,x1,y,c,mid?1.4:1,mid?0.9:0.5,mid?null:"1 3"));  // 0.5 solid bright, others dotted faint
     }
   }
+  if(selP&&typeof drawScaleBoxes==="function")drawScaleBoxes(selP);   // scale value-area boxes
   if(typeof drawNow==="function")drawNow();   // replay "now" line survives overlay redraws
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
@@ -318,11 +319,24 @@ document.getElementById("fibSess").innerHTML=SESSN.map(s=>
 document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[this.dataset.fs]=!fibSess[this.dataset.fs];this.classList.toggle("on",fibSess[this.dataset.fs]);redraw();});
 
 // ---- per-session MODULE cards (click a session -> crisp profile + timing + scores) ----
-let modOn=false, modPt={x:400,y:70};
+let modOn=false, modPt={x:400,y:70}, selP=null;
 const smodStack=document.getElementById("smodStack"), stackBody=document.getElementById("stackBody");
 document.getElementById("modBtn").onclick=function(){modOn=!modOn;this.classList.toggle("on",modOn);
-  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)smodStack.style.display="none";};
-document.getElementById("stackX").onclick=()=>{smodStack.style.display="none";replayStop();};
+  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn){smodStack.style.display="none";selP=null;redraw();}};
+document.getElementById("stackX").onclick=()=>{smodStack.style.display="none";replayStop();selP=null;redraw();};
+// draw each scale's value-area BOX on the chart (color-coded) when a session is selected
+function drawScaleBoxes(P){const ts=chart.timeScale();
+  const scales=[["#9a7cff",P.htf],["#4a9bff",{start:P.start,end:P.end,val:P.val,vah:P.vah,poc:P.poc}],["#e0a94a",P.base]];
+  for(const [c,s] of scales){if(!s)continue;
+    const x0=ts.timeToCoordinate(s.start),x1=ts.timeToCoordinate(s.end),yv=candle.priceToCoordinate(s.vah),yl=candle.priceToCoordinate(s.val);
+    if(x0==null||x1==null||yv==null||yl==null)continue;
+    const r=document.createElementNS(NSV,"rect");
+    r.setAttribute("x",Math.min(x0,x1));r.setAttribute("y",Math.min(yv,yl));
+    r.setAttribute("width",Math.max(1,Math.abs(x1-x0)));r.setAttribute("height",Math.max(1,Math.abs(yl-yv)));
+    r.setAttribute("fill",c);r.setAttribute("fill-opacity","0.05");r.setAttribute("stroke",c);
+    r.setAttribute("stroke-width","1.2");r.setAttribute("stroke-opacity","0.85");vpsvg.appendChild(r);
+    const yp=candle.priceToCoordinate(s.poc);if(yp!=null)vpsvg.appendChild(_ln(Math.min(x0,x1),yp,Math.max(x0,x1),yp,c,1,0.75));}
+}
 function _profAt(t){return (M.profiles||[]).find(P=>t>=P.start&&t<=P.end&&P.bins&&P.bins.length);}
 function fmtET(t){return _t12(t)+" "+new Date(t*1000).toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});}
 function fmtDur(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m`;}
@@ -395,7 +409,7 @@ function renderStack(P,rp){
   document.getElementById("stackSid").innerHTML=`${P.session} &middot; ${P.date}`;
   smodStack.style.display="flex";
 }
-function openModule(P){replayStop();renderStack(P,null);}
+function openModule(P){replayStop();selP=P;renderStack(P,null);redraw();}
 // ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----
 function computeProfile(bars){
   if(bars.length<2)return null;
