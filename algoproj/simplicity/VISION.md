@@ -27,6 +27,15 @@ engine and study it side-by-side vs the whole-session `volume_profile` on the ch
 module cards, then promote whichever reads better. Deferred deliberately — shifts the strategy more
 than we want yet. (NOTES F6.)
 
+**Open ingredient (deferred) — contextual EXTENSION (decay / overextension / healthy extension).**
+A new, untested input (like Fib): measure how far/fast price has stretched from its value/base and
+whether that's a *healthy* extension or an *overextension* (mean-revert risk), decaying over time.
+Context / sizing / bias — not a direction predictor. It rides on top of the **Session Archive**
+(`research/studies/session_archive`, NOTES F9): persist every session's full causal per-bar record
+(OHLC + volume + every measurement + %-gain), config-tagged and machine-readable — "replay written to
+disk" — then merge across days and mine it with analytics for patterns/rules. Deferred until the core
+gates exist to feed it. (NOTES F9.)
+
 
 
 vision re explaiend: 

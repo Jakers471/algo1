@@ -93,6 +93,23 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[R]` Config split DONE — `research_config.py` (run/testing: `ACTIVE_FILTER`, `STARTING_BALANCE`, dates) re-exports `strategy_config`; removed `ACTIVE_FILTER` + dead `TRADEABLE_REGIMES` from `strategy_config` (no duplication)
 - `[R]` Chart config selector (real | research) — top-bar toggle switches vol-day overlay + sidebar to that config
 - `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
+- `[ ]` **Reorg research to mirror engine layers** — `research/{structure,gates,setup,execution}/` for
+  stage-mapped components + `research/studies/` for pure discovery (buckets, rankings, edge tests, session
+  archive) + `research/chart/`. Makes promotion a 1:1 layer move (promotion path in ARCHITECTURE). Proposed
+  map: structure={volume_profile, session_anchors}; gates={volatility_filter, profile_shape_filter,
+  zone_calibration, fib_bias}; execution={entry_trigger, trailing_stops}; studies={volume_buckets,
+  volatility_ranking, session_break_stats}. Currently flat per-component.
+
+## Future / parked ideas (documented, deferred — don't get ahead)
+- `[ ]` **Session Archive** (`research/studies/session_archive`) — persist every session's full causal
+  per-bar record (OHLC + volume + every measurement + %-gain), sequenced/scored/machine-readable and
+  **tagged with the research_config it ran under** = "replay written to disk"; merge per day → mine with
+  `analyze_*.py` for geometry/scoring patterns / candidate rules. Open Q: extended/off-hours. (NOTES F9, ARCHITECTURE.)
+- `[ ]` **Extension context** (`research/gates/extension_context`) — decay / overextension / healthy-extension
+  measurement (how far/fast price stretched from value; mean-revert risk), a NEW untested context/bias
+  ingredient (like fib). Rides on the Session Archive. (NOTES F9, VISION.)
+- `[ ]` **base_profile** — profile the detected tight base (leg+base) vs whole session, side-by-side study, promote the better. (NOTES F6.)
+- `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
 
 ---
 

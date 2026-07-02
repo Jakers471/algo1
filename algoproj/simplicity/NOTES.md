@@ -254,3 +254,26 @@ through** — ARM / DISARM, setup qualified/rejected, validations/invalidations 
 session. Those gates (`setup_arm` etc.) don't exist yet, so v1 only shows the profile/shape/zone
 recompute; the state-transition panel layers onto this same card once the gates are built. This IS the
 replay "modular state panel" from ARCHITECTURE — the session module card is its seed.
+
+### F9 — Session Archive + extension context (FUTURE — documented, not built) (2026-07-02)
+**The idea (user):** persist, per session, the FULL causal time-series the replay tool computes — for
+every bar: timestamp, OHLC, volume, PLUS every measurement made at that bar (running POC/VA, shape
+score + components, zone geometry/R:R, % gain in-session so far, live hi/lo, time-in/until) — all
+sequenced, timed, scored, machine-readable, and TAGGED with the exact `research_config` + settings it
+ran under. It's "replay, written to disk" — the machine-readable twin of the chart replay: an entire
+session stepped through, but saved as code instead of watched.
+Then **merge time**: bucket per day, stitch sessions across history → a queryable substrate. Run
+analytics scripts on it to mine geometry/scoring patterns and maybe **derive more rules** (or confirm we
+don't need them — "maybe we notice something interesting"). Open question: how to treat extended / off
+hours (the gap between sessions).
+**New signal it enables — the contextual EXTENSION element:** decay / overextension / healthy-extension.
+How far/fast has price stretched from its value/base, and is that a *healthy* trend extension or an
+*overextension* (mean-revert risk)? — decaying over time. A NEW, UNTESTED ingredient (like `fib_bias`):
+a context / sizing / bias input, NOT a direction predictor. It would be one of the per-bar measurements
+recorded in the archive, so it's minable alongside everything else.
+**Where it fits:** `research/studies/session_archive/` — a builder (`build_archive.py`) that reuses the
+engine components run INCREMENTALLY (same causal math as replay) → structured parquet (one row per bar,
+keyed by sid + bar index) + a session-level summary table, config-tagged; then `analyze_*.py` on top.
+The extension signal gets its own component (`research/gates/extension_context/`) once explored.
+**What it adds to the strategy:** a data substrate for pattern discovery + a new context measurement.
+Deferred deliberately (don't get ahead) — revisit after the core gates exist and can feed it.
