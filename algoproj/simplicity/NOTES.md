@@ -311,3 +311,17 @@ seeded (git 4db5fda78): shape median 39 / ok 21.1%; zone median R:R 1.85 / ok 44
 spread 4.6pts. This is per-RUN provenance; the future session_archive (F9) is the per-BAR record —
 together nothing is lost. How the tuning loop works: run (logs baseline) → change a PARAM → run with a
 note → `analyze_runs`.
+
+### F13 — the fib_bias isolated test is measuring an arbitrary construct (methodology) (2026-07-02)
+User's correction, and it's right: the F11 test bolts fib to endpoints that are essentially made-up —
+"where the session CLOSE sits in the range" -> "next session's open->close direction". Those points
+have no structural relationship to the strategy's real mechanics (an armed range-breakout setup: entry
+at a node, stop at the range/VA edge, R:R geometry, aggressive trail). So F11's "no directional edge"
+is NOT a verdict that fib is worthless — it's a **diagnostic** that fib-detached-from-a-setup predicts
+nothing. Exactly the project's standing lesson: *a component alone is meaningless; coherence is in the
+relationship; isolated components test flat — diagnostics, not verdicts* (the 32k lone-pole dump).
+The TRUE test of fib bias only exists IN CONTEXT — once `setup_arm` + entry exist, ask "does the fib
+reading improve THIS setup's R:R outcome / entry quality?", not "does fib position predict next-session
+direction." Same caution applies to shape/zone isolated numbers: judge the system *fully wired*. So:
+DO NOT drop fib on the strength of F11; keep it as chart geometry and defer any bias judgment to
+in-context testing after the setup exists. (This is also why we hunt R:R geometry, not direction.)

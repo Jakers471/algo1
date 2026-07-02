@@ -54,8 +54,10 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`
   (`calibrate()` + shared gallery scorecard built; PROVISIONAL geometry, refine before promoting)
 - `[R]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable).
-  **Edge test done (2026-07-02): NO directional edge** — P(next up) per fib zone 51.8-56.4% vs 54.3% base
-  (lifts 0.95-1.04, spread 4.6pts, none >2σ). Fib is NOT a direction gate; overlay stays as geometry only. `research/gates/fib_bias` (NOTES F11)
+  **Isolated test (2026-07-02): no signal in isolation** — P(next up) per fib zone 51.8-56.4% vs 54.3% base
+  (spread 4.6pts, none >2σ). **But this is a DIAGNOSTIC, not a verdict (NOTES F13):** it bolts fib to an
+  arbitrary construct (close-position → next-session dir) with no tie to a real setup. Do NOT drop fib —
+  keep as chart geometry; true test is IN-CONTEXT once setup_arm/entry exist. `research/gates/fib_bias` (F11/F13)
 
 ## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
 *(see `ARCHITECTURE.md` "Runtime model — LIVE session state machine". Everything updates on
