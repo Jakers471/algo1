@@ -15,6 +15,18 @@ trailing. The edge is confluence + R:R geometry (a range breakout), not predicti
 `data_feed → session_state → vol_filter → session_anchors → volume_profile → shape_filter →
 zone_calibration → fib_bias → setup_arm → entry → risk → execution → trailing_stop`.
 
+**Layout** (organized by the design's layers; the runner discovers a stage's module anywhere under `engine/`):
+```
+engine/
+  run_simplicity.py · run_engine.bat · README   (the runner + docs)
+  feed/       data_feed                          (bars in)
+  state/      session_state                      (the spine)
+  structure/  session_anchors · volume_profile   (market structure)
+  gates/      vol_filter (+ future shape_filter · zone_calibration · fib_bias)
+  setup/      (future: setup_arm — the arm/disarm engine)
+  execution/  (future: entry · risk · execution · trailing_stop)
+```
+
 **Promotion rule (hard):** a piece enters `engine/` ONLY after it is built and proven in
 `research/` **and the user explicitly says to move it.** Claude never promotes on its own —
 **the user decides when.** research = discover; engine = execute. Every promotion is logged in

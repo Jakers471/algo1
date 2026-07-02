@@ -18,9 +18,13 @@ import sys
 import numpy as np
 import pandas as pd
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)                       # engine/  (for data_feed)
-sys.path.insert(0, os.path.dirname(HERE))      # simplicity/  (for strategy_config)
+# --- engine path bootstrap: flat imports work from any engine/ subfolder ---
+_E = os.path.dirname(os.path.abspath(__file__))
+while os.path.basename(_E) != "engine":
+    _E = os.path.dirname(_E)
+for _d in [_E, os.path.dirname(_E)] + [os.path.join(_E, x) for x in os.listdir(_E) if os.path.isdir(os.path.join(_E, x))]:
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
 import strategy_config as cfg
 import data_feed
 

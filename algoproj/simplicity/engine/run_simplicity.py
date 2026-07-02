@@ -17,6 +17,7 @@ error + traceback, missing interface) and the config TBD slots.
 import os
 import re
 import sys
+import glob
 import argparse
 import importlib.util
 from datetime import datetime
@@ -76,9 +77,10 @@ class Log:
 
 def _check(module):
     """Inspect engine/<module>.py: ('missing'|'error'|'wired', detail)."""
-    p = os.path.join(ENGINE, module + ".py")
-    if not os.path.exists(p):
-        return "missing", f"engine/{module}.py not found"
+    matches = glob.glob(os.path.join(ENGINE, "**", module + ".py"), recursive=True)
+    if not matches:
+        return "missing", f"{module}.py not found under engine/"
+    p = matches[0]
     try:
         spec = importlib.util.spec_from_file_location("engine_" + module, p)
         m = importlib.util.module_from_spec(spec)

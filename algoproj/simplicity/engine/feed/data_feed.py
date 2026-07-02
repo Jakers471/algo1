@@ -14,7 +14,13 @@ import os
 import sys
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # simplicity/
+# --- engine path bootstrap: flat imports work from any engine/ subfolder ---
+_E = os.path.dirname(os.path.abspath(__file__))
+while os.path.basename(_E) != "engine":
+    _E = os.path.dirname(_E)
+for _d in [_E, os.path.dirname(_E)] + [os.path.join(_E, x) for x in os.listdir(_E) if os.path.isdir(os.path.join(_E, x))]:
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
 import strategy_config as cfg
 
 DESCRIBE = "loads NQ/ES clean parquets (tz-aware UTC) from strategy_config paths"

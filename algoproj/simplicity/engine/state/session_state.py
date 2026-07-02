@@ -26,9 +26,13 @@ import sys
 import numpy as np
 import pandas as pd
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)                       # engine/  (data_feed)
-sys.path.insert(0, os.path.dirname(HERE))      # simplicity/  (strategy_config)
+# --- engine path bootstrap: flat imports work from any engine/ subfolder ---
+_E = os.path.dirname(os.path.abspath(__file__))
+while os.path.basename(_E) != "engine":
+    _E = os.path.dirname(_E)
+for _d in [_E, os.path.dirname(_E)] + [os.path.join(_E, x) for x in os.listdir(_E) if os.path.isdir(os.path.join(_E, x))]:
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
 import strategy_config as cfg
 import data_feed
 
@@ -102,7 +106,7 @@ def check():
     r = frame(data_feed.load("5m").tail(2000)).iloc[-1]
     tin = int(r["time_in_sec"]) // 60
     nx = r["next_session"] if pd.notna(r["next_session"]) else "(end of data)"
-    tu = f"{int(r['time_until_sec']) // 60}m" if pd.notna(r["time_until_sec"]) else "—"
+    tu = f"{int(r['time_until_sec']) // 60}m" if pd.notna(r["time_until_sec"]) else "n/a"
     return f"state machine live: in {r['session']} ({tin}m elapsed), next {nx} in {tu}; hi/lo + timing tracked"
 
 
