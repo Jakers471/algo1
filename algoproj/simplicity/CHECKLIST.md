@@ -52,6 +52,11 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
   `make_compare.py` shows session vs base. Finding: base detected in 78% of sessions; on trend days session
   reads foggy but base reads clean (shape +29..+34) with risk 1R ~3-4x tighter. `research/structure/base_profile`.
   **Promote-pending — you decide** (replace / complement per F15; validate in-context F13). (NOTES F6/F18)
+- `[~]` **`htf_profile` BUILT (3rd scale)** — trailing-week composite ending at session open; same dict →
+  same gates. The three profilers (base ⊂ session ⊂ HTF) run together on the chart's 3-card module stack,
+  replay-all (session+base live, HTF static). `research/structure/htf_profile`. Promote-pending. (NOTES F19)
+- `[R]` **All gate params centralized in `strategy_config`** (PROFILE/SHAPE/ZONE/BASE/HTF/FIB) — research +
+  engine + chart JS all read them; ledger captures them; tune in one file → clean promotion, nothing breaks. (NOTES F20)
 
 ## Phase 4 — Setup calibration & bias
 - `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`
@@ -130,7 +135,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` **Multi-scale profiler stack** (base ⊂ session ⊂ HTF) — run `base_profile` + `volume_profile` + a
   future HTF composite profiler in parallel (same profile-dict seam, same gates). Each scale plays a role:
   base = tight stop (1R), session = zone/first target, HTF = runway + context. Confluence when they agree.
-  base+session already run together on the chart card; HTF composite is the missing third. (NOTES F19)
+  **All three built + run together on the chart's 3-card stack (replay-all).** Next: combine the scores
+  into a multi-scale confluence input for setup_arm. (NOTES F19)
+- `[ ]` **Bar-aggregation engine → best entry timeframe** — intercept X source TFs, aggregate to Y target
+  TFs, decipher which timeframes line up best for R:R + scores (the "which TF to enter on" decision from the
+  structure's own durations, F21). Deep dive later.
 - `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
 
 ---

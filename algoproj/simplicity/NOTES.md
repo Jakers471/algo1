@@ -429,3 +429,23 @@ context, NOT direction (scales give R:R asymmetry + conviction, not a direction 
 IN-CONTEXT (F13), never in isolation. Architecture: same engine, multiple PROFILER WINDOWS running in
 parallel, each emitting a profile dict -> scored -> combined. base+session already run together on the
 chart card; the HTF composite profiler is the missing third (deferred).
+
+### F20 — all gate params centralized in strategy_config (source of truth) (2026-07-02)
+Per user (stressed): config must be on par with everything we tune AND promote cleanly to engine without
+breaking. Moved every tunable knob into strategy_config: PROFILE (row/va), SHAPE (weights, tight_peak/hi,
+prom_den, single, shape_ok), ZONE (rr_min, tf_bands), BASE (band_mult, min_bars), HTF (days, bins), FIB
+(edges). research modules + the promoted engine volume_profile READ these dicts; a future promoted engine
+gate reads the SAME dict -> identical behavior, clean promotion, nothing breaks. runlog.config_snapshot
+captures them (ledger config == what produced the run). build_chart_data injects them into the manifest;
+the chart JS (computeShape/Zone/Base) reads them so REPLAY/scoring stay in sync with config. Tune in ONE
+file, re-run, compare in the ledger.
+
+### F21 — durations -> best entry timeframe (needs a bar-aggregation engine) (FUTURE) (2026-07-02)
+User's idea: the DURATIONS we measure per scale (base ~min-hrs, session ~hrs, HTF ~week) are exactly what
+we need to pick the most geometrically-concise TIMEFRAME to enter on. Fully building it needs a BAR-
+AGGREGATION ENGINE: intercept X source timeframes, aggregate to Y target timeframes, then let the engine
+decipher which timeframes line up best for R:R + scores -> the "which timeframe should we enter on"
+decision, derived from the structure's own dimensions instead of a fixed entry TF. Ties into
+zone_calibration (already maps height%->entry TF crudely) + the multi-scale stack (F19). Deep dive later,
+not rushing -- just captured. Likely a new tool (research/tools/bar_agg or an engine/feed extension)
+feeding the profilers at chosen TFs.

@@ -22,8 +22,10 @@ N = {
  "regime":          ("regime / context", "chained-session bias (FUTURE)", 530, 54, 260, "planned"),
  "data_feed":       ("data_feed", "bars in", 360, 150, 160, "wired"),
  "session_state":   ("session_state", "the spine: live session clock + hi/lo", 710, 150, 220, "wired"),
- "session_anchors": ("session_anchors", "session hi/lo + breach", 360, 250, 190, "wired"),
- "volume_profile":  ("volume_profile", "POC + value area (the zone)", 710, 250, 210, "wired"),
+ "session_anchors": ("session_anchors", "session hi/lo + breach", 150, 250, 172, "wired"),
+ "htf_profile":     ("htf_profile", "week composite (HTF)", 358, 250, 178, "research"),
+ "volume_profile":  ("volume_profile", "session profile (MTF)", 585, 250, 185, "wired"),
+ "base_profile":    ("base_profile", "the coil (LTF)", 812, 250, 168, "research"),
  "vol_filter":      ("vol_filter", "WHEN gate", 150, 362, 150, "wired"),
  "shape_filter":    ("shape_filter", "clean vs foggy", 375, 362, 160, "research"),
  "zone_calibration":("zone_calibration", "R:R geometry", 610, 362, 170, "research"),
@@ -37,9 +39,11 @@ N = {
 NH = 56
 E = [  # (from, to, dashed?)
  ("data_feed", "session_state", 0), ("session_state", "session_anchors", 0),
- ("session_state", "volume_profile", 0), ("data_feed", "vol_filter", 0),
- ("volume_profile", "shape_filter", 0), ("volume_profile", "zone_calibration", 0),
- ("volume_profile", "fib_bias", 0), ("session_anchors", "zone_calibration", 0),
+ ("session_state", "htf_profile", 0), ("session_state", "volume_profile", 0),
+ ("session_state", "base_profile", 0), ("data_feed", "vol_filter", 0),
+ ("base_profile", "shape_filter", 0), ("volume_profile", "shape_filter", 0),
+ ("volume_profile", "zone_calibration", 0), ("htf_profile", "zone_calibration", 0),
+ ("volume_profile", "fib_bias", 0),
  ("vol_filter", "setup_arm", 0), ("shape_filter", "setup_arm", 0),
  ("zone_calibration", "setup_arm", 0), ("fib_bias", "setup_arm", 0),
  ("regime", "setup_arm", 1),
@@ -92,10 +96,17 @@ resting orders; execution manages the trade. Edge = feeds-into. Dashed = the fut
     <path d="M0,0 L7,3 L0,6 Z" fill="#5a6472"/></marker></defs>
   {edges}{nodes}
 </svg>
-<p class="note"><b>Reading it:</b> the edge is confluence + R:R geometry, not prediction. <code>fib_bias</code> is amber
-(geometry only — no directional edge in isolation, NOTES F11/F13). <code>shape_filter</code> / <code>zone_calibration</code>
-are provisional in research (blue). The <b>dashed regime/context node</b> is the big future idea — a top-of-tree
-bias built by chaining session buckets (NOTES F14) — it would color which setups arm and their R:R, NOT call direction.</p>
+<p class="note"><b>Reading it — jobs & how they slide together.</b> <code>data_feed</code>→<code>session_state</code> is the
+spine (the live clock + hi/lo everything reads). The <b>three profilers are the SAME machinery at nested scales</b>
+(base ⊂ session ⊂ HTF week) — each emits the same profile-dict so the gates score all three unchanged, and each plays a
+different role in a trade: <b>base = the tight stop (1R)</b>, <b>session = the zone / first target</b>, <b>HTF = the
+runway (big target) + regime context</b>. The <b>gates</b> score those profiles: <code>vol_filter</code>=WHEN,
+<code>shape_filter</code>=clean-vs-foggy quality, <code>zone_calibration</code>=R:R geometry; <code>fib_bias</code> is
+amber (geometry only, no directional edge — F11/F13). All gates converge into <code>setup_arm</code> (the confluence
+engine: ARM/DISARM resting orders), then <code>entry→risk→execution→trailing</code> manage the trade. The <b>dashed
+regime node</b> is the future top-of-tree bias (chained sessions, F14/F15) — it colors which setups arm and their R:R,
+NOT direction. The edge is <b>confluence + R:R geometry, never a direction call</b>; every gate is a diagnostic until
+judged in-context on the wired system (F13). All knobs live in <code>strategy_config</code>; every run is logged to the ledger.</p>
 </body></html>'''
     out = os.path.join(HERE, "strategy_map.html")
     open(out, "w", encoding="utf-8").write(html)

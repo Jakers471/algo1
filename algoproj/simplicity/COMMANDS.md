@@ -32,6 +32,7 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 | `py research/structure/volume_profile/volume_profile.py` | per-session Volume Profile (POC + value area) |
 | `py research/structure/base_profile/base_profile.py` | profile the detected consolidation BASE (parallel profiler) |
 | `py research/structure/base_profile/make_compare.py` | side-by-side gallery: whole session vs base (same gates) |
+| `py research/structure/htf_profile/htf_profile.py` | trailing-week composite (HTF) profile — the third scale |
 | `py research/structure/session_anchors/session_anchors.py` | per-session high/low/open anchors + breach (chart overlay) |
 | **gates** | |
 | `py research/gates/volatility_filter/vol_filter.py` | the vol gate: regime thresholds + tradeable-day counts |
