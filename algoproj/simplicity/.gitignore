@@ -16,6 +16,8 @@ __pycache__/
 # shape-filter + zone-calibration outputs (regenerate: shape_filter.py / zone_calibration.py / make_examples.py)
 /research/gates/profile_shape_filter/output/
 /research/gates/zone_calibration/output/
+# fib_bias edge-test output (regenerate: fib_bias.py)
+/research/gates/fib_bias/output/
 
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet

@@ -39,8 +39,9 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 
 ## Phase 3 — Volume Profile & Value Area (the zone)
 - `[R]` Volume Profile per session (bounded by session high↔low; real Up+Down volume) — `research/structure/volume_profile`
-- `[R]` **Volume spread across each bar's H-L (not close-only)** — fixed 2026-07-02: close-only let a
-  single high-volume bar steal the POC from a diffuse base (NOTES F5). Engine copy still to re-promote.
+- `[E]` **Volume spread across each bar's H-L (not close-only)** — fixed 2026-07-02: close-only let a
+  single high-volume bar steal the POC from a diffuse base (NOTES F5). **Re-promoted to
+  `engine/structure/volume_profile.py` 2026-07-02** (median VA now 47%); research + engine in sync.
 - `[R]` POC + Value Area = the consolidation zone (VAL/VAH, 70%)
 - `[R]` Measure the zone: duration (bars) + height (%) + VA/range%
 - `[R]` Chart overlay: POC (solid) + VAH/VAL (dashed) per session, color-coded (Indicators `profile` toggle)
@@ -52,7 +53,9 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 ## Phase 4 — Setup calibration & bias
 - `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`
   (`calibrate()` + shared gallery scorecard built; PROVISIONAL geometry, refine before promoting)
-- `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/gates/fib_bias`
+- `[R]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable).
+  **Edge test done (2026-07-02): NO directional edge** — P(next up) per fib zone 51.8-56.4% vs 54.3% base
+  (lifts 0.95-1.04, spread 4.6pts, none >2σ). Fib is NOT a direction gate; overlay stays as geometry only. `research/gates/fib_bias` (NOTES F11)
 
 ## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
 *(see `ARCHITECTURE.md` "Runtime model — LIVE session state machine". Everything updates on
@@ -122,3 +125,4 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 | session_anchors | 2026-07-02 | `research/structure/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach + boundaries; WIRED 3/10) |
 | volume_profile | 2026-07-02 | `research/structure/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
 | session_state | 2026-07-02 | built directly in engine (the spine) → `engine/session_state.py` (per-bar causal session state; WIRED 5/13) |
+| volume_profile (H-L fix) | 2026-07-02 | re-promoted `research/structure/volume_profile` → `engine/structure/volume_profile.py` (spread volume across bar H-L, not close-only; NOTES F5) |

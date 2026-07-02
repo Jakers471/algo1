@@ -217,8 +217,8 @@ third (a tight base after an impulse down), yet POC read at the TOP (pos 0.95), 
 scored "foggy 11/100". Fix: distribute each bar's volume across every bin its **[low, high]** spans
 (overlap-weighted). POC then lands where volume truly is (0.16, the base), VA tightens to 56%.
 Effect on 2020-2025 gate survival: clean+R:R **9.4% → 14.3%**; NY R:R-ok **32.7% → 54.1%**; POC-vs-mid
-back to ~0.50 (balanced). The pre-fix survival numbers are void. `engine/structure/volume_profile.py`
-still has the close-only bug — needs the same fix + re-promotion (user decides).
+back to ~0.50 (balanced). The pre-fix survival numbers are void. **Re-promoted to
+`engine/structure/volume_profile.py` 2026-07-02** — research + engine now in sync.
 
 ### F6 — the zone is the BASE, not the whole session (future parallel study) (2026-07-02)
 `2024-07-11` exposed a deeper point: profiling the **whole session** lumps an impulse leg + a tight
@@ -289,3 +289,13 @@ bootstraps (+1 dirname to reach simplicity/), cross-layer data paths, `build_cha
 `.gitignore`, `strategy_config.BUCKETS_OUT`, and every MD path reference were updated; each script was
 re-run to verify. Added `research/README.md` (the layer map) + a README per layer. See ARCHITECTURE
 "Promotion path".
+
+### F11 — fib_bias: NO directional edge (2026-07-02)
+Tested the UNTESTED VISION ingredient honestly (like session_break_stats): for each session, bucket
+its close by fib position in range, measure the NEXT session's direction vs base rate. 7,764 sessions
+(era >= 2015): base P(next up) = 54.3%; per-zone P(next up) = 51.8-56.4% (lifts 0.95-1.04), spread
+max-min just 4.6pts, NO zone beyond 2-sigma. **Fib carries no directional edge on NQ** — dog that
+didn't bark, consistent with the core thesis (direction isn't predictable; hunt R:R geometry). So
+`setup_arm` gets NO fib direction gate; the fib chart overlay stays as geometry-only visual reference.
+Gates confirmed for setup_arm so far: shape_filter (quality) + zone_calibration (R:R) + vol/session
+timing. Direction stays unpredicted by design.

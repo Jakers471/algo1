@@ -2,8 +2,10 @@
 engine/volume_profile — per-session Volume Profile (POC + Value Area). Promoted 2026-07-02.
 
 Solidified from research/volume_profile. Self-contained via engine/data_feed. One profile per
-session (Asia/London/NY), bounded by that session's high<->low, real Up+Down volume binned by
-close at ROW_SIZE points/row -> POC (balance) + Value Area (VAL/VAH, VA_PCT of volume). Returns
+session (Asia/London/NY), bounded by that session's high<->low, real Up+Down volume spread across
+each bar's HIGH-LOW range (overlap-weighted, NOT dumped on the close -- close-only lets one
+high-volume bar steal the POC from a diffuse base; research NOTES F5) at ROW_SIZE points/row ->
+POC (balance) + Value Area (VAL/VAH, VA_PCT of volume). Returns
 machine-usable records the strategy consumes; the chart is just a view of these numbers.
 
     from volume_profile import compute, check
@@ -39,6 +41,22 @@ def _sessions(et):
     lab[(mod >= 570) & (mod < 960)] = "newyork"
     lab[(mod >= 960) & (mod < 1080)] = "close"
     return lab
+
+
+def _spread_volume(low, high, vol, edges):
+    """Distribute each bar's volume across the bins its [low, high] spans (overlap-weighted).
+    A bar's volume belongs to every price it traded, not just the close (research NOTES F5)."""
+    nb = len(edges) - 1
+    centers = (edges[:-1] + edges[1:]) / 2
+    vbin = np.zeros(nb)
+    for lo, hi, v in zip(low, high, vol):
+        m = (centers >= lo) & (centers <= hi)
+        k = int(m.sum())
+        if k == 0:
+            vbin[min(nb - 1, max(0, int(np.searchsorted(edges, (lo + hi) / 2) - 1)))] += v
+        else:
+            vbin[m] += v / k
+    return vbin
 
 
 def _value_area(vbin, edges):
@@ -82,7 +100,7 @@ def compute(df=None, tail=None):
             continue
         nb = max(3, int(round((sh - sl) / ROW_SIZE)))
         edges = np.linspace(sl, sh, nb + 1)
-        vbin, _ = np.histogram(g["close"].to_numpy(), bins=edges, weights=g["vol"].to_numpy())
+        vbin = _spread_volume(g["low"].to_numpy(), g["high"].to_numpy(), g["vol"].to_numpy(), edges)
         va = _value_area(vbin, edges)
         if va is None:
             continue
