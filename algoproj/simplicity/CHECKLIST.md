@@ -39,13 +39,19 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 
 ## Phase 3 — Volume Profile & Value Area (the zone)
 - `[R]` Volume Profile per session (bounded by session high↔low; real Up+Down volume) — `research/volume_profile`
+- `[R]` **Volume spread across each bar's H-L (not close-only)** — fixed 2026-07-02: close-only let a
+  single high-volume bar steal the POC from a diffuse base (NOTES F5). Engine copy still to re-promote.
 - `[R]` POC + Value Area = the consolidation zone (VAL/VAH, 70%)
 - `[R]` Measure the zone: duration (bars) + height (%) + VA/range%
 - `[R]` Chart overlay: POC (solid) + VAH/VAL (dashed) per session, color-coded (Indicators `profile` toggle)
-- `[ ]` Profile shape / tightness rejection — skip scattered / multi-peaked days — `research/profile_shape_filter`
+- `[~]` Profile shape / tightness rejection — `research/profile_shape_filter`: `score()` (0-100) + visual
+  gallery (`make_examples.py`) built; PROVISIONAL metrics/threshold, refine before promoting
+- `[ ]` **FUTURE / parallel:** `base_profile` — profile the detected tight BASE (leg+base), not the whole
+  session; study side-by-side vs `volume_profile`, promote whichever reads better (NOTES F6). Deferred.
 
 ## Phase 4 — Setup calibration & bias
-- `[ ]` Height% / duration → entry timeframe + stop distance / R:R — `research/zone_calibration`
+- `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/zone_calibration`
+  (`calibrate()` + shared gallery scorecard built; PROVISIONAL geometry, refine before promoting)
 - `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/fib_bias`
 
 ## Phase 5 — Live engine spine (state machine + arm/disarm)  ← the runtime model
@@ -65,7 +71,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/trailing_stops`
 
 ## Phase 7 — Measurement & backtest (FUTURE — blocked on Phases 5-6)
-- `[ ]` **Chart REPLAY mode** — scrub back + step forward bar-by-bar; a **modular state panel** shows the running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it). The engine's visual frontend = the backtest unfolding (same causal engine) — `research/chart`
+- `[R]` **Per-session module cards** — Indicators `modules` on, click a session (NQ 1m/5m) → floating card
+  with that session's crisp mini volume-profile + timing (open/close/duration/next+gap) + shape/R:R scores.
+  Solves crisp-VP-on-chart + session hand-off view; = the seed of the replay state panel — `research/chart`
+- `[ ]` **Chart REPLAY mode** — scrub back + step forward bar-by-bar; the **modular state panel** (grown from
+  the session module card) shows the running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it). The engine's visual frontend = the backtest unfolding (same causal engine) — `research/chart`
 - `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
 - `[ ]` Equity curve (+ drawdown)
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)

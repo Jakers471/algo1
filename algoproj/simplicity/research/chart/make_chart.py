@@ -69,6 +69,18 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 .loaded .dot{width:8px;height:8px;border-radius:50%;background:var(--up);
 box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.smod{position:absolute;z-index:9;top:52px;left:52px;width:604px;background:rgba(20,22,27,.985);
+border:1px solid var(--ring);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.6);display:none}
+.smod-h{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ring);cursor:move;user-select:none}
+.smod-h b{font-weight:600}.smod-h .mut{color:var(--mut);font-size:11px}
+.smod-tag{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:11px;border:1px solid}
+.smod-x{margin-left:auto;cursor:pointer;color:var(--mut);font-size:16px;line-height:1;padding:0 3px}.smod-x:hover{color:var(--ink)}
+.smod-svg{padding:6px 8px 2px}.smod-svg svg{display:block;width:100%;height:auto}
+.smod-cols{display:flex;gap:14px;padding:4px 14px 9px}
+.mcol{flex:1}.mttl{color:var(--mut);font-size:10px;letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px}
+.mr{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.mr span{color:var(--mut)}.mr b{font-weight:600}
+.smod-v{padding:7px 14px;border-top:1px solid var(--ring);color:var(--ink2);font-size:11.5px}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span style="color:var(--mut);font-weight:400">chart</span></h1>
@@ -80,6 +92,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
   <div class="chartwrap">
     <div id="chart"></div>
     <svg id="vpsvg" class="vpsvg"></svg>
+    <div class="smod" id="smod"></div>
     <div class="ind" id="ind">
       <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
       <div class="ind-b" id="indBody">
@@ -89,6 +102,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span id="timesSess"></span></div>
         <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span id="vpSess"></span></div>
         <div class="ind-row"><span class="ind-lab">fib</span><button id="fibBtn">off</button><span id="fibSess"></span></div>
+        <div class="ind-row"><span class="ind-lab">modules</span><button id="modBtn">off</button><span class="ind-note">click a session &rarr; card</span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
     </div>
@@ -259,6 +273,73 @@ document.getElementById("fibBtn").onclick=function(){fibOn=!fibOn;this.classList
 document.getElementById("fibSess").innerHTML=SESSN.map(s=>
   `<button data-fs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[this.dataset.fs]=!fibSess[this.dataset.fs];this.classList.toggle("on",fibSess[this.dataset.fs]);redraw();});
+
+// ---- per-session MODULE cards (click a session -> crisp profile + timing + scores) ----
+let modOn=false, modPt={x:400,y:70};
+const smod=document.getElementById("smod");
+document.getElementById("modBtn").onclick=function(){modOn=!modOn;this.classList.toggle("on",modOn);
+  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)smod.style.display="none";};
+function _profAt(t){return (M.profiles||[]).find(P=>t>=P.start&&t<=P.end&&P.bins&&P.bins.length);}
+function fmtET(t){return _t12(t)+" "+new Date(t*1000).toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});}
+function fmtDur(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m`;}
+function mrow(k,v,c){return `<div class="mr"><span>${k}</span><b style="${c?`color:${c}`:''}">${v}</b></div>`;}
+function moduleSVG(P,cs){
+  const CW=588,CH=248, CL=44,CR=356,CT=14,CB=228, VPR=536,VPW=150, rs=2.0;
+  const lo=P.low,hi=P.high, pad=Math.max((hi-lo)*0.08,1), tp=hi+pad, bp=lo-pad;
+  const Y=p=>CT+(tp-p)/(tp-bp)*(CB-CT), barH=Math.max(1.4,(CB-CT)*rs/(tp-bp)-1);
+  let e=`<rect x="${CL}" y="${Y(P.vah).toFixed(1)}" width="${VPR-CL}" height="${Math.max(1,Y(P.val)-Y(P.vah)).toFixed(1)}" fill="#fff" fill-opacity="0.04"/>`;
+  for(const [p,c,dash,lab] of [[P.high,"#59626e","","H"],[P.low,"#59626e","","L"],[P.vah,"#8a94a6","4 3","VAH"],[P.val,"#8a94a6","4 3","VAL"],[P.poc,"#e34948","","POC"]]){
+    const yy=Y(p).toFixed(1);
+    e+=`<line x1="${CL}" y1="${yy}" x2="${VPR}" y2="${yy}" stroke="${c}" stroke-width="${lab=="POC"?1.3:1}"${dash?` stroke-dasharray="${dash}"`:""}/>`;
+    e+=`<text x="${VPR+4}" y="${(+yy+3).toFixed(1)}" fill="${c}" font-size="9.5">${lab} ${p.toFixed(0)}</text>`;}
+  const n=cs.length, step=(CR-CL)/Math.max(n,1), bw=Math.min(8,step*0.7);
+  cs.forEach((r,i)=>{const x=CL+(i+0.5)*step, col=r.close>=r.open?"#199e70":"#e66767";
+    e+=`<line x1="${x.toFixed(1)}" y1="${Y(r.high).toFixed(1)}" x2="${x.toFixed(1)}" y2="${Y(r.low).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const yo=Y(r.open),yc=Y(r.close);
+    e+=`<rect x="${(x-bw/2).toFixed(1)}" y="${Math.min(yo,yc).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(yc-yo)).toFixed(1)}" fill="${col}"/>`;});
+  const mx=Math.max(...P.bins.map(b=>b.v))||1;
+  for(const b of P.bins){const w=b.v/mx*VPW, col=Math.abs(b.p-P.poc)<rs/2?"#e34948":(b.p<=P.poc?"#3f8cff":"#e08a3c");
+    e+=`<rect x="${(VPR-w).toFixed(1)}" y="${(Y(b.p)-barH/2).toFixed(1)}" width="${w.toFixed(1)}" height="${barH.toFixed(1)}" fill="${col}" fill-opacity="${(0.3+0.65*(b.v/mx)).toFixed(2)}"/>`;}
+  return `<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="xMidYMid meet">${e}</svg>`;
+}
+function openModule(P){
+  const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+  const s=P.shape||{}, z=P.zone||{}, col=SC[P.session]||"#888", okc=v=>v?"var(--up)":"var(--dn)";
+  const gap=P.next_open!=null?P.next_open-P.end:null;
+  const timing=mrow("opened",fmtET(P.start))+mrow("closed",fmtET(P.end))+mrow("duration",fmtDur(P.duration_sec))
+    +(P.next_session?mrow("next",P.next_session+" &middot; "+fmtDur(gap))+mrow("opens",fmtET(P.next_open)):mrow("next","&mdash;"));
+  const shape=(s.shape_score!=null)?(mrow("score",s.shape_score+"/100",okc(s.shape_ok))+mrow("VA % range",s.va_pct+"%")
+    +mrow("prominence",s.prominence+"x")+mrow("peaks",s.n_peaks)+mrow("POC pos",s.poc_pos)):mrow("&mdash;","n/a");
+  const zone=(z.rr!=null)?(mrow("R:R",z.rr,okc(z.rr_ok))+mrow("risk 1R",z.risk_pts+" pt")+mrow("room",z.room_pts+" pt")
+    +mrow("height",z.height_pct+"%")+mrow("entry tf",z.entry_tf)):mrow("&mdash;","n/a");
+  const verdict=(s.shape_ok?"clean single-peak":"scattered / not clean")+" &middot; R:R "+(z.rr!=null?z.rr:"?")
+    +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:"");
+  smod.innerHTML=`<div class="smod-h" id="smodH">
+      <span class="smod-tag" style="color:${col};border-color:${col}">${P.session}</span>
+      <b>${P.date}</b><span class="mut">${P.bars} x ${tf}</span><span class="smod-x" id="smodX">&times;</span></div>
+    <div class="smod-svg">${moduleSVG(P,cs)}</div>
+    <div class="smod-cols"><div class="mcol"><div class="mttl">Timing (ET)</div>${timing}</div>
+      <div class="mcol"><div class="mttl">Shape</div>${shape}</div>
+      <div class="mcol"><div class="mttl">Zone &mdash; R:R</div>${zone}</div></div>
+    <div class="smod-v">${verdict}</div>`;
+  const box=chartEl.getBoundingClientRect();
+  smod.style.left=Math.min(Math.max(8,modPt.x-300),Math.max(8,box.width-612))+"px";
+  smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-330))+"px";
+  smod.style.display="block";
+  document.getElementById("smodX").onclick=()=>smod.style.display="none";
+  _dragify(document.getElementById("smodH"));
+}
+function _dragify(handle){let sx,sy,ox,oy,drag=false;
+  handle.onmousedown=e=>{if(e.target.id==="smodX")return;drag=true;sx=e.clientX;sy=e.clientY;ox=smod.offsetLeft;oy=smod.offsetTop;e.preventDefault();};
+  const mv=e=>{if(!drag)return;smod.style.left=(ox+e.clientX-sx)+"px";smod.style.top=(oy+e.clientY-sy)+"px";};
+  window.addEventListener("mousemove",mv);window.addEventListener("mouseup",()=>drag=false);}
+chart.subscribeClick(p=>{if(!modOn||p.time==null||!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
+  if(p.point)modPt=p.point;const P=_profAt(p.time);if(P)openModule(P);});
+// #demo -> auto-open the latest session card (for screenshots / quick check)
+if(location.hash==="#demo")window.addEventListener("load",()=>{tf="5m";load();
+  const b=document.getElementById("modBtn");modOn=true;b.classList.add("on");b.textContent="on";
+  const P=(M.profiles||[]).filter(p=>p.bins&&p.bins.length).slice(-1)[0];
+  if(P)setTimeout(()=>{modPt={x:700,y:70};openModule(P);},250);});
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}

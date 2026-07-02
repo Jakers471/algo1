@@ -18,6 +18,15 @@ How it all ties together, in order of execution:
 Bucket data → filter by calendar volatility (which periods to even look at) → build Volume Profile off session anchors → filter by profile shape (reject scattered/choppy ones) → identify Value Area/POC as the real consolidation zone → measure it in %/bars to calibrate timeframe and risk → (optionally) use Fib for directional bias → trigger entry at a specific volume node on breakout with volume confirmation → manage with aggressive trailing stops.
 That's the full "simplicity" system as you've built it across this conversation — nothing dropped.
 
+**Open refinement (deferred, parallel study) — the zone is the BASE, not the whole session.**
+Building the profile over the whole session lumps an impulse leg + a tight base into one range, so a
+clean "move + base" (a structure we like) reads part-directional. The real tradeable zone is the
+current tight base that forms *after* a leg (the pole+flag structure): stop = base edge (tight 1R),
+runway = the leg/range. Plan: build a `base_profile` (base/consolidation detector) as a SEPARATE
+engine and study it side-by-side vs the whole-session `volume_profile` on the chart's per-session
+module cards, then promote whichever reads better. Deferred deliberately — shifts the strategy more
+than we want yet. (NOTES F6.)
+
 
 
 vision re explaiend: 

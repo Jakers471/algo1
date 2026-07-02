@@ -17,10 +17,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SIM = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, SIM)
 sys.path.insert(0, os.path.join(SIM, "research", "volatility_filter"))
+sys.path.insert(0, os.path.join(SIM, "research", "profile_shape_filter"))
+sys.path.insert(0, os.path.join(SIM, "research", "zone_calibration"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
 import filter_variants as fvar
+import shape_filter as sf
+import zone_calibration as zc
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
@@ -122,6 +126,15 @@ def main():
         m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
         cut = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
         profiles = [P for P in json.load(open(vp_path))["profiles"] if P["start"] >= cut]
+        # enrich each session with shape + zone scores + timing (so a per-session module can show it)
+        profiles.sort(key=lambda P: P["start"])
+        for i, P in enumerate(profiles):
+            P["shape"] = sf.score(P) or {}
+            P["zone"] = zc.calibrate(P) or {}
+            nxt = profiles[i + 1] if i + 1 < len(profiles) else None
+            P["next_session"] = nxt["session"] if nxt else None
+            P["next_open"] = nxt["start"] if nxt else None
+            P["duration_sec"] = int(P["end"] - P["start"])
     manifest["profiles"] = profiles
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))

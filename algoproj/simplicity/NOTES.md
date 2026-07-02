@@ -208,3 +208,33 @@ month area / hour-of-day profile / session bars); below = **detailed tables of e
 number** (Year 20 / Quarter 80 / Month 240 / Day 5,040 / Hour-of-day 24 / Session 4), each
 scrollable with exact volume + % of all. (A click-to-drill-down variant was built and then
 removed — the user preferred the flat overview-plus-tables layout.)
+
+### F5 — volume profile: spread volume across each bar's H-L, not close-only (2026-07-02)
+The first profile binned each 5m bar's whole volume onto its **close** price in 2-pt rows. A single
+high-volume bar (e.g. the NY open) then spiked one bin and **stole the POC** from a larger but
+diffuse consolidation. Real example — `2024-07-11 newyork`: **55.8%** of volume sat in the bottom
+third (a tight base after an impulse down), yet POC read at the TOP (pos 0.95), VA 83% of range →
+scored "foggy 11/100". Fix: distribute each bar's volume across every bin its **[low, high]** spans
+(overlap-weighted). POC then lands where volume truly is (0.16, the base), VA tightens to 56%.
+Effect on 2020-2025 gate survival: clean+R:R **9.4% → 14.3%**; NY R:R-ok **32.7% → 54.1%**; POC-vs-mid
+back to ~0.50 (balanced). The pre-fix survival numbers are void. `engine/structure/volume_profile.py`
+still has the close-only bug — needs the same fix + re-promotion (user decides).
+
+### F6 — the zone is the BASE, not the whole session (future parallel study) (2026-07-02)
+`2024-07-11` exposed a deeper point: profiling the **whole session** lumps an impulse leg + a tight
+base into one range, so a genuinely clean base ("clean move down, tight sideways consolidation at the
+low" — a structure the user likes) still reads part-directional. The real tradeable **zone is the
+current tight base** that forms *after* a leg (= the pole+flag structure from the flag work): stop =
+base edge (tight 1R), runway = the leg/range (the room) — the LTF-tight-stop / HTF-runway R:R made
+real. PLAN: build a **base/consolidation detector** as a SEPARATE engine (`base_profile`) and study it
+**side-by-side** vs the current whole-session `volume_profile` on the chart's per-session module cards;
+promote whichever reads better. Deferred deliberately — it shifts the strategy more than we want right
+now. shape_filter + zone_calibration would then score the detected base, not the session.
+
+### F7 — per-session module cards on the chart (2026-07-02)
+Built: Indicators → `modules` on, click any session (NQ 1m/5m) → a floating card with that session's
+crisp mini volume-profile (candles + two-tone bars + POC/VA, examples-quality because zoomed), its
+timing (open/close/duration/next session + gap, ET), and its shape + R:R scores. Solves two asks at
+once — the profile finally looks crisp on the chart (per-session, zoomed) and you can see how each
+session hands to the next. Same card is the seed of the planned replay state panel. Data enriched in
+`build_chart_data.py` (shape/zone/next per profile); rendered in `make_chart.py` (`#demo` auto-opens).
