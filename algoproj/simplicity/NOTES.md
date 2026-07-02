@@ -89,7 +89,7 @@ signal/entry/exit/risk slots, execution costs). Layout:
 
 **See `ARCHITECTURE.md`** for the full configs → engine → outputs wiring: **two selectable configs**
 — `strategy_config` (concrete/real) and `research_config` (run/testing: ACTIVE_FILTER, starting
-balance, dates, sweeps — planned) — feeding **one engine**; the chart can be pointed at either; and
+balance, dates — **built**) — feeding **one engine**; the chart has a real|research selector; and
 a future separate `backtest/` folder stores equity-curve PNGs in different places per config
 (research vs real) so they never mix.
 

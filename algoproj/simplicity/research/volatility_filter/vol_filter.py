@@ -50,10 +50,8 @@ def daily_frame():
         return "high" if x >= hi else "medium"
 
     d["regime"] = d["trail_vol"].map(_regime)
-    floor_ok = True if cfg.MIN_TRAIL_VOL is None else (d["trail_vol"] >= cfg.MIN_TRAIL_VOL)
-    d["tradeable"] = d["regime"].isin(cfg.TRADEABLE_REGIMES) & floor_ok
     _cache = d
-    return d
+    return d  # regime table; the actual gate is mask() (session/hour/day_vol)
 
 
 # ---- intraday gate: session AND hour AND (optional) day-vol, each toggled in config ----

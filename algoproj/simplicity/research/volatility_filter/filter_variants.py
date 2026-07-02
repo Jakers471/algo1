@@ -16,8 +16,8 @@ isn't luck we need its opposites AND an unconditional baseline to compare agains
      If `high` beats `low` but NOT random, the "edge" is just that low-vol days are
      unusually bad, not that high-vol is good.
 
-Research only. The winner, once confirmed, is what strategy_config.TRADEABLE_REGIMES
-locks and what gets promoted to engine/.
+Research only. The winner, once confirmed, is locked into strategy_config.FILTER_DAY_VOL
+["regimes"] and used by the promoted engine/vol_filter gate.
 """
 import os
 import sys

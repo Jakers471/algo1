@@ -48,6 +48,12 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 .kv .k{color:var(--mut)}.kv .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
 .pill{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:4px;background:rgba(57,135,229,.18);color:var(--acc)}
 .on-pill{color:var(--up)}.off-pill{color:var(--mut)}
+.cfgbtns{display:flex;gap:5px;margin-bottom:8px}
+.cfgbtns button{font-size:11.5px;padding:4px 12px}
+.loaded{font-size:12px;color:var(--up);display:flex;align-items:center;gap:7px;font-weight:600}
+.loaded .dot{width:8px;height:8px;border-radius:50%;background:var(--up);
+box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span style="color:var(--mut);font-weight:400">chart</span></h1>
@@ -58,6 +64,7 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 <div class="main">
   <div id="chart"></div>
   <div class="side">
+    <h2>Config</h2><div id="cfgSel" class="cfgbtns"></div><div id="cfgLoaded" class="loaded"></div>
     <h2>Loaded</h2><div id="loaded"></div>
     <h2>When-to-trade filters</h2><div id="filters"></div>
     <h2>Config on chart</h2><div id="cfg"></div>
@@ -69,7 +76,7 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 const SERIES=__SERIES__, M=__MANIFEST__, C=M.config;
 const TFO=["1m","5m","15m","60m","1d"];
 const avail={};M.series.forEach(s=>{(avail[s.instrument]=avail[s.instrument]||{})[s.tf]=s;});
-let inst="NQ", tf="1d", shSess=false, shVol=false;
+let inst="NQ", tf="1d", shSess=false, shVol=false, cfgSel=M.default_config||"research";
 
 // ET, 12-hour (AM/PM) axis + crosshair -- display only, uses raw times underneath
 const _TZ={timeZone:C.clock};
@@ -105,7 +112,7 @@ function etDate(t){return new Date(t*1000).toLocaleDateString("en-CA",{timeZone:
 
 function updateShade(){
   const cs=SERIES[inst+"_"+tf].candles;
-  const allow=new Set(C.filter_session.allow), seld=new Set(M.selected_days);
+  const allow=new Set(C.filter_session.allow), seld=new Set(M.configs[cfgSel].selected_days);
   const canSess=shSess&&tf!=="1d";  // session shading only meaningful intraday
   const data=cs.map(c=>{let col="rgba(0,0,0,0)";
     if(shVol&&seld.has(etDate(c.time)))col="rgba(230,103,103,0.10)";
@@ -139,11 +146,17 @@ document.getElementById("filters").innerHTML=
   kv("session "+onoff(C.filter_session), C.filter_session.allow.join(", "))+
   kv("hour "+onoff(C.filter_hour), C.filter_hour.on?C.filter_hour.allow.join(","):"—")+
   kv("day_vol "+onoff(C.filter_day_vol), C.filter_day_vol.on?C.filter_day_vol.regimes.join(","):"—");
-document.getElementById("cfg").innerHTML=
-  kv("era start",C.era_start)+kv("vol metric",C.vol_metric)+kv("trail window",C.trail_window+"d")+
-  kv("regime pctiles",C.regime_pctiles.join(" / "))+
-  kv("active filter",`<span class="pill">${C.active_filter}</span>`)+
-  kv("selected days",M.selected_days.length)+kv("selected periods",M.selected_runs.length);
+function renderCfg(){document.getElementById("cfgSel").innerHTML=Object.keys(M.configs).map(k=>
+  `<button data-c="${k}" class="${k==cfgSel?'on':''}">${k}</button>`).join("");
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();renderCfgSidebar();updateShade();});
+  document.getElementById("cfgLoaded").innerHTML=`<span class="dot"></span>${cfgSel} attached &amp; loaded`;}
+function renderCfgSidebar(){const cc=M.configs[cfgSel];
+  document.getElementById("cfg").innerHTML=
+    kv("config",`<span class="pill">${cfgSel}</span>`)+kv("&rarr;",cc.label)+
+    kv("vol-days",cc.selected_days.length+" d / "+cc.selected_runs.length+" periods")+
+    kv("note",cc.note)+kv("era start",C.era_start)+kv("vol metric",C.vol_metric)+
+    kv("trail window",C.trail_window+"d")+kv("regime pctiles",C.regime_pctiles.join(" / "));}
+renderCfg(); renderCfgSidebar();
 document.getElementById("sess").innerHTML=Object.entries(C.sessions).map(([k,v])=>kv(k,v[0]+"–"+v[1])).join("");
 document.getElementById("costs").innerHTML=
   kv("point value","$"+C.point_value)+kv("tick",C.tick)+kv("commission","$"+C.commission_per_side+"/side")+

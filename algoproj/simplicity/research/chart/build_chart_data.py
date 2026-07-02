@@ -18,6 +18,8 @@ SIM = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, SIM)
 sys.path.insert(0, os.path.join(SIM, "research", "volatility_filter"))
 import strategy_config as cfg
+import research_config as rcfg
+import vol_filter as vf
 import filter_variants as fvar
 
 DATA = os.path.join(HERE, "data")
@@ -52,43 +54,57 @@ def main():
             series_meta.append({"key": key, "instrument": inst, "tf": tf, "bars": len(df),
                                 "first": str(df.index[0]), "last": str(df.index[-1])})
 
-    # ACTIVE_FILTER selected days (for the overlay) -- NQ daily-derived
-    sel = fvar.select(cfg.ACTIVE_FILTER)
-    selected_days = sel.loc[sel["selected"], "date"].tolist()
-    # contiguous runs (period start/end) for overlay markers
-    runs, run = [], None
-    for r in sel.itertuples():
-        if r.selected:
-            run = run or {"start": r.date, "end": r.date}
-            run["end"] = r.date
-        elif run:
-            runs.append(run); run = None
-    if run:
-        runs.append(run)
+    # --- per-config day selection (vol-day overlay) so the chart can SELECT its config ---
+    # REAL (strategy_config): the gate's day-vol regimes.  RESEARCH (research_config): ACTIVE_FILTER variant.
+    base = vf.daily_frame()  # ordered daily regime table
+
+    def _days_runs(sel_bool):
+        b = base.assign(sel=sel_bool.to_numpy())
+        days = b.loc[b["sel"], "date"].tolist()
+        runs, run = [], None
+        for r in b.itertuples():
+            if r.sel:
+                run = run or {"start": r.date, "end": r.date}
+                run["end"] = r.date
+            elif run:
+                runs.append(run); run = None
+        if run:
+            runs.append(run)
+        return days, runs
+
+    real_days, real_runs = _days_runs(base["regime"].isin(cfg.FILTER_DAY_VOL["regimes"]))
+    rsch_days, rsch_runs = _days_runs(base["regime"].isin(fvar.PRESETS[rcfg.ACTIVE_FILTER]))
 
     manifest = {
         "max_bars": MAX_BARS,
         "series": series_meta,
+        "default_config": "research",
+        # shared concrete snapshot (same for both configs)
         "config": {
             "instrument": cfg.INSTRUMENT, "clock": cfg.CLOCK,
             "era_start": cfg.ERA_START_YEAR, "vol_metric": cfg.VOL_METRIC,
             "trail_window": cfg.TRAIL_WINDOW, "regime_pctiles": list(cfg.REGIME_PCTILES),
-            "active_filter": cfg.ACTIVE_FILTER, "tradeable_regimes": list(cfg.TRADEABLE_REGIMES),
             "sessions": {k: list(v) for k, v in cfg.SESSIONS.items()},
             "filter_session": cfg.FILTER_SESSION, "filter_hour": cfg.FILTER_HOUR,
             "filter_day_vol": cfg.FILTER_DAY_VOL,
             "point_value": cfg.POINT_VALUE, "tick": cfg.TICK,
             "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS,
         },
-        "active_filter": cfg.ACTIVE_FILTER,
-        "selected_days": selected_days,
-        "selected_runs": runs,
+        # per-config: what its vol-day overlay selects + its distinguishing knobs
+        "configs": {
+            "real": {"label": "real . strategy_config",
+                     "note": "vol-days = FILTER_DAY_VOL regimes " + str(cfg.FILTER_DAY_VOL["regimes"]),
+                     "selected_days": real_days, "selected_runs": real_runs},
+            "research": {"label": "research . research_config",
+                         "note": "variant=" + rcfg.ACTIVE_FILTER + "  |  start $" + f"{rcfg.STARTING_BALANCE:,}",
+                         "selected_days": rsch_days, "selected_runs": rsch_runs},
+        },
     }
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")
     for s in series_meta:
         print(f"  {s['key']:<8} {s['bars']:>5} bars  {s['first'][:10]}..{s['last'][:10]}")
-    print(f"  active_filter={cfg.ACTIVE_FILTER}  selected_days={len(selected_days)}")
+    print(f"  real vol-days={len(real_days)} | research(active={rcfg.ACTIVE_FILTER}) vol-days={len(rsch_days)}")
 
 
 if __name__ == "__main__":

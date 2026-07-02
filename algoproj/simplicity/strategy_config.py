@@ -91,9 +91,10 @@ FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                 # daily vol-
 VOL_METRIC = "avg_range"
 TRAIL_WINDOW = 20                # trading days; CAUSAL (prior-window mean, no look-ahead)
 REGIME_PCTILES = (33.0, 66.0)    # low / medium / high split (percentiles within the era)
-TRADEABLE_REGIMES = ("high",)    # locked winning regime (once the hypothesis test confirms)
 MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None = off
-ACTIVE_FILTER = "high"           # TESTING selector for filter_variants: all|high|medium|low|high_medium|not_high|extremes
+# NOTE: ACTIVE_FILTER / STARTING_BALANCE / backtest dates live in research_config.py
+# (run/testing knobs, not strategy settings). One setting, one home -- no duplication.
+# The gate's day-vol regimes are FILTER_DAY_VOL["regimes"] above (there is no TRADEABLE_REGIMES).
 
 # ==================================================================================
 # SIGNAL / ENTRY / EXIT                                                        [TBD]

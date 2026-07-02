@@ -64,8 +64,8 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 ## Cross-cutting
 - `[~]` **Fresh TradingView lightweight chart** (`research/chart`) — rewired to simplicity data; multi-timeframe (NQ+ES); OHLC cached to JSON, load max ~2000 bars/TF for speed; side menu showing which instrument/TF/config is loaded (clean format); overlay the filter-selected periods. No old flag-strategy baggage.
 - `[R]` Config filter selector `ACTIVE_FILTER` (pick which variant tv/backtest uses) — `strategy_config`
-- `[ ]` Config split (see `ARCHITECTURE.md`): `research_config` (run/testing — `ACTIVE_FILTER`, `STARTING_BALANCE`, dates, sweeps) vs `strategy_config` (concrete/real); delete dead `TRADEABLE_REGIMES`. For now one sectioned config.
-- `[ ]` Chart config selector (research | real) → overlays that config
+- `[R]` Config split DONE — `research_config.py` (run/testing: `ACTIVE_FILTER`, `STARTING_BALANCE`, dates) re-exports `strategy_config`; removed `ACTIVE_FILTER` + dead `TRADEABLE_REGIMES` from `strategy_config` (no duplication)
+- `[R]` Chart config selector (real | research) — top-bar toggle switches vol-day overlay + sidebar to that config
 - `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
 
 ---

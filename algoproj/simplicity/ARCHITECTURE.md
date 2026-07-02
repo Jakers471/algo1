@@ -17,9 +17,10 @@ The same engine runs regardless of which config feeds it; only the config differ
 - **`strategy_config.py` — CONCRETE / REAL** **[built]** — the strategy itself + market frictions:
   data paths, sessions, the `FILTER_*` gate, day-vol params, execution costs, signal/entry/exit/risk
   slots. Identical in backtest and live. This is the "real" settings.
-- **`research_config.py` — RESEARCH / RUN** **[planned]** — how you're testing *right now*:
-  `ACTIVE_FILTER` (variant selector), `STARTING_BALANCE`, backtest date range, param sweeps.
-  Imports `strategy_config` for the shared/locked stuff.
+- **`research_config.py` — RESEARCH / RUN** **[built]** — how you're testing *right now*:
+  `ACTIVE_FILTER` (variant selector), `STARTING_BALANCE`, backtest date range (sweeps later).
+  Re-exports `strategy_config` (superset), so "run off research" = import it. `ACTIVE_FILTER` and
+  the dead `TRADEABLE_REGIMES` were removed from `strategy_config` — one setting, one home.
 
 **The rule for where a setting goes:** *is it a property of the STRATEGY, or of a RUN?*
 Strategy (filters, entry/exit, sizing *rule*, frictions) → `strategy_config`. Run/experiment
@@ -32,16 +33,29 @@ Strategy (filters, entry/exit, sizing *rule*, frictions) → `strategy_config`. 
 - You **SELECT the config** (research | real) and run it through the same engine. Both the chart
   and the (future) backtest take a config selection — swap the inputs, not the engine.
 
-## Chart — config-selectable **[built core / selector planned]**
+## Chart — config-selectable **[built]**
 `research/chart` visualizes what a config covers: multi-TF candles+volume + dark shade overlays
-(session windows, high-vol days) + a sidebar of the loaded config. **[planned]** a config selector
-so you can point the chart at the research config or the real config and see that config's overlays.
+(session windows, high-vol days) + a sidebar of the loaded config. A **CONFIG selector (real |
+research)** in the top bar switches the vol-day overlay + sidebar to that config — real uses
+`FILTER_DAY_VOL` regimes, research uses `ACTIVE_FILTER`. (Both snapshot into the manifest at build.)
 
 ## Outputs — separated by config **[planned]**
 Runs store artifacts (equity-curve PNGs, backtest results) in **different places per track**, so
 research and real never mix:
 - research runs → `backtest/output/research/`
 - real runs    → `backtest/output/real/`
+
+**What promotes a research output to "real" (decided now, same discipline as engine promotion):**
+the output's track is determined **automatically by which config ran it** — a run driven by
+`research_config` writes to `research/`, a run driven by `strategy_config` writes to `real/`.
+**Nothing is manually copied between them.** "Promoting to real" is not a file move — it's the
+**human graduating the tested values into `strategy_config`** (the concrete config); after that,
+runs under it land in `real/` on their own. So promotion happens at the CONFIG level (a human
+decision), and output routing is just a mechanical consequence — never a hand-copied PNG.
+
+**No-duplication rule:** a setting lives in exactly ONE config. When `research_config` is built,
+run/testing knobs (`ACTIVE_FILTER`, `STARTING_BALANCE`, dates, sweeps) move there and are **deleted
+from `strategy_config`** — never kept in both.
 
 ## Backtest / equity-curve engine **[planned — separate top-level folder]**
 `backtest/` (its own folder, not under research) wires a **chosen config** into the engine and
