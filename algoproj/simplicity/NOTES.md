@@ -365,3 +365,19 @@ R:R asymmetry BOTH ways (long has room up / breakdown short has room down) — w
 predict the break (thesis intact). Open design Qs: window (fixed week vs rolling vs adaptive), off-hours
 gaps (F9), and — per F13 — validate IN-CONTEXT (does the multi-scale score improve the WIRED setup's
 outcomes?), never in isolation. Deferred; this is how F14's composite-profile piece actually gets built.
+
+### F16 — shape "tightness" was INVERTED; replaced with a peaked va_pct curve (2026-07-02)
+User caught it in replay (chat_about.md): a tight coil scored only ~47 and the score ROSE as the
+breakout began. Traced to the 40%-weighted tightness term `tight = 1 - va_pct/80`, where
+va_pct = VA_width / session_range. As price breaks out the range expands -> va_pct shrinks -> tight
+rises -> the score perversely REWARDED range expansion. Worse, its max (tight=1) sat at va_pct->0,
+which is a spike-and-run, NOT a consolidation; a clean bell coil sits at va_pct ~35-45 and only earned
+~0.5. FIX: tightness is now a PEAKED curve -- rises 0->1 as va_pct goes 0->TIGHT_PEAK(40), falls 1->0
+as va_pct goes 40->TIGHT_HI(85). Clean coil peaks; a spike (low va_pct) AND a scatter/bimodal (high
+va_pct) both score low. Mirrored in chart JS computeShape so REPLAY matches; chart rebuilt.
+Verified: flagged coils 47->66 and 48->59; bimodal day stays foggy 25->29; inversion gone
+(coil->breakout->thrust OLD 49->56->62 RISES, NEW 67->61->49 FALLS -- coil is now the peak). Ledger
+(git f0e39d167 -> new run): median score 39->52, shape_ok 21%->59%.
+SIDE EFFECT to tune next: 59% pass is now too loose -- SHAPE_OK (still 50) needs re-raising (~62?) to
+restore a selective gate; separate logged tune. The CURVE is the fix; the THRESHOLD is the next knob.
+This is the first run-ledger tune: baseline vs peaked-tightness-curve both live in runs.jsonl.

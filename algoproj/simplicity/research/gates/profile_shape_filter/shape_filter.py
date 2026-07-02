@@ -6,7 +6,8 @@ single-peak consolidation vs a scattered / trending / multi-peak one. Reads the 
 output (per-session bins + POC + value area). PROVISIONAL metrics/weights -- built to eyeball
 against real price, then refine.
 
-  tightness   value area narrow vs the whole range?   (low va_pct_of_range = tight)
+  tightness   PEAKED on va_pct (VA width / range): a clean bell coil (~TIGHT_PEAK) scores 1.0; a
+              spike (va_pct->0) and a scatter/bimodal (high va_pct) both score low  (NOTES F16)
   prominence  POC bin vs the average bin               (peaked vs flat)
   n_peaks     significant humps                        (1 = single-peak = clean)
   balance     POC near the middle?                     (central = consolidation, edge = trend)
@@ -32,7 +33,12 @@ VP = os.path.join(HERE, "..", "..", "structure", "volume_profile", "output", "vo
 
 # --- tunable PARAMS (every shape knob in one place; snapshotted to the run ledger each run) ---
 WEIGHTS = {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10}
-TIGHT_DEN = 80.0                     # va_pct at which tightness scores 0
+# tightness is a PEAKED curve on va_pct (VA width / range): a clean bell coil sits ~TIGHT_PEAK and
+# scores 1.0; it falls to 0 toward va_pct=0 (a spike-and-run, not a consolidation) AND toward
+# TIGHT_HI (scattered / bimodal). This fixes the old monotonic 1-va_pct/80, which perversely REWARDED
+# range expansion (breakout) and maxed out on spikes (NOTES F16).
+TIGHT_PEAK = 40.0                    # va_pct of a clean bell consolidation -> tightness = 1.0
+TIGHT_HI = 85.0                      # va_pct where tightness falls back to 0 (scattered/bimodal)
 PROM_DEN = 4.0                       # prominence normalization: (prominence-1)/PROM_DEN
 SINGLE_2, SINGLE_ELSE = 0.5, 0.15    # single-peak score for exactly-2-peaks / 3+-peaks
 SHAPE_OK = 50                        # score >= this = "clean"
@@ -61,7 +67,8 @@ def score(p):
     balance = abs(poc_pos - 0.5)
     top_share = poc_v / total * 100
 
-    tight = max(0.0, 1 - va_pct / TIGHT_DEN)
+    tight = (va_pct / TIGHT_PEAK) if va_pct <= TIGHT_PEAK \
+        else max(0.0, 1 - (va_pct - TIGHT_PEAK) / (TIGHT_HI - TIGHT_PEAK))
     peakc = min(1.0, max(0.0, (prominence - 1) / PROM_DEN))
     single = 1.0 if peaks <= 1 else (SINGLE_2 if peaks == 2 else SINGLE_ELSE)
     central = max(0.0, 1 - balance / 0.5)
@@ -89,7 +96,7 @@ def main():
           f"   median va% {d.va_pct.median():.0f}")
     print("wrote", os.path.join(OUT, "shape_scores.csv"))
     runlog.record("shape_filter",
-                  {"weights": WEIGHTS, "tight_den": TIGHT_DEN, "prom_den": PROM_DEN,
+                  {"weights": WEIGHTS, "tight_peak": TIGHT_PEAK, "tight_hi": TIGHT_HI, "prom_den": PROM_DEN,
                    "single_2": SINGLE_2, "single_else": SINGLE_ELSE, "shape_ok": SHAPE_OK},
                   {"n": int(len(d)), "median_score": round(float(d.shape_score.median()), 1),
                    "shape_ok_pct": round(float(d.shape_ok.mean() * 100), 1),

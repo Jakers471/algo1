@@ -405,7 +405,7 @@ function computeShape(p){const bins=p.bins;if(bins.length<3)return{};
   const prom=meanv>0?pocv/meanv:0;let peaks=0;
   for(let i=0;i<v.length;i++){const l=i>0?v[i-1]:-1,r=i<v.length-1?v[i+1]:-1;if(v[i]>=l&&v[i]>=r&&v[i]>0.5*pocv)peaks++;}
   const va_pct=p.va_pct_of_range,rng=p.high-p.low,pos=rng>0?(p.poc-p.low)/rng:0.5,bal=Math.abs(pos-0.5),top=pocv/total*100;
-  const tight=Math.max(0,1-va_pct/80),peakc=Math.min(1,Math.max(0,(prom-1)/4)),single=peaks<=1?1:(peaks==2?0.5:0.15),central=Math.max(0,1-bal/0.5);
+  const tight=(va_pct<=40)?(va_pct/40):Math.max(0,1-(va_pct-40)/(85-40)),peakc=Math.min(1,Math.max(0,(prom-1)/4)),single=peaks<=1?1:(peaks==2?0.5:0.15),central=Math.max(0,1-bal/0.5);
   const score=Math.round(100*(0.4*tight+0.3*peakc+0.2*single+0.1*central));
   return{shape_score:score,va_pct:+va_pct.toFixed(1),prominence:+prom.toFixed(2),n_peaks:peaks,poc_pos:+pos.toFixed(2),top_share_pct:+top.toFixed(1),shape_ok:score>=50};
 }
