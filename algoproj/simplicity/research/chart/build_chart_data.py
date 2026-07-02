@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(SIM, "research", "gates", "volatility_filter"))
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"))
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 sys.path.insert(0, os.path.join(SIM, "research", "structure", "base_profile"))
+sys.path.insert(0, os.path.join(SIM, "research", "structure", "htf_profile"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
@@ -27,6 +28,7 @@ import filter_variants as fvar
 import shape_filter as sf
 import zone_calibration as zc
 import base_profile as bpm
+import htf_profile as htfm
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
@@ -149,6 +151,17 @@ def main():
                     P["base"] = b
         except Exception as e:
             print("  base companion skipped:", e)
+        # htf_profile companion (the third scale: trailing-week composite before session open)
+        try:
+            htf_by = {h["sid"]: h for h in htfm.compute(since_ts=cut)}
+            for P in profiles:
+                h = htf_by.get(P["sid"])
+                if h:
+                    h["shape"] = sf.score(h) or {}
+                    h["zone"] = zc.calibrate(h) or {}
+                    P["htf"] = h
+        except Exception as e:
+            print("  htf companion skipped:", e)
     manifest["profiles"] = profiles
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))

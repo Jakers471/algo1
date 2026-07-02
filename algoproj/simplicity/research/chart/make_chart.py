@@ -69,9 +69,13 @@ border-bottom:1px solid var(--ring);padding-bottom:6px}.side h2:first-child{marg
 .loaded .dot{width:8px;height:8px;border-radius:50%;background:var(--up);
 box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.smod{position:absolute;z-index:9;top:52px;left:52px;width:544px;background:rgba(20,22,27,.985);
-border:1px solid var(--ring);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.6);display:none}
-.smod-h{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--ring);cursor:move;user-select:none}
+.smodstack{position:absolute;z-index:9;top:52px;right:10px;width:474px;max-height:calc(100% - 62px);
+background:rgba(12,13,17,.72);border:1px solid var(--ring);border-radius:12px;display:none;flex-direction:column;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.55)}
+.stack-h{display:flex;align-items:center;gap:8px;padding:6px 11px;border-bottom:1px solid var(--ring)}
+.stack-h b{font-size:12px}.stack-b{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.smod{background:rgba(20,22,27,.985);border:1px solid var(--ring);border-radius:10px}
+.smod-r{margin-left:auto;display:flex;gap:5px}
+.smod-h{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--ring);user-select:none}
 .smod-h b{font-weight:600}.smod-h .mut{color:var(--mut);font-size:11px}
 .smod-tag{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:11px;border:1px solid}
 .smod-x{margin-left:auto;cursor:pointer;color:var(--mut);font-size:16px;line-height:1;padding:0 3px}.smod-x:hover{color:var(--ink)}
@@ -127,8 +131,10 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
   <div class="chartwrap">
     <div id="chart"></div>
     <svg id="vpsvg" class="vpsvg"></svg>
-    <div class="smod" id="smod"></div>
-    <div class="smod" id="smodB"></div>
+    <div class="smodstack" id="smodStack">
+      <div class="stack-h"><b>modules</b><span class="mut" id="stackSid"></span><span class="smod-x" id="stackX" style="margin-left:auto">&times;</span></div>
+      <div class="stack-b" id="stackBody"></div>
+    </div>
     <div class="ind" id="ind">
       <div class="ind-h"><b>Indicators</b><button class="mini" id="indMin">&ndash;</button></div>
       <div class="ind-b" id="indBody">
@@ -313,17 +319,19 @@ document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[t
 
 // ---- per-session MODULE cards (click a session -> crisp profile + timing + scores) ----
 let modOn=false, modPt={x:400,y:70};
-const smod=document.getElementById("smod"), smodB=document.getElementById("smodB");
+const smodStack=document.getElementById("smodStack"), stackBody=document.getElementById("stackBody");
 document.getElementById("modBtn").onclick=function(){modOn=!modOn;this.classList.toggle("on",modOn);
-  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)smod.style.display="none";};
+  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)smodStack.style.display="none";};
+document.getElementById("stackX").onclick=()=>{smodStack.style.display="none";replayStop();};
 function _profAt(t){return (M.profiles||[]).find(P=>t>=P.start&&t<=P.end&&P.bins&&P.bins.length);}
 function fmtET(t){return _t12(t)+" "+new Date(t*1000).toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});}
 function fmtDur(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m`;}
 function mrow(k,v,c){return `<div class="mr"><span>${k}</span><b style="${c?`color:${c}`:''}">${v}</b></div>`;}
 function moduleSVG(P,cs){
-  const CW=588,CH=248, CL=44,CR=356,CT=14,CB=228, VPR=536,VPW=150, rs=2.0;
+  const CW=588,CH=178, CL=44,CR=356,CT=10,CB=162, VPR=536,VPW=150, rs=2.0;
   const lo=P.low,hi=P.high, pad=Math.max((hi-lo)*0.08,1), tp=hi+pad, bp=lo-pad;
-  const Y=p=>CT+(tp-p)/(tp-bp)*(CB-CT), barH=Math.max(1.4,(CB-CT)*rs/(tp-bp)-1);
+  const rowsz=(P.bins&&P.bins.length>1)?Math.abs(P.bins[1].p-P.bins[0].p):rs;
+  const Y=p=>CT+(tp-p)/(tp-bp)*(CB-CT), barH=Math.max(1.2,(CB-CT)*rowsz/(tp-bp)-0.5);
   let e=`<rect x="${CL}" y="${Y(P.vah).toFixed(1)}" width="${VPR-CL}" height="${Math.max(1,Y(P.val)-Y(P.vah)).toFixed(1)}" fill="#fff" fill-opacity="0.04"/>`;
   for(const [p,c,dash,lab] of [[P.high,"#59626e","","H"],[P.low,"#59626e","","L"],[P.vah,"#8a94a6","4 3","VAH"],[P.val,"#8a94a6","4 3","VAL"],[P.poc,"#e34948","","POC"]]){
     const yy=Y(p).toFixed(1);
@@ -335,62 +343,59 @@ function moduleSVG(P,cs){
     const yo=Y(r.open),yc=Y(r.close);
     e+=`<rect x="${(x-bw/2).toFixed(1)}" y="${Math.min(yo,yc).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(yc-yo)).toFixed(1)}" fill="${col}"/>`;});
   const mx=Math.max(...P.bins.map(b=>b.v))||1;
-  for(const b of P.bins){const w=b.v/mx*VPW, col=Math.abs(b.p-P.poc)<rs/2?"#e34948":(b.p<=P.poc?"#3f8cff":"#e08a3c");
+  for(const b of P.bins){const w=b.v/mx*VPW, col=Math.abs(b.p-P.poc)<rowsz/2?"#e34948":(b.p<=P.poc?"#3f8cff":"#e08a3c");
     e+=`<rect x="${(VPR-w).toFixed(1)}" y="${(Y(b.p)-barH/2).toFixed(1)}" width="${w.toFixed(1)}" height="${barH.toFixed(1)}" fill="${col}" fill-opacity="${(0.3+0.65*(b.v/mx)).toFixed(2)}"/>`;}
   return `<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="xMidYMid meet">${e}</svg>`;
 }
-function cardHTML(meta,prof,cs,extra,isReplay,isBase){
-  const s=prof.shape||{}, z=prof.zone||{}, col=SC[meta.session]||"#888", okc=v=>v?"var(--up)":"var(--dn)";
+// one card in the stack. kind = "htf" | "session" | "base"; opts = {isReplay, replayControls}
+function cardHTML(meta,prof,cs,kind,opts){
+  opts=opts||{};
+  const s=prof.shape||{}, z=prof.zone||{}, okc=v=>v?"var(--up)":"var(--dn)";
   const gap=meta.next_open!=null?meta.next_open-meta.end:null;
-  const timing=mrow("opened",fmtET(meta.start))+mrow("closed",fmtET(meta.end))+mrow("duration",fmtDur(meta.duration_sec))
-    +(meta.next_session?mrow("next",meta.next_session+" &middot; "+fmtDur(gap))+mrow("opens",fmtET(meta.next_open)):mrow("next","&mdash;"));
+  const timing=mrow("opened",fmtET(meta.start))+mrow("closed",fmtET(meta.end))+mrow("span",fmtDur(meta.duration_sec))
+    +(meta.next_session?mrow("next",meta.next_session+" &middot; "+fmtDur(gap)):mrow("next","&mdash;"));
   const shape=(s.shape_score!=null)?(mrow("score",s.shape_score+"/100",okc(s.shape_ok))+mrow("VA % range",s.va_pct+"%")
-    +mrow("prominence",s.prominence+"x")+mrow("peaks",s.n_peaks)+mrow("POC pos",s.poc_pos)):mrow("&mdash;","forming");
+    +mrow("prominence",s.prominence+"x")+mrow("peaks",s.n_peaks)):mrow("&mdash;","forming");
   const zone=(z.rr!=null)?(mrow("R:R",z.rr,okc(z.rr_ok))+mrow("risk 1R",z.risk_pts+" pt")+mrow("room",z.room_pts+" pt")
-    +mrow("height",z.height_pct+"%")+mrow("entry tf",z.entry_tf)):mrow("&mdash;","forming");
-  const verdict=(s.shape_score==null)?"forming…":((s.shape_ok?"clean single-peak":"scattered / not clean")+" &middot; R:R "+(z.rr!=null?z.rr:"?")
-    +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:""));
-  const rlab=isReplay?' &middot; <b style="color:#f0b000">REPLAY</b>':'';
-  const tag=isBase?`<span class="smod-tag" style="color:#e0a94a;border-color:#e0a94a">${meta.session} &middot; BASE</span>`
-                  :`<span class="smod-tag" style="color:${col};border-color:${col}">${meta.session}</span>`;
-  const chatbtn=isBase?'':'<span class="smod-chat" data-act="chat" style="margin-left:auto">chat about</span>';
-  const rbtn=(isReplay||isBase)?'':'<span class="smod-chat" data-act="replay" style="margin-left:6px">replay</span>';
-  const xstyle=isBase?' style="margin-left:auto"':'';
-  return `<div class="smod-h">
-      ${tag}<b>${meta.date}</b><span class="mut">${meta.bars} x ${tf}${rlab}</span>
-      ${chatbtn}${rbtn}<span class="smod-x"${xstyle}>&times;</span></div>
+    +mrow("entry tf",z.entry_tf)):mrow("&mdash;","forming");
+  const acc={htf:"#9a7cff",session:(SC[meta.session]||"#4a9bff"),base:"#e0a94a"}[kind];
+  const lab={htf:" &middot; HTF week",session:"",base:" &middot; BASE"}[kind];
+  const barsLab=meta.barsLabel||(meta.bars+" x "+tf);
+  const rlab=opts.isReplay?' &middot; <b style="color:#f0b000">REPLAY</b>':'';
+  const btns=(kind==="session"&&!opts.isReplay)
+    ?'<span class="smod-chat" data-act="chat">chat</span><span class="smod-chat" data-act="replay">replay</span>':'';
+  return `<div class="smod" data-k="${kind}">
+    <div class="smod-h"><span class="smod-tag" style="color:${acc};border-color:${acc}">${meta.session}${lab}</span>
+      <b>${meta.date}</b><span class="mut">${barsLab}${rlab}</span><span class="smod-r">${btns}</span></div>
     <div class="smod-svg">${moduleSVG(prof,cs)}</div>
-    <div class="smod-cols"><div class="mcol"><div class="mttl">Timing (ET)</div>${timing}</div>
+    <div class="smod-cols"><div class="mcol"><div class="mttl">Timing</div>${timing}</div>
       <div class="mcol"><div class="mttl">Shape</div>${shape}</div>
-      <div class="mcol"><div class="mttl">Zone &mdash; R:R</div>${zone}</div></div>
-    <div class="smod-v">${verdict}</div>${extra||''}`;
+      <div class="mcol"><div class="mttl">Zone &mdash; R:R</div>${zone}</div></div>${opts.replayControls||''}</div>`;
 }
-function positionShow(){const box=chartEl.getBoundingClientRect();
-  smod.style.left=Math.min(Math.max(8,modPt.x-270),Math.max(8,box.width-552))+"px";
-  smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-360))+"px";
-  smod.style.display="block";}
-function placeCards(){const box=chartEl.getBoundingClientRect(), twin=smodB.style.display==="block";
-  const L=Math.min(Math.max(8,modPt.x-(twin?556:270)),Math.max(8,box.width-(twin?1112:552)));
-  const T=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-360));
-  smod.style.left=L+"px";smod.style.top=T+"px";smod.style.display="block";
-  if(twin){smodB.style.left=(L+554)+"px";smodB.style.top=T+"px";}}
-function wireCard(el,P){
-  el.querySelector(".smod-x").onclick=()=>{el.style.display="none";if(el===smod){smodB.style.display="none";replayStop();}};
-  const cb=el.querySelector('[data-act="chat"]');if(cb)cb.onclick=()=>addToChat(P);
-  const rb=el.querySelector('[data-act="replay"]');if(rb)rb.onclick=()=>replayStart(P);
-  _dragify(el.querySelector(".smod-h"),el);
+function _meta(P,cs,extra){return Object.assign({session:P.session,date:P.date,start:cs[0].time,end:cs[cs.length-1].time,
+  duration_sec:cs[cs.length-1].time-cs[0].time,next_session:P.next_session,next_open:P.next_open,bars:cs.length},extra||{});}
+// render the whole stack (HTF top -> session -> base). rp = null (static) or {k, ctrls} for replay.
+function renderStack(P,rp){
+  const sess=SERIES["NQ_5m"].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+  let html="";
+  if(P.htf){const h=P.htf, hcs=(SERIES["NQ_1d"]?SERIES["NQ_1d"].candles:[]).filter(c=>c.time>=h.start&&c.time<=h.end);
+    const hm={session:P.session,date:P.date,start:h.start,end:h.end,duration_sec:h.end-h.start,
+      next_session:P.next_session,next_open:P.next_open,bars:h.htf_bars,barsLabel:h.htf_days+"d week (context)"};
+    html+=cardHTML(hm,h,hcs,"htf",{});}                                   // HTF is fixed pre-session context
+  const scs=rp?sess.slice(0,rp.k):sess;
+  const sp=rp?(computeProfile(scs)||{high:P.high,low:P.low,poc:P.poc,val:P.val,vah:P.vah,bins:[],va_pct_of_range:0,height_pct:0,shape:{},zone:{},bars:scs.length}):P;
+  html+=cardHTML(_meta(P,scs),sp,scs,"session",{isReplay:!!rp,replayControls:rp?rp.ctrls:''});
+  let bp=null,bcs=null,bm=null;
+  if(rp){const bw=computeBase(scs); if(bw&&bw.length>=3){bp=computeProfile(bw); if(bp){bcs=bw;bm=_meta(P,bw);}}}
+  else if(P.base){bp=P.base;bcs=sess.filter(c=>c.time>=P.base.start&&c.time<=P.base.end);bm=_meta(P,bcs);}
+  if(bp&&bcs&&bcs.length)html+=cardHTML(bm,bp,bcs,"base",{});
+  stackBody.innerHTML=html;
+  const cb=stackBody.querySelector('[data-act="chat"]');if(cb)cb.onclick=()=>addToChat(P);
+  const rb=stackBody.querySelector('[data-act="replay"]');if(rb)rb.onclick=()=>replayStart(P);
+  document.getElementById("stackSid").innerHTML=`${P.session} &middot; ${P.date}`;
+  smodStack.style.display="flex";
 }
-function openModule(P){
-  replayStop();
-  const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
-  smod.innerHTML=cardHTML(P,P,cs,"",false,false);
-  if(P.base){const b=P.base,bcs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=b.start&&c.time<=b.end);
-    const bm={session:P.session,date:P.date,start:b.start,end:b.end,duration_sec:b.end-b.start,
-      next_session:P.next_session,next_open:P.next_open,bars:b.bars};
-    smodB.innerHTML=cardHTML(bm,b,bcs,"",false,true);smodB.style.display="block";wireCard(smodB,P);
-  }else smodB.style.display="none";
-  wireCard(smod,P);placeCards();
-}
+function openModule(P){replayStop();renderStack(P,null);}
 // ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----
 function computeProfile(bars){
   if(bars.length<2)return null;
@@ -428,19 +433,21 @@ function computeZone(p){const rng=p.high-p.low,va=p.vah-p.val;if(rng<=0||va<=0)r
   const rr=+(rng/va).toFixed(2),h=p.height_pct,etf=h<0.25?"1m":(h<0.60?"5m":"15m");
   return{height_pct:+h.toFixed(3),bars:p.bars,risk_pts:+va.toFixed(1),room_pts:+rng.toFixed(1),rr,entry_tf:etf,rr_ok:rr>=2};
 }
-// ---- REPLAY: step a session bar-by-bar; recompute profile/shape/zone on bars-so-far (causal) ----
+// ---- base detector (JS port of base_profile.detect) so the base card recomputes live in replay ----
+function computeBase(bars){const n=bars.length;if(n<8)return null;
+  const rr=bars.map(b=>b.high-b.low).slice().sort((a,b)=>a-b), med=rr[Math.floor(n/2)], band=5*med;
+  let end=n-1,wl=bars[end].low,wh=bars[end].high,start=end;
+  for(let i=end-1;i>=0;i--){const nwl=Math.min(wl,bars[i].low),nwh=Math.max(wh,bars[i].high);
+    if(nwh-nwl>band)break;wl=nwl;wh=nwh;start=i;}
+  return (end-start+1>=8)?bars.slice(start,end+1):null;}
+// ---- REPLAY: step the session bar-by-bar; session + base recompute on bars-so-far, HTF is static context ----
 let RP={active:false,P:null,bars:[],k:0,N:0,playing:false,timer:null,speed:1};
 function replayStop(){if(RP.timer){clearInterval(RP.timer);RP.timer=null;}RP.active=false;RP.playing=false;drawNow();}
-function replayStart(P){const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+function replayStart(P){const cs=SERIES["NQ_5m"].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
   if(cs.length<3)return;if(RP.timer)clearInterval(RP.timer);
   RP={active:true,P,bars:cs,k:Math.min(cs.length,5),N:cs.length,playing:false,timer:null,speed:RP.speed||1};
-  smodB.style.display="none";replayRender();}
-function replayRender(){const cs=RP.bars.slice(0,RP.k);
-  const prof=computeProfile(cs)||{high:RP.P.high,low:RP.P.low,poc:RP.P.poc,val:RP.P.val,vah:RP.P.vah,bins:[],va_pct_of_range:0,height_pct:0,shape:{},zone:{},bars:cs.length};
-  const first=cs[0],last=cs[cs.length-1];
-  const meta={session:RP.P.session,date:RP.P.date,start:first.time,end:last.time,duration_sec:last.time-first.time,
-    next_session:RP.P.next_session,next_open:RP.P.next_open,bars:cs.length};
-  const bb=RP.bars[RP.k-1], tlab=bb?_t12(bb.time):"";
+  replayRender();}
+function replayRender(){const bb=RP.bars[RP.k-1],tlab=bb?_t12(bb.time):"";
   const ctrls=`<div class="rpc">
     <button class="rpb" data-rp="start">|&lt;</button><button class="rpb" data-rp="back">&lt;</button>
     <button class="rpb" id="rpPlay">${RP.playing?"pause":"play"}</button>
@@ -448,15 +455,12 @@ function replayRender(){const cs=RP.bars.slice(0,RP.k);
     <input type="range" id="rpScrub" min="1" max="${RP.N}" value="${RP.k}">
     <span class="rpinfo">bar ${RP.k}/${RP.N} &middot; ${tlab}</span>
     <select id="rpSpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select></div>`;
-  smod.innerHTML=cardHTML(meta,prof,cs,ctrls,true,false);
-  if(smod.style.display!=="block")positionShow();
-  wireCard(smod,RP.P);
-  smod.querySelectorAll("[data-rp]").forEach(x=>x.onclick=()=>replayGo(x.dataset.rp));
+  renderStack(RP.P,{k:RP.k,ctrls});
+  stackBody.querySelectorAll("[data-rp]").forEach(x=>x.onclick=()=>replayGo(x.dataset.rp));
   const pl=document.getElementById("rpPlay");if(pl)pl.onclick=replayToggle;
   const sc=document.getElementById("rpScrub");if(sc)sc.oninput=()=>{RP.k=+sc.value;replayRender();};
   const sp=document.getElementById("rpSpeed");if(sp){sp.value=RP.speed;sp.onchange=()=>{RP.speed=+sp.value;if(RP.playing){replayPause();replayPlay();}};}
-  drawNow();
-}
+  drawNow();}
 function replayGo(cmd){if(cmd==="start")RP.k=Math.min(RP.N,5);else if(cmd==="back")RP.k=Math.max(3,RP.k-1);
   else if(cmd==="fwd")RP.k=Math.min(RP.N,RP.k+1);else if(cmd==="end")RP.k=RP.N;replayRender();}
 function replayToggle(){RP.playing?replayPause():replayPlay();}
@@ -465,10 +469,6 @@ function replayPause(){RP.playing=false;if(RP.timer){clearInterval(RP.timer);RP.
 function drawNow(){const old=document.getElementById("_nowln");if(old)old.remove();
   if(!RP.active||!RP.bars[RP.k-1])return;const x=chart.timeScale().timeToCoordinate(RP.bars[RP.k-1].time);
   if(x==null)return;const box=chartEl.getBoundingClientRect();const l=_ln(x,0,x,box.height,"#f0b000",1.3,0.9);l.setAttribute("id","_nowln");vpsvg.appendChild(l);}
-function _dragify(handle,el){let sx,sy,ox,oy,drag=false;
-  handle.onmousedown=e=>{if(e.target.classList.contains("smod-x")||e.target.classList.contains("smod-chat"))return;drag=true;sx=e.clientX;sy=e.clientY;ox=el.offsetLeft;oy=el.offsetTop;e.preventDefault();};
-  const mv=e=>{if(!drag)return;el.style.left=(ox+e.clientX-sx)+"px";el.style.top=(oy+e.clientY-sy)+"px";};
-  window.addEventListener("mousemove",mv);window.addEventListener("mouseup",()=>drag=false);}
 chart.subscribeClick(p=>{if(!modOn||p.time==null||!(inst==="NQ"&&(tf==="1m"||tf==="5m")))return;
   if(p.point)modPt=p.point;const P=_profAt(p.time);if(P)openModule(P);});
 // #demo -> auto-open the latest session card (for screenshots / quick check)

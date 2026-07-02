@@ -29,3 +29,6 @@ __pycache__/
 /data/ES/*.parquet
 
 # (research/**/output/*.parquet are small bucket artifacts and ARE tracked)
+
+# htf-profile output (regenerate: htf_profile.py)
+/research/structure/htf_profile/output/
