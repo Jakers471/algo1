@@ -503,3 +503,14 @@ NEXT MOVE: the R:R-geometry / TARGET-LADDER engine (research) -- from the enable
 level + ordered target ladder + R:R per rung; draw the levels on the chart (boxes already show the scales).
 Geometry-only, no simulation. THEN the backtest measures whether those levels get hit (realized R). This
 is the concrete trade DEFINITION (entry/stop/TP geometry) that setup_arm later arms.
+
+### F26 — target_ladder: the multi-scale R:R GEOMETRY engine BUILT (2026-07-02)
+Built research/setup/target_ladder (geometry only, NO backtest; F25). `ladder({base,session,htf})` -> 1R =
+the BASE coil (high-low = the tight stop from the smallest scale); TARGETS = every larger scale's VA edges
+/ POC / extremes in the breakout direction, ordered nearest-first into a scale-out LADDER with R:R per rung;
+computed for BOTH directions (direction unpredicted, F13). The multi-scale generalization of
+zone_calibration's single R:R. Params in strategy_config.LADDER. On the chart: a TARGET LADDER card at the
+bottom of the module stack -- 2025-01-10 NY: 1R=194.5pt, up rungs htf POC 0.86R / htf VAH 2.58R / htf high
+3.7R (rungs come down into each other). The concrete trade DEFINITION (entry/stop/TP geometry) that
+setup_arm arms + a backtest later measures. Logged to ledger (kind=target_ladder). Study: median 2
+rungs/session; upside often one-sided (coil sits near an extreme) -- honest geometry.

@@ -76,6 +76,10 @@ background:rgba(12,13,17,.72);border:1px solid var(--ring);border-radius:12px;di
 .smod{background:rgba(20,22,27,.985);border:1px solid var(--ring);border-radius:10px}
 .smod-r{margin-left:auto;display:flex;gap:5px}
 .smod-h{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--ring);user-select:none}
+.lgrid{display:flex;gap:12px;padding:8px 12px}.lcol{flex:1}
+.lttl{font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.lr{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid #1c2330;font-size:11.5px}
+.lr span{color:var(--mut)}.lr .rr{color:var(--ink2);min-width:46px;text-align:right;font-weight:600}
 .smod-h b{font-weight:600}.smod-h .mut{color:var(--mut);font-size:11px}
 .smod-tag{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:11px;border:1px solid}
 .smod-x{margin-left:auto;cursor:pointer;color:var(--mut);font-size:16px;line-height:1;padding:0 3px}.smod-x:hover{color:var(--ink)}
@@ -403,11 +407,21 @@ function renderStack(P,rp){
   if(rp){const bw=computeBase(scs); if(bw&&bw.length>=3){bp=computeProfile(bw); if(bp){bcs=bw;bm=_meta(P,bw);}}}
   else if(P.base){bp=P.base;bcs=sess.filter(c=>c.time>=P.base.start&&c.time<=P.base.end);bm=_meta(P,bcs);}
   if(bp&&bcs&&bcs.length)html+=cardHTML(bm,bp,bcs,"base",{});
+  if(!rp&&P.ladder)html+=ladderCard(P);          // multi-scale R:R geometry (static; skipped in replay)
   stackBody.innerHTML=html;
   const cb=stackBody.querySelector('[data-act="chat"]');if(cb)cb.onclick=()=>addToChat(P);
   const rb=stackBody.querySelector('[data-act="replay"]');if(rb)rb.onclick=()=>replayStart(P);
   document.getElementById("stackSid").innerHTML=`${P.session} &middot; ${P.date}`;
   smodStack.style.display="flex";
+}
+function ladderCard(P){const L=P.ladder;
+  const rung=t=>`<div class="lr"><span>${t.src}</span><b>${t.level}</b><b class="rr">${t.rr}R</b></div>`;
+  const side=(d,col,lab)=>`<div class="lcol"><div class="lttl" style="color:${col}">${lab} &middot; stop ${d.stop}</div>`
+    +(d.targets.length?d.targets.map(rung).join(""):'<div class="lr"><span>no rung</span><b></b></div>')+'</div>';
+  return `<div class="smod" data-k="ladder">
+    <div class="smod-h"><span class="smod-tag" style="color:#c3c2b7;border-color:#c3c2b7">TARGET LADDER</span>
+      <b>1R = ${L.risk_pts} pt</b><span class="mut">base = stop &middot; larger scales = targets</span></div>
+    <div class="lgrid">${side(L.up,"#2ebd85","UP break")}${side(L.down,"#f6465d","DOWN break")}</div></div>`;
 }
 function openModule(P){replayStop();selP=P;renderStack(P,null);redraw();}
 // ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----

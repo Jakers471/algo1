@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 sys.path.insert(0, os.path.join(SIM, "research", "structure", "base_profile"))
 sys.path.insert(0, os.path.join(SIM, "research", "structure", "htf_profile"))
+sys.path.insert(0, os.path.join(SIM, "research", "setup", "target_ladder"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
@@ -29,6 +30,7 @@ import shape_filter as sf
 import zone_calibration as zc
 import base_profile as bpm
 import htf_profile as htfm
+import target_ladder as tlm
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
@@ -164,6 +166,11 @@ def main():
                     P["htf"] = h
         except Exception as e:
             print("  htf companion skipped:", e)
+        # multi-scale target ladder (R:R geometry) per session
+        for P in profiles:
+            L = tlm.ladder({"base": P.get("base"), "session": P, "htf": P.get("htf")})
+            if L:
+                P["ladder"] = L
     manifest["profiles"] = profiles
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))

@@ -55,8 +55,11 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[~]` **`htf_profile` BUILT (3rd scale)** — trailing-week composite ending at session open; same dict →
   same gates. The three profilers (base ⊂ session ⊂ HTF) run together on the chart's 3-card module stack,
   replay-all (session+base live, HTF static). `research/structure/htf_profile`. Promote-pending. (NOTES F19)
-- `[R]` **All gate params centralized in `strategy_config`** (PROFILE/SHAPE/ZONE/BASE/HTF/FIB) — research +
+- `[R]` **All gate params centralized in `strategy_config`** (PROFILE/SHAPE/ZONE/BASE/HTF/FIB/LADDER) — research +
   engine + chart JS all read them; ledger captures them; tune in one file → clean promotion, nothing breaks. (NOTES F20)
+- `[~]` **`target_ladder` BUILT — multi-scale R:R geometry** (`research/setup/target_ladder`): 1R = base coil;
+  targets = larger scales' VA/POC/extremes as a scale-out ladder w/ R:R per rung, both directions. Geometry only
+  (no backtest). On the chart module stack as the TARGET LADDER card. The trade def `setup_arm` will arm. (NOTES F25/F26)
 
 ## Phase 4 — Setup calibration & bias
 - `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`

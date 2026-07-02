@@ -32,3 +32,6 @@ __pycache__/
 
 # htf-profile output (regenerate: htf_profile.py)
 /research/structure/htf_profile/output/
+
+# target-ladder output (regenerate: target_ladder.py)
+/research/setup/target_ladder/output/

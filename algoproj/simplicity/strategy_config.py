@@ -117,6 +117,9 @@ SHAPE = {                                            # shape_filter "clean vs fo
 }
 ZONE = {"rr_min": 2.0, "tf_bands": [[0.25, "1m"], [0.60, "5m"], [None, "15m"]]}  # None = inf; height% -> entry TF
 FIB = {"edges": [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0001]}   # fib zones (edge test: no dir edge, F11/F13)
+# multi-scale TARGET LADDER (R:R geometry, NOTES F25): 1R = the base coil; targets = the larger scales'
+# VA edges / POC / extremes, ordered into a scale-out ladder per direction. Geometry only (no backtest).
+LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}
 
 # ==================================================================================
 # SETUP (arm/disarm) / ENTRY / EXIT  --  LIVE state machine (see ARCHITECTURE.md)  [TBD]

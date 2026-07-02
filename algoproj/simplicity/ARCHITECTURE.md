@@ -125,7 +125,12 @@ Each scale plays a *different role* in a trade, not just confluence: **base = th
 extended)**. A trade takes its stop from the smallest scale and its runway from the largest (LTF-tight-stop
 / HTF-runway, generalized). Confluence = when the scales agree → the A+ setup; `setup_arm` reads all three.
 Still geometry/context, not direction; validate the stack in-context (F13). Built: `base_profile` +
-`volume_profile` (they run together on the chart module card). Missing: the HTF composite profiler.
+`volume_profile` + `htf_profile` (all three run together on the chart's 3-card module stack, replay-all).
+**`target_ladder`** (`research/setup`, NOTES F25/F26) turns the nested scales into the trade GEOMETRY —
+1R = the base coil (stop), targets = the larger scales' VA/POC/extremes as a scale-out ladder with R:R per
+rung, both directions. Geometry only (no backtest); it's the trade DEFINITION `setup_arm` will arm and a
+backtest will later measure (realized R). All scale/gate params live in `strategy_config` (F20); the future
+geometric N-scale ladder (F22) + config scale-toggles (F23) generalize this.
 
 ## Run ledger — scorecards bound to configs/params **[built 2026-07-02; `research/runs/`]**
 Don't tune blind. Every research run that produces numbers appends a **scorecard** to
