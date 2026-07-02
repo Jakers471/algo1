@@ -8,7 +8,8 @@ against real price, then refine.
 
   tightness   PEAKED on va_pct (VA width / range): a clean bell coil (~TIGHT_PEAK) scores 1.0; a
               spike (va_pct->0) and a scatter/bimodal (high va_pct) both score low  (NOTES F16)
-  prominence  POC bin vs the average bin               (peaked vs flat)
+  prominence  POC vs the mean of the VALUE-AREA bins   (peaked vs flat; breakout-robust -- the
+              breakout leg's thin bins fall OUTSIDE the VA so they can't dilute it; NOTES F17)
   n_peaks     significant humps                        (1 = single-peak = clean)
   balance     POC near the middle?                     (central = consolidation, edge = trend)
 
@@ -39,7 +40,7 @@ WEIGHTS = {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10}
 # range expansion (breakout) and maxed out on spikes (NOTES F16).
 TIGHT_PEAK = 40.0                    # va_pct of a clean bell consolidation -> tightness = 1.0
 TIGHT_HI = 85.0                      # va_pct where tightness falls back to 0 (scattered/bimodal)
-PROM_DEN = 4.0                       # prominence normalization: (prominence-1)/PROM_DEN
+PROM_DEN = 2.0                       # prominence = POC / mean(value-area bins); (prominence-1)/PROM_DEN -> peakc
 SINGLE_2, SINGLE_ELSE = 0.5, 0.15    # single-peak score for exactly-2-peaks / 3+-peaks
 SHAPE_OK = 50                        # score >= this = "clean"
 
@@ -50,10 +51,12 @@ def score(p):
     if len(bins) < 3:
         return None
     v = np.array([b["v"] for b in bins], dtype=float)
-    total, poc_v, mean_v = v.sum(), v.max(), v.mean()
+    total, poc_v = v.sum(), v.max()
     if total <= 0:
         return None
-    prominence = poc_v / mean_v if mean_v > 0 else 0.0
+    va_v = np.array([b["v"] for b in bins if b.get("va")], dtype=float)   # value-area core (breakout-robust)
+    denom = va_v.mean() if va_v.size else v.mean()
+    prominence = poc_v / denom if denom > 0 else 0.0
     # local-maxima peaks that clear half the POC (significant humps)
     peaks = 0
     for i in range(len(v)):

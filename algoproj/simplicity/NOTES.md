@@ -381,3 +381,17 @@ Verified: flagged coils 47->66 and 48->59; bimodal day stays foggy 25->29; inver
 SIDE EFFECT to tune next: 59% pass is now too loose -- SHAPE_OK (still 50) needs re-raising (~62?) to
 restore a selective gate; separate logged tune. The CURVE is the fix; the THRESHOLD is the next knob.
 This is the first run-ledger tune: baseline vs peaked-tightness-curve both live in runs.jsonl.
+
+### F17 — shape prominence made breakout-robust (POC / mean of value-area bins) (2026-07-02)
+Second half of F16: user still saw the score RISE as price broke out, even after the tightness fix.
+Traced to the peakedness term prominence = POC / mean(ALL bins): the breakout leg expands the range,
+adding many thin NONZERO bins that dilute the mean, so POC/mean inflates (demo: empty bins alone drove
+prominence 2.86->5.20 = +16 score pts; real Dec-30 london 2.23->3.69). Same disease as the close-only
+POC bug and the tightness bug -- a metric normalized against the whole EXPANDING range. Fix: prominence =
+POC / mean of the VALUE-AREA bins only; the breakout leg's thin bins fall OUTSIDE the VA so they can't
+dilute the denominator. Recalibrated PROM_DEN 4->2 (VA-based prominence ~1.2-2.3 vs old ~1.5-3.2), chosen
+so peakc's spread matches the old one -> change ISOLATED to breakout-robustness (ledger: median 52->52,
+shape_ok 58.6%->58.9%). Mirrored in chart JS computeShape; chart rebuilt. Verified: synthetic coil vs
+coil+breakout shape FALLS 74->59 (was rising), prominence near-flat 1.61->1.8 (was 2.86->5.20). Deep cure
+still base_profile (F6): profile the COIL not the whole session and none of these range-normalization
+bugs can occur. THRESHOLD still pending: SHAPE_OK 50 (~59% pass) -> re-raise once user re-checks in replay.
