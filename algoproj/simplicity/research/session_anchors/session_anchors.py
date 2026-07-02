@@ -54,10 +54,12 @@ def main():
 
     f = pd.DataFrame({"date": pd.DatetimeIndex(sdate).strftime("%Y-%m-%d"), "session": sess,
                       "high": df["high"].to_numpy(), "low": df["low"].to_numpy(),
-                      "open": df["open"].to_numpy(), "ts": ts})
-    g = f.groupby(["date", "session"], sort=False).agg(
-        high=("high", "max"), low=("low", "min"), open=("open", "first"),
-        start=("ts", "min"), end=("ts", "max")).reset_index().sort_values("start")
+                      "ts": ts})
+    grp = f.groupby(["date", "session"], sort=False)
+    hi = f.loc[grp["high"].idxmax()][["date", "session", "high", "ts"]].rename(columns={"ts": "high_ts"})
+    lo = f.loc[grp["low"].idxmin()][["date", "session", "low", "ts"]].rename(columns={"ts": "low_ts"})
+    ends = grp["ts"].max().reset_index().rename(columns={"ts": "end"})
+    g = ends.merge(hi, on=["date", "session"]).merge(lo, on=["date", "session"]).sort_values("end")
 
     def breach(level, formed_ts, direction):
         """direction 'up' (close>level) or 'down' (close<level). -> dict."""
@@ -78,10 +80,14 @@ def main():
 
     levels = []
     for r in g.itertuples():
-        for typ, lvl, direction in (("high", r.high, "up"), ("low", r.low, "down")):
+        # start = the timestamp the extreme was actually made (so the line touches the wick);
+        # breach is scanned from session END (the level becomes S/R after the session closes).
+        for typ, lvl, ext_ts, direction in (("high", r.high, r.high_ts, "up"),
+                                            ("low", r.low, r.low_ts, "down")):
             b = breach(lvl, r.end, direction)
             levels.append({"date": r.date, "session": r.session, "type": typ,
-                           "level": round(float(lvl), 2), "start": int(r.end), **b})
+                           "level": round(float(lvl), 2), "start": int(ext_ts),
+                           "formed": int(r.end), **b})
 
     out = {"colors": COLORS, "data_end": data_end, "max_fwd_bars": MAX_FWD_BARS, "levels": levels}
     json.dump(out, open(os.path.join(OUT, "session_anchors.json"), "w"))
