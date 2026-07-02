@@ -449,3 +449,23 @@ decision, derived from the structure's own dimensions instead of a fixed entry T
 zone_calibration (already maps height%->entry TF crudely) + the multi-scale stack (F19). Deep dive later,
 not rushing -- just captured. Likely a new tool (research/tools/bar_agg or an engine/feed extension)
 feeding the profilers at chosen TFs.
+
+### F22 — geometric scale-ladder: N nested profiles + a target ladder (FUTURE VISION) (2026-07-02)
+User's generalization of the 3-scale stack (F19): use ~6 GEOMETRICALLY-scaled time dimensions instead of
+3 fixed ones -- each lookback a constant ratio (xr) of the one below (bars 20->60->180->540->1620->4860,
+~30m->2h->8h->1.5d->1wk->1mo). Why geometric: market structure is ~self-similar across scales, so a
+geometric ladder gives EVEN coverage in log-time and matches how consolidations NEST inside consolidations
+(HTF > MTF > LTF, "compressed onto each other" = the same price at N resolutions). Each scale runs the same
+profile machinery (the dict seam) -> a stack of nested value areas.
+The trade geometry falls out of the ladder:
+  - STOP from the smallest ALIGNED scale (tight 1R).
+  - TARGETS = a LADDER: each larger scale's VA edges / naked POCs are scale-out targets (a stack, not one).
+  - ENTRY TF = the scale where the current coil is tightest/cleanest (ties to F21 bar-aggregation).
+  - R:R = (distance to a larger-scale target) / (small-scale stop) -- naturally huge at the edge of a big
+    nested range with a tight coil.
+Geometric scaling keeps PARAMS tiny (one ratio + a count define the whole ladder) -> less overfitting.
+New pieces vs F19: (a) geometric ladder design, (b) NESTING/containment test (small VA inside large VA),
+(c) the target LADDER, (d) entry-TF from the tightest coil. Caveats: still GEOMETRY not direction (F13);
+"nested" needs a formal containment rule; more scales = more compute/overfit risk; validate in-context.
+Visualize as an N-card scale ladder (module stack extended) or nested VA boxes on the chart. Deferred --
+the end-state of the base/session/HTF direction; build after the 3-scale confluence + setup_arm exist.
