@@ -74,8 +74,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[R]` **Per-session module cards** — Indicators `modules` on, click a session (NQ 1m/5m) → floating card
   with that session's crisp mini volume-profile + timing (open/close/duration/next+gap) + shape/R:R scores.
   Solves crisp-VP-on-chart + session hand-off view; = the seed of the replay state panel — `research/chart`
-- `[ ]` **Chart REPLAY mode** — scrub back + step forward bar-by-bar; the **modular state panel** (grown from
-  the session module card) shows the running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it). The engine's visual frontend = the backtest unfolding (same causal engine) — `research/chart`
+- `[~]` **Chart REPLAY mode** — v1 built: step a session bar-by-bar (|< < play > >| + scrubber + speed),
+  the module recomputes profile/shape/zone on **bars-so-far** (causal, JS port) so scores evolve as price
+  moves; gold "now" line on the chart. **Pending (gates first):** the **modular state panel** on this same
+  card — live hi/lo, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it —
+  layers on once `setup_arm` etc. exist. The engine's visual frontend = the backtest unfolding — `research/chart`
 - `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
 - `[ ]` Equity curve (+ drawdown)
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)

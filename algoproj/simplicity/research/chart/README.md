@@ -23,9 +23,13 @@ profile + shape/R:R scores) into a persistent per-session drawer (top-right `cha
 clean markdown block (all the numbers + your note) to paste into a conversation; `copy all` / `json`
 export the set. This is how you flag specific sessions and ask targeted questions about them.
 **Outputs:** `data/<INST>_<tf>.json`, `data/manifest.json`, `chart.html` (generated — gitignored)
-**Planned — REPLAY mode:** scrub price back + step forward bar-by-bar; a modular state panel shows the
-running numbers (session timing, live hi/lo, running profile POC/VA, zone size/tightness, fib bias,
-gate strengths, ARM/DISARM + the validation/invalidation that flipped it). Because the engine runs on
-bars-so-far, replay = the live engine driven interactively = the backtest unfolding. See ARCHITECTURE.md.
+**REPLAY mode (v1 built):** open a session module → `replay` → step the session bar-by-bar
+(`|< < play > >|` + scrubber + speed). The module recomputes the volume profile + shape + zone on
+**bars-so-far** (causal — a JS port of the three engine functions), so POC/VA/scores **evolve as price
+moves**; a gold "now" line tracks on the main chart. Because everything runs on bars-so-far, replay =
+the live engine driven interactively = the backtest unfolding.
+**Planned (needs the gates first):** the **modular state panel** on this same card — live hi/lo, fib
+bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it — layers on once
+`setup_arm` etc. are built. The session module card is the seed of it. See ARCHITECTURE.md.
 **Attached to:** VISION (visualization for all steps) · CHECKLIST Cross-cutting + Phase 7
 **Status:** [~] core built (multi-TF + config sidebar + anchors/times/profile/fib overlays + per-session module cards); replay mode = planned

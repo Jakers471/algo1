@@ -35,7 +35,7 @@ def _series(df):
     t = (df.index.view("int64") // 1_000_000_000).tolist()
     o, h, l, c = df["open"].tolist(), df["high"].tolist(), df["low"].tolist(), df["close"].tolist()
     v = df["volume"].tolist()
-    candles = [{"time": t[i], "open": o[i], "high": h[i], "low": l[i], "close": c[i]} for i in range(len(t))]
+    candles = [{"time": t[i], "open": o[i], "high": h[i], "low": l[i], "close": c[i], "volume": v[i]} for i in range(len(t))]
     up = "rgba(25,158,112,0.5)"; dn = "rgba(230,103,103,0.5)"
     vol = [{"time": t[i], "value": v[i], "color": up if c[i] >= o[i] else dn} for i in range(len(t))]
     return candles, vol

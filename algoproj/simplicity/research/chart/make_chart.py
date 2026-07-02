@@ -102,6 +102,12 @@ font:inherit;font-size:11.5px;padding:6px;resize:vertical;min-height:42px}
 .mini2{font-size:11px;padding:3px 9px}
 #_toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--up);color:#fff;
 padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.4);opacity:0;transition:opacity .3s}
+.rpc{display:flex;align-items:center;gap:5px;padding:7px 12px;border-top:1px solid var(--ring)}
+.rpb{background:var(--s);border:1px solid var(--ring);color:var(--ink2);border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;min-width:26px}
+.rpb:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+.rpc input[type=range]{flex:1;accent-color:var(--acc);min-width:60px}
+.rpc select{background:var(--s);border:1px solid var(--ring);color:var(--ink2);border-radius:6px;font-size:11px;padding:2px}
+.rpinfo{color:var(--mut);font-size:10.5px;white-space:nowrap;min-width:94px;text-align:right}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span style="color:var(--mut);font-weight:400">chart</span></h1>
@@ -281,6 +287,7 @@ function redraw(){
       vpsvg.appendChild(_ln(x0,y,x1,y,c,mid?1.4:1,mid?0.9:0.5,mid?null:"1 3"));  // 0.5 solid bright, others dotted faint
     }
   }
+  if(typeof drawNow==="function")drawNow();   // replay "now" line survives overlay redraws
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
 new ResizeObserver(redraw).observe(chartEl);
@@ -331,35 +338,118 @@ function moduleSVG(P,cs){
     e+=`<rect x="${(VPR-w).toFixed(1)}" y="${(Y(b.p)-barH/2).toFixed(1)}" width="${w.toFixed(1)}" height="${barH.toFixed(1)}" fill="${col}" fill-opacity="${(0.3+0.65*(b.v/mx)).toFixed(2)}"/>`;}
   return `<svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="xMidYMid meet">${e}</svg>`;
 }
-function openModule(P){
-  const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
-  const s=P.shape||{}, z=P.zone||{}, col=SC[P.session]||"#888", okc=v=>v?"var(--up)":"var(--dn)";
-  const gap=P.next_open!=null?P.next_open-P.end:null;
-  const timing=mrow("opened",fmtET(P.start))+mrow("closed",fmtET(P.end))+mrow("duration",fmtDur(P.duration_sec))
-    +(P.next_session?mrow("next",P.next_session+" &middot; "+fmtDur(gap))+mrow("opens",fmtET(P.next_open)):mrow("next","&mdash;"));
+function cardHTML(meta,prof,cs,extra,isReplay){
+  const s=prof.shape||{}, z=prof.zone||{}, col=SC[meta.session]||"#888", okc=v=>v?"var(--up)":"var(--dn)";
+  const gap=meta.next_open!=null?meta.next_open-meta.end:null;
+  const timing=mrow("opened",fmtET(meta.start))+mrow("closed",fmtET(meta.end))+mrow("duration",fmtDur(meta.duration_sec))
+    +(meta.next_session?mrow("next",meta.next_session+" &middot; "+fmtDur(gap))+mrow("opens",fmtET(meta.next_open)):mrow("next","&mdash;"));
   const shape=(s.shape_score!=null)?(mrow("score",s.shape_score+"/100",okc(s.shape_ok))+mrow("VA % range",s.va_pct+"%")
-    +mrow("prominence",s.prominence+"x")+mrow("peaks",s.n_peaks)+mrow("POC pos",s.poc_pos)):mrow("&mdash;","n/a");
+    +mrow("prominence",s.prominence+"x")+mrow("peaks",s.n_peaks)+mrow("POC pos",s.poc_pos)):mrow("&mdash;","forming");
   const zone=(z.rr!=null)?(mrow("R:R",z.rr,okc(z.rr_ok))+mrow("risk 1R",z.risk_pts+" pt")+mrow("room",z.room_pts+" pt")
-    +mrow("height",z.height_pct+"%")+mrow("entry tf",z.entry_tf)):mrow("&mdash;","n/a");
-  const verdict=(s.shape_ok?"clean single-peak":"scattered / not clean")+" &middot; R:R "+(z.rr!=null?z.rr:"?")
-    +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:"");
-  smod.innerHTML=`<div class="smod-h" id="smodH">
-      <span class="smod-tag" style="color:${col};border-color:${col}">${P.session}</span>
-      <b>${P.date}</b><span class="mut">${P.bars} x ${tf}</span>
-      <span class="smod-chat" id="smodChat" style="margin-left:auto">chat about</span><span class="smod-x" id="smodX">&times;</span></div>
-    <div class="smod-svg">${moduleSVG(P,cs)}</div>
+    +mrow("height",z.height_pct+"%")+mrow("entry tf",z.entry_tf)):mrow("&mdash;","forming");
+  const verdict=(s.shape_score==null)?"forming…":((s.shape_ok?"clean single-peak":"scattered / not clean")+" &middot; R:R "+(z.rr!=null?z.rr:"?")
+    +(z.rr_ok?" worth it":" too thin")+(z.entry_tf?" &rarr; entry on "+z.entry_tf:""));
+  const rbtn=isReplay?'':'<span class="smod-chat" id="smodReplay" style="margin-left:6px">replay</span>';
+  const rlab=isReplay?' &middot; <b style="color:#f0b000">REPLAY</b>':'';
+  return `<div class="smod-h" id="smodH">
+      <span class="smod-tag" style="color:${col};border-color:${col}">${meta.session}</span>
+      <b>${meta.date}</b><span class="mut">${meta.bars} x ${tf}${rlab}</span>
+      <span class="smod-chat" id="smodChat" style="margin-left:auto">chat about</span>${rbtn}<span class="smod-x" id="smodX">&times;</span></div>
+    <div class="smod-svg">${moduleSVG(prof,cs)}</div>
     <div class="smod-cols"><div class="mcol"><div class="mttl">Timing (ET)</div>${timing}</div>
       <div class="mcol"><div class="mttl">Shape</div>${shape}</div>
       <div class="mcol"><div class="mttl">Zone &mdash; R:R</div>${zone}</div></div>
-    <div class="smod-v">${verdict}</div>`;
-  const box=chartEl.getBoundingClientRect();
+    <div class="smod-v">${verdict}</div>${extra||''}`;
+}
+function positionShow(){const box=chartEl.getBoundingClientRect();
   smod.style.left=Math.min(Math.max(8,modPt.x-300),Math.max(8,box.width-612))+"px";
-  smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-330))+"px";
-  smod.style.display="block";
-  document.getElementById("smodX").onclick=()=>smod.style.display="none";
-  document.getElementById("smodChat").onclick=()=>addToChat(P);
+  smod.style.top=Math.min(Math.max(8,modPt.y+14),Math.max(8,box.height-360))+"px";
+  smod.style.display="block";}
+function wireCard(P){
+  document.getElementById("smodX").onclick=()=>{smod.style.display="none";replayStop();};
+  const cb=document.getElementById("smodChat");if(cb)cb.onclick=()=>addToChat(P);
+  const rb=document.getElementById("smodReplay");if(rb)rb.onclick=()=>replayStart(P);
   _dragify(document.getElementById("smodH"));
 }
+function openModule(P){
+  replayStop();
+  const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+  smod.innerHTML=cardHTML(P,P,cs,"",false);
+  positionShow();wireCard(P);
+}
+// ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----
+function computeProfile(bars){
+  if(bars.length<2)return null;
+  let hi=-1e18,lo=1e18;for(const b of bars){if(b.high>hi)hi=b.high;if(b.low<lo)lo=b.low;}
+  if(hi<=lo)return null;
+  const ROW=2.0, nb=Math.max(3,Math.round((hi-lo)/ROW)), edges=[];
+  for(let i=0;i<=nb;i++)edges.push(lo+(hi-lo)*i/nb);
+  const centers=[];for(let i=0;i<nb;i++)centers.push((edges[i]+edges[i+1])/2);
+  const vbin=new Array(nb).fill(0);
+  for(const b of bars){const idx=[];for(let i=0;i<nb;i++)if(centers[i]>=b.low&&centers[i]<=b.high)idx.push(i);
+    if(idx.length===0){let j=Math.floor(((b.low+b.high)/2-lo)/(hi-lo)*nb);j=Math.min(nb-1,Math.max(0,j));vbin[j]+=b.volume;}
+    else{const sh=b.volume/idx.length;for(const j of idx)vbin[j]+=sh;}}
+  const total=vbin.reduce((a,b)=>a+b,0);if(total<=0)return null;
+  let poc=0;for(let i=1;i<nb;i++)if(vbin[i]>vbin[poc])poc=i;
+  let li=poc,ui=poc,acc=vbin[poc];const target=total*0.7;
+  while(acc<target&&(li>0||ui<nb-1)){const up=ui<nb-1?vbin[ui+1]:-1,dn=li>0?vbin[li-1]:-1;
+    if(up>=dn){ui++;acc+=vbin[ui];}else{li--;acc+=vbin[li];}}
+  const pocpx=centers[poc],val=edges[li],vah=edges[ui+1],rng=hi-lo,va=vah-val;
+  const bins=[];for(let i=0;i<nb;i++)if(vbin[i]>0)bins.push({p:+centers[i].toFixed(2),v:+vbin[i].toFixed(1),va:val<=centers[i]&&centers[i]<=vah});
+  const prof={high:+hi.toFixed(2),low:+lo.toFixed(2),poc:+pocpx.toFixed(2),val:+val.toFixed(2),vah:+vah.toFixed(2),
+    bins,height_pct:+(rng/lo*100).toFixed(3),va_pct_of_range:+(va/rng*100).toFixed(1),bars:bars.length};
+  prof.shape=computeShape(prof);prof.zone=computeZone(prof);return prof;
+}
+function computeShape(p){const bins=p.bins;if(bins.length<3)return{};
+  const v=bins.map(b=>b.v),total=v.reduce((a,b)=>a+b,0),pocv=Math.max(...v),meanv=total/v.length;
+  const prom=meanv>0?pocv/meanv:0;let peaks=0;
+  for(let i=0;i<v.length;i++){const l=i>0?v[i-1]:-1,r=i<v.length-1?v[i+1]:-1;if(v[i]>=l&&v[i]>=r&&v[i]>0.5*pocv)peaks++;}
+  const va_pct=p.va_pct_of_range,rng=p.high-p.low,pos=rng>0?(p.poc-p.low)/rng:0.5,bal=Math.abs(pos-0.5),top=pocv/total*100;
+  const tight=Math.max(0,1-va_pct/80),peakc=Math.min(1,Math.max(0,(prom-1)/4)),single=peaks<=1?1:(peaks==2?0.5:0.15),central=Math.max(0,1-bal/0.5);
+  const score=Math.round(100*(0.4*tight+0.3*peakc+0.2*single+0.1*central));
+  return{shape_score:score,va_pct:+va_pct.toFixed(1),prominence:+prom.toFixed(2),n_peaks:peaks,poc_pos:+pos.toFixed(2),top_share_pct:+top.toFixed(1),shape_ok:score>=50};
+}
+function computeZone(p){const rng=p.high-p.low,va=p.vah-p.val;if(rng<=0||va<=0)return{};
+  const rr=+(rng/va).toFixed(2),h=p.height_pct,etf=h<0.25?"1m":(h<0.60?"5m":"15m");
+  return{height_pct:+h.toFixed(3),bars:p.bars,risk_pts:+va.toFixed(1),room_pts:+rng.toFixed(1),rr,entry_tf:etf,rr_ok:rr>=2};
+}
+// ---- REPLAY: step a session bar-by-bar; recompute profile/shape/zone on bars-so-far (causal) ----
+let RP={active:false,P:null,bars:[],k:0,N:0,playing:false,timer:null,speed:1};
+function replayStop(){if(RP.timer){clearInterval(RP.timer);RP.timer=null;}RP.active=false;RP.playing=false;drawNow();}
+function replayStart(P){const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+  if(cs.length<3)return;if(RP.timer)clearInterval(RP.timer);
+  RP={active:true,P,bars:cs,k:Math.min(cs.length,5),N:cs.length,playing:false,timer:null,speed:RP.speed||1};
+  replayRender();}
+function replayRender(){const cs=RP.bars.slice(0,RP.k);
+  const prof=computeProfile(cs)||{high:RP.P.high,low:RP.P.low,poc:RP.P.poc,val:RP.P.val,vah:RP.P.vah,bins:[],va_pct_of_range:0,height_pct:0,shape:{},zone:{},bars:cs.length};
+  const first=cs[0],last=cs[cs.length-1];
+  const meta={session:RP.P.session,date:RP.P.date,start:first.time,end:last.time,duration_sec:last.time-first.time,
+    next_session:RP.P.next_session,next_open:RP.P.next_open,bars:cs.length};
+  const bb=RP.bars[RP.k-1], tlab=bb?_t12(bb.time):"";
+  const ctrls=`<div class="rpc">
+    <button class="rpb" data-rp="start">|&lt;</button><button class="rpb" data-rp="back">&lt;</button>
+    <button class="rpb" id="rpPlay">${RP.playing?"pause":"play"}</button>
+    <button class="rpb" data-rp="fwd">&gt;</button><button class="rpb" data-rp="end">&gt;|</button>
+    <input type="range" id="rpScrub" min="1" max="${RP.N}" value="${RP.k}">
+    <span class="rpinfo">bar ${RP.k}/${RP.N} &middot; ${tlab}</span>
+    <select id="rpSpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select></div>`;
+  smod.innerHTML=cardHTML(meta,prof,cs,ctrls,true);
+  if(smod.style.display!=="block")positionShow();
+  wireCard(RP.P);
+  smod.querySelectorAll("[data-rp]").forEach(x=>x.onclick=()=>replayGo(x.dataset.rp));
+  const pl=document.getElementById("rpPlay");if(pl)pl.onclick=replayToggle;
+  const sc=document.getElementById("rpScrub");if(sc)sc.oninput=()=>{RP.k=+sc.value;replayRender();};
+  const sp=document.getElementById("rpSpeed");if(sp){sp.value=RP.speed;sp.onchange=()=>{RP.speed=+sp.value;if(RP.playing){replayPause();replayPlay();}};}
+  drawNow();
+}
+function replayGo(cmd){if(cmd==="start")RP.k=Math.min(RP.N,5);else if(cmd==="back")RP.k=Math.max(3,RP.k-1);
+  else if(cmd==="fwd")RP.k=Math.min(RP.N,RP.k+1);else if(cmd==="end")RP.k=RP.N;replayRender();}
+function replayToggle(){RP.playing?replayPause():replayPlay();}
+function replayPlay(){RP.playing=true;RP.timer=setInterval(()=>{if(RP.k>=RP.N){replayPause();return;}RP.k++;replayRender();},700/RP.speed);replayRender();}
+function replayPause(){RP.playing=false;if(RP.timer){clearInterval(RP.timer);RP.timer=null;}replayRender();}
+function drawNow(){const old=document.getElementById("_nowln");if(old)old.remove();
+  if(!RP.active||!RP.bars[RP.k-1])return;const x=chart.timeScale().timeToCoordinate(RP.bars[RP.k-1].time);
+  if(x==null)return;const box=chartEl.getBoundingClientRect();const l=_ln(x,0,x,box.height,"#f0b000",1.3,0.9);l.setAttribute("id","_nowln");vpsvg.appendChild(l);}
 function _dragify(handle){let sx,sy,ox,oy,drag=false;
   handle.onmousedown=e=>{if(e.target.id==="smodX"||e.target.id==="smodChat")return;drag=true;sx=e.clientX;sy=e.clientY;ox=smod.offsetLeft;oy=smod.offsetTop;e.preventDefault();};
   const mv=e=>{if(!drag)return;smod.style.left=(ox+e.clientX-sx)+"px";smod.style.top=(oy+e.clientY-sy)+"px";};
@@ -370,7 +460,8 @@ chart.subscribeClick(p=>{if(!modOn||p.time==null||!(inst==="NQ"&&(tf==="1m"||tf=
 if(location.hash.startsWith("#demo"))window.addEventListener("load",()=>{tf="5m";load();
   const b=document.getElementById("modBtn");modOn=true;b.classList.add("on");b.textContent="on";
   const P=(M.profiles||[]).filter(p=>p.bins&&p.bins.length).slice(-1)[0];
-  if(P)setTimeout(()=>{modPt={x:560,y:70};openModule(P);if(location.hash==="#demo2"){addToChat(P);}},250);});
+  if(P)setTimeout(()=>{modPt={x:560,y:70};openModule(P);if(location.hash==="#demo2"){addToChat(P);}
+    if(location.hash==="#demo3"){replayStart(P);RP.k=Math.max(3,Math.floor(RP.N*0.55));replayRender();}},250);});
 
 // ---- CHAT LOG: "chat about" a session -> save its full snapshot to a persistent per-session drawer ----
 const CHKEY="simplicity_chat_v1";
@@ -386,22 +477,45 @@ function _fbcopy(txt,done){const ta=document.createElement("textarea");ta.value=
   document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);done&&done();}
 function flash(m){let t=document.getElementById("_toast");if(!t){t=document.createElement("div");t.id="_toast";document.body.appendChild(t);}
   t.textContent=m;t.style.opacity="1";clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity="0",1500);}
-function snapOf(P){return {sid:P.sid,session:P.session,date:P.date,tf,start:P.start,end:P.end,
+function snapOf(P){const cs=SERIES["NQ_"+tf].candles.filter(c=>c.time>=P.start&&c.time<=P.end);
+  return {sid:P.sid,session:P.session,date:P.date,tf,start:P.start,end:P.end,
   duration_sec:P.duration_sec,next_session:P.next_session,next_open:P.next_open,high:P.high,low:P.low,
   poc:P.poc,val:P.val,vah:P.vah,height_pct:P.height_pct,va_pct:P.va_pct_of_range,bars:P.bars,
-  shape:P.shape||{},zone:P.zone||{},note:""};}
+  shape:P.shape||{},zone:P.zone||{},
+  bins:(P.bins||[]).map(b=>({p:b.p,v:b.v})),
+  ohlc:cs.map(c=>({t:c.time,o:c.open,h:c.high,l:c.low,c:c.close,v:Math.round(c.volume||0)})),note:""};}
 function addToChat(P){
   if(chatLog.some(e=>e.sid===P.sid&&e.tf===tf)){openDrawer();renderDrawer();flash("already in chat log");return;}
   chatLog.push(snapOf(P));chatSave();renderDrawer();openDrawer();flash("saved to chat log");}
 function chatMarkdown(e){const s=e.shape||{},z=e.zone||{};
-  const nxt=e.next_session?`${e.next_session} in ${fmtDur(e.next_open-e.end)} (opens ${fmtET(e.next_open)})`:"—";
-  return `## ${e.date} ${e.session}  (${e.tf})
-Timing (ET): opened ${fmtET(e.start)}, closed ${fmtET(e.end)}, duration ${fmtDur(e.duration_sec)}; next: ${nxt}
-Range: H ${e.high} / L ${e.low}  (${(e.high-e.low).toFixed(1)} pt, ${e.height_pct}%)
-Volume profile: POC ${e.poc}, value area ${e.val}-${e.vah} (${e.va_pct}% of range), ${e.bars} bars
-Shape: ${s.shape_score}/100 (${s.shape_ok?"clean":"foggy"}) - VA% ${s.va_pct}, prominence ${s.prominence}x, peaks ${s.n_peaks}, POC pos ${s.poc_pos}, top-bin ${s.top_share_pct}%
-Zone R:R: ${z.rr} (${z.rr_ok?"ok":"thin"}) - risk 1R ${z.risk_pts}pt, room ${z.room_pts}pt, entry tf ${z.entry_tf}
-My question: ${e.note||"(none yet)"}`;}
+  const nxt=e.next_session?`${e.next_session} in ${fmtDur(e.next_open-e.end)} (opens ${fmtET(e.next_open)})`:"— (last session in data)";
+  const hm=t=>new Date(t*1000).toLocaleTimeString("en-US",{..._TZ,hour:"2-digit",minute:"2-digit",hour12:false});
+  const topN=(e.bins||[]).slice().sort((a,b)=>b.v-a.v).slice(0,10).map(b=>`  ${b.p}: ${Math.round(b.v)}`).join("\n")||"  (none)";
+  const ohlc=(e.ohlc||[]).map(c=>`  ${hm(c.t)}  ${c.o}  ${c.h}  ${c.l}  ${c.c}  ${c.v}`).join("\n")||"  (none)";
+  return `## ${e.date} ${e.session}  (NQ ${e.tf})
+
+### Timing (ET)
+opened ${fmtET(e.start)} | closed ${fmtET(e.end)} | duration ${fmtDur(e.duration_sec)}
+next: ${nxt}
+
+### Range & value area
+H ${e.high} / L ${e.low}  (${(e.high-e.low).toFixed(1)} pt, ${e.height_pct}% of price) | ${e.bars} bars
+POC ${e.poc} | value area ${e.val}–${e.vah} (${e.va_pct}% of range)
+
+### Shape (clean vs foggy)
+score ${s.shape_score}/100 (${s.shape_ok?"clean":"foggy"}) | VA% ${s.va_pct} | prominence ${s.prominence}x | peaks ${s.n_peaks} | POC pos ${s.poc_pos} | top-bin ${s.top_share_pct}%
+
+### Zone — R:R geometry
+R:R ${z.rr} (${z.rr_ok?"ok":"thin"}) | risk 1R ${z.risk_pts}pt | room ${z.room_pts}pt | entry tf ${z.entry_tf}
+
+### Top volume nodes (price: volume)
+${topN}
+
+### OHLC (${e.tf}, ET) — time  O  H  L  C  Volume
+${ohlc}
+
+### My question
+${e.note||"(none yet)"}`;}
 function renderDrawer(){const b=document.getElementById("chatBody");
   if(!chatLog.length){b.innerHTML=`<div class="chatd-empty">No sessions saved yet.<br>Open a session module and hit <b style="color:var(--acc)">chat about</b> to record it here.</div>`;return;}
   b.innerHTML=chatLog.map((e,i)=>{const col=SC[e.session]||"#888",s=e.shape||{},z=e.zone||{};

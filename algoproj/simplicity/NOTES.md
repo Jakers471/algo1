@@ -238,3 +238,19 @@ timing (open/close/duration/next session + gap, ET), and its shape + R:R scores.
 once — the profile finally looks crisp on the chart (per-session, zoomed) and you can see how each
 session hands to the next. Same card is the seed of the planned replay state panel. Data enriched in
 `build_chart_data.py` (shape/zone/next per profile); rendered in `make_chart.py` (`#demo` auto-opens).
+
+### F8 — chart REPLAY v1 + "chat about" enriched (2026-07-02)
+Replay a session bar-by-bar: the module recomputes the volume profile + shape + zone on **bars-so-far**
+(causal) and the scores EVOLVE as price moves — the live/backtest engine model made visual. Ported
+`volume_profile` / `shape_filter` / `zone_calibration` to JS (`computeProfile/Shape/Zone` in make_chart)
+so the recompute runs in-browser; candle data now carries per-bar volume. Controls in the module:
+|< < play > >| + scrubber + speed; a gold "now" line tracks on the main chart. Demo: `2025-01-10 NY`
+reads 33/100 R:R 1.99 at bar 42/78 but decays to 26/100 R:R 1.58 by the close (value area widened).
+"chat about" markdown now includes EVERYTHING in one block: timing, range/VA, shape, zone, top-10
+volume nodes, and the full per-bar OHLC+Volume table.
+
+**PLANNED (write-it-down, wire later):** replay should also show the **state-machine states it passes
+through** — ARM / DISARM, setup qualified/rejected, validations/invalidations — as they flip during the
+session. Those gates (`setup_arm` etc.) don't exist yet, so v1 only shows the profile/shape/zone
+recompute; the state-transition panel layers onto this same card once the gates are built. This IS the
+replay "modular state panel" from ARCHITECTURE — the session module card is its seed.
