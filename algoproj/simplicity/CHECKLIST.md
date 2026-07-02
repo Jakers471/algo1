@@ -46,7 +46,7 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 
 ## Phase 4 — Setup calibration & bias
 - `[ ]` Height% / duration → entry timeframe + stop distance / R:R — `research/zone_calibration`
-- `[ ]` Fib off session high/low as directional bias (UNTESTED — test standalone) — `research/fib_bias`
+- `[~]` Fib off session hi/lo — chart overlay built (0.5 solid + golden-zone dotted per session, toggleable). **Bias/edge test still TBD (UNTESTED ingredient)** — `research/fib_bias`
 
 ## Phase 5 — Entry & exit
 - `[ ]` Entry trigger at a specific volume node — `research/entry_trigger`

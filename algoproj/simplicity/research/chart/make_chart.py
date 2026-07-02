@@ -88,6 +88,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
         <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span id="timesSess"></span></div>
         <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span id="vpSess"></span></div>
+        <div class="ind-row"><span class="ind-lab">fib</span><button id="fibBtn">off</button><span id="fibSess"></span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
     </div>
@@ -172,8 +173,8 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, timesSess={}, vpOn=false, vpSess={};
-SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true; timesSess[s]=true;});
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, timesSess={}, vpOn=false, vpSess={}, fibOn=false, fibSess={};
+SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true; timesSess[s]=true; fibSess[s]=true;});
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
   clearAnchors();
@@ -226,6 +227,17 @@ function redraw(){
     const yp=candle.priceToCoordinate(P.poc);
     if(yp!=null)vpsvg.appendChild(_ln(x0,yp,x1,yp,"#e34948",1.2,0.95));        // POC line (red)
   }
+  if(fibOn) for(const P of (M.profiles||[])){                                  // fib retracement off session hi/lo
+    if(!fibSess[P.session])continue;
+    const x0=ts.timeToCoordinate(P.start), x1=ts.timeToCoordinate(P.end);
+    if(x0==null||x1==null)continue;
+    const c=SC[P.session]||"#888", rng=P.high-P.low;
+    for(const rr of [0.236,0.382,0.5,0.618,0.786]){
+      const y=candle.priceToCoordinate(P.low+rr*rng); if(y==null)continue;
+      const mid=rr===0.5;
+      vpsvg.appendChild(_ln(x0,y,x1,y,c,mid?1.4:1,mid?0.9:0.5,mid?null:"1 3"));  // 0.5 solid bright, others dotted faint
+    }
+  }
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
 new ResizeObserver(redraw).observe(chartEl);
@@ -243,6 +255,10 @@ document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.to
 document.getElementById("vpSess").innerHTML=SESSN.map(s=>
   `<button data-vs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=function(){vpSess[this.dataset.vs]=!vpSess[this.dataset.vs];this.classList.toggle("on",vpSess[this.dataset.vs]);redraw();});
+document.getElementById("fibBtn").onclick=function(){fibOn=!fibOn;this.classList.toggle("on",fibOn);this.textContent=fibOn?"on":"off";redraw();};
+document.getElementById("fibSess").innerHTML=SESSN.map(s=>
+  `<button data-fs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
+document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[this.dataset.fs]=!fibSess[this.dataset.fs];this.classList.toggle("on",fibSess[this.dataset.fs]);redraw();});
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}
