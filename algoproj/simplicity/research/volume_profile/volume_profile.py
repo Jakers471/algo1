@@ -3,7 +3,9 @@ volume_profile — one Volume Profile per session, bounded by that session's HIG
 VISION steps 4-6. NY with NY, London with London, Asia with Asia -> one profile each.
 
 For every session instance: bin the price range [session low, session high] and distribute the
-session's REAL 5m volume (Up+Down, NOTES F4) across the bins by close price. Then:
+session's REAL 5m volume (Up+Down, NOTES F4) across the bins by each bar's HIGH-LOW range
+(overlap-weighted -- a bar's volume spreads over every price it traded, NOT dumped on the close;
+close-only lets one high-volume open bar steal the POC from a diffuse consolidation). Then:
   * POC  = price bin with the most volume (the balance point)
   * Value Area (VA_PCT of volume) around the POC -> VAL / VAH (the consolidation zone)
   * measured in %-height and bars (adapts across volatility, per VISION 6)
@@ -27,6 +29,23 @@ import strategy_config as cfg
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 ROW_SIZE = 2.0   # points per profile row -> UNIFORM thin rows across all sessions (wide sessions = more rows)
 VA_PCT = 0.70
+
+
+def _spread_volume(low, high, vol, edges):
+    """Distribute each bar's volume across the bins its [low, high] spans (overlap-weighted).
+    A bar's volume belongs to every price it traded, not just the close -- so a diffuse
+    consolidation isn't out-ranked by a single high-volume bar dumped on one price."""
+    nb = len(edges) - 1
+    centers = (edges[:-1] + edges[1:]) / 2
+    vbin = np.zeros(nb)
+    for lo, hi, v in zip(low, high, vol):
+        m = (centers >= lo) & (centers <= hi)
+        k = int(m.sum())
+        if k == 0:                                   # sub-row bar -> nearest bin
+            vbin[min(nb - 1, max(0, int(np.searchsorted(edges, (lo + hi) / 2) - 1)))] += v
+        else:
+            vbin[m] += v / k
+    return vbin
 
 
 def _value_area(vbin, edges):
@@ -75,7 +94,7 @@ def main():
             continue
         nb = max(3, int(round((sh - sl) / ROW_SIZE)))     # ~ROW_SIZE points per row -> uniform thin rows
         edges = np.linspace(sl, sh, nb + 1)
-        vbin, _ = np.histogram(g["close"].to_numpy(), bins=edges, weights=g["vol"].to_numpy())
+        vbin = _spread_volume(g["low"].to_numpy(), g["high"].to_numpy(), g["vol"].to_numpy(), edges)
         va = _value_area(vbin, edges)
         if va is None:
             continue

@@ -108,7 +108,7 @@ def _card(prof, s, z, tag, tagcol, bars, row_size):
     zone_rows = (row("R:R", f'{z["rr"]}', rr_c)
                  + row("risk (1R = VA edge)", f'{z["risk_pts"]} pt')
                  + row("room (range)", f'{z["room_pts"]} pt')
-                 + row("range height", f'{z["height_pct"]*100:.2f}%')
+                 + row("range height", f'{z["height_pct"]:.2f}%')
                  + row("duration", f'{z["bars"]} bars')
                  + row("entry timeframe", z["entry_tf"]))
     return f'''<div class="card">
