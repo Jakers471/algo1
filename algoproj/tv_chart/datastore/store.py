@@ -33,7 +33,7 @@ def _parquet_mtime(tf):
 
 
 def _build_from_parquet(tf):
-    df = load_tf(tf)[["open", "high", "low", "close"]].dropna()
+    df = load_tf(tf)[["open", "high", "low", "close", "volume"]].dropna()
     # tz-naive UTC index -> epoch seconds (project-wide convention treats naive as UTC)
     ts = df.index.values.astype("datetime64[s]").astype("int64")
     return {
@@ -42,6 +42,7 @@ def _build_from_parquet(tf):
         "h": df["high"].to_numpy("float32"),
         "l": df["low"].to_numpy("float32"),
         "c": df["close"].to_numpy("float32"),
+        "v": df["volume"].to_numpy("float32"),
     }
 
 
@@ -56,8 +57,9 @@ def _load(tf):
     path = os.path.join(CACHE_DIR, f"{tf}.npz")
     if os.path.exists(path):
         z = np.load(path, allow_pickle=False)
-        if float(z["mtime"][0]) == src_mtime:
-            _MEM[tf] = {k: z[k] for k in ("ts", "o", "h", "l", "c")}
+        # require "v" so caches built before volume was added get rebuilt automatically
+        if float(z["mtime"][0]) == src_mtime and "v" in z.files:
+            _MEM[tf] = {k: z[k] for k in ("ts", "o", "h", "l", "c", "v")}
             return _MEM[tf]
 
     arr = _build_from_parquet(tf)
@@ -68,8 +70,8 @@ def _load(tf):
 
 
 def _rows(a, i, j):
-    ts, o, h, l, c = a["ts"], a["o"], a["h"], a["l"], a["c"]
-    return [[int(ts[k]), float(o[k]), float(h[k]), float(l[k]), float(c[k])] for k in range(i, j)]
+    ts, o, h, l, c, v = a["ts"], a["o"], a["h"], a["l"], a["c"], a["v"]
+    return [[int(ts[k]), float(o[k]), float(h[k]), float(l[k]), float(c[k]), float(v[k])] for k in range(i, j)]
 
 
 # ── public API ───────────────────────────────────────────

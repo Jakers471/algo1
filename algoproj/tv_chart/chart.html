@@ -15,6 +15,8 @@
          background:var(--panel); border-bottom:1px solid var(--border); }
   .bar .sym { font-weight:600; letter-spacing:.5px; margin-right:8px; }
   .bar .spacer { flex:1; }
+  .bar .vtoggle { display:flex; align-items:center; gap:5px; margin-left:10px; color:var(--text2);
+                  font-size:12px; cursor:pointer; user-select:none; }
   .bar .meta { color:var(--text2); font:11px/1 monospace; }
   .body { flex:1; min-height:0; display:flex; }
   #chart { flex:1; min-height:0; min-width:0; }
@@ -74,6 +76,27 @@
   #current { margin-top:12px; padding-top:10px; border-top:1px solid var(--border);
              font-size:12px; line-height:1.6; color:var(--text2); min-height:34px; }
   #current .pos { color:var(--text3); }
+  #structPanel { margin-top:10px; }
+  #structPanel .sh { font-size:11px; color:var(--text2); }
+  #structPanel .struct-toggles { display:flex; flex-direction:column; gap:9px; margin-top:10px; }
+  #structPanel label { cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; user-select:none; }
+  #structPanel .cnt2 { margin-left:auto; color:var(--text3); font-family:monospace; font-size:11px; }
+  #indicators { margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  #indicators .ih { font-size:10.5px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+  #indicators .ind { margin-top:7px; }
+  #indicators .ind > label { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; user-select:none; }
+  #indicators .ind .swatch { width:10px; height:10px; border-radius:2px; flex:none; }
+  #indicators .ind .params { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 0 26px; }
+  #indicators .ind .params label { font-size:10.5px; color:var(--text3); display:flex; flex-direction:column; gap:2px; }
+  #indicators .ind .params input { width:54px; background:var(--bg); color:var(--text); border:1px solid var(--border);
+                                   border-radius:5px; padding:3px 6px; font:11px inherit; }
+  #indicators .ind label.cc { display:flex; align-items:center; gap:6px; margin:6px 0 0 26px;
+                              font-size:11px; color:var(--text3); cursor:pointer; user-select:none; }
+  #patternFilter { margin-top:10px; }
+  #patternFilter .pf-h { font-size:10.5px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  #patternFilter .pf-row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2);
+                           cursor:pointer; padding:2px 0; user-select:none; }
+  #patternFilter .pf-row .pf-cnt { margin-left:auto; color:var(--text3); font-family:monospace; font-size:11px; }
 </style>
 </head>
 <body>
@@ -81,6 +104,7 @@
   <div class="bar">
     <span class="sym">NQ</span>
     <span id="tfs"></span>
+    <label class="vtoggle"><input type="checkbox" id="tVol" checked> volume</label>
     <span class="spacer"></span>
     <span class="meta" id="meta"></span>
   </div>
@@ -88,14 +112,18 @@
     <div id="chart"></div>
     <div id="panel">
       <div class="ph">
+        <div id="indicators"></div>
         <select id="findingSel"><option value="">— no findings —</option></select>
+        <div id="structPanel"></div>
         <div class="total" id="total">Pick a findings file.</div>
         <div id="totals"></div>
         <div id="summary"></div>
+        <div id="patternFilter"></div>
         <div id="timeline"></div>
         <div class="toggles">
           <label><input type="checkbox" id="tBands" checked> bands</label>
           <label><input type="checkbox" id="tMarks" checked> markers</label>
+          <label><input type="checkbox" id="tAligned"> aligned only</label>
         </div>
         <div class="hz">forward <select id="hzSel"></select> bars</div>
         <div class="legend"><span class="pole">pole</span><span class="flag">flag</span><span class="win">won</span><span class="loss">failed</span></div>
@@ -113,18 +141,27 @@
 <script>
 const C = { bg:'#0a0e13', text2:'#9aa7b4', border:'#232e3a', grid:'#1c2733',
             green:'#34d399', red:'#f87171' };
-const CHUNK = 3000, VISIBLE = 180, TRIGGER = 12, FRAME_PAD = 12, SNAP_LOAD = 700;
+const CHUNK = 15000, VISIBLE = 180, TRIGGER = 12, FRAME_PAD = 12, SNAP_LOAD = 700;
 const POLE_C = 'rgba(76,141,255,0.22)';   // pole  (blue)
 const FLAG_C = 'rgba(245,177,76,0.20)';   // flag  (amber)
 const WIN_C  = 'rgba(52,211,153,0.20)';   // forward favorable (green)
 const LOSS_C = 'rgba(248,113,113,0.20)';  // forward adverse  (red)
 let horizon = '6';                        // forward horizon shown (key into match.fwd)
+const DEBUG = true;                        // set false to silence the F12 console logs
+const dbg = (...a) => { if (DEBUG) console.log('%c[chart]', 'color:#2dd4bf', ...a); };
 
-// 12-hour time formatting (UTC, matching the data) for the axis ticks + crosshair
+// 12-hour time formatting in ET (America/New_York, DST-aware) for the axis ticks + crosshair.
+// Display only — bar timestamps stay UTC epoch, so overlay/binary-search alignment is unaffected.
 const _MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const _p2 = n => String(n).padStart(2, '0');
-function fmt12(t) { const d = new Date(t * 1000); let h = d.getUTCHours(); const ap = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; return `${h}:${_p2(d.getUTCMinutes())} ${ap}`; }
-function fmtDateTime12(t) { const d = new Date(t * 1000); return `${_MON[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}  ${fmt12(t)}`; }
+const _etParts = (() => {
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric',
+    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  return t => { const p = {}; for (const x of f.formatToParts(t * 1000)) p[x.type] = x.value;
+    return { y: +p.year, mo: +p.month - 1, d: +p.day, h: (+p.hour) % 24, mi: +p.minute }; };
+})();
+function fmt12(t) { const { h, mi } = _etParts(t); const ap = h < 12 ? 'AM' : 'PM'; return `${h % 12 || 12}:${_p2(mi)} ${ap}`; }
+function fmtDateTime12(t) { const { y, mo, d } = _etParts(t); return `${_MON[mo]} ${d}, ${y}  ${fmt12(t)}`; }
 
 const chart = LightweightCharts.createChart(document.getElementById('chart'), {
   autoSize: true,
@@ -134,10 +171,10 @@ const chart = LightweightCharts.createChart(document.getElementById('chart'), {
   localization: { timeFormatter: fmtDateTime12 },          // crosshair label
   timeScale: { borderColor: C.border, timeVisible: true, secondsVisible: false,
     tickMarkFormatter: (t, type) => {                       // axis ticks (0=Year 1=Month 2=Day else=Time)
-      const d = new Date(t * 1000);
-      if (type === 0) return String(d.getUTCFullYear());
-      if (type === 1) return `${_MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-      if (type === 2) return `${_MON[d.getUTCMonth()]} ${d.getUTCDate()}`;
+      const { y, mo, d } = _etParts(t);
+      if (type === 0) return String(y);
+      if (type === 1) return `${_MON[mo]} ${y}`;
+      if (type === 2) return `${_MON[mo]} ${d}`;
       return fmt12(t);
     } },
   crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -151,14 +188,146 @@ const series = chart.addCandlestickSeries({
   wickUpColor: C.green, wickDownColor: C.red,
 });
 
-const toBar = d => ({ time: d[0], open: d[1], high: d[2], low: d[3], close: d[4] });
+// ── volume histogram, on its own scale pinned to the bottom ~18% (overlaps price) ──
+const VOL_LOOKBACK = 20;          // bars of history for the "normal" volume baseline
+const VOL_MULT = 2.0;             // spike = volume > VOL_MULT × recent average
+const VOL_UP = 'rgba(52,211,153,0.45)', VOL_DN = 'rgba(248,113,113,0.45)';
+const VOL_HI = '#facc15';         // high-volume highlight (amber) — bars + price candle
+let volHiSet = new Set();         // bar times flagged as high-volume (for candle highlighting)
+const volSeries = chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' },
+  priceLineVisible: false, lastValueVisible: false });
+chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+const volOn = () => document.getElementById('tVol').checked;
+
+const toBar = d => ({ time: d[0], open: d[1], high: d[2], low: d[3], close: d[4], vol: d[5] });
 const cache = new Map();   // tf -> { bars, hasOld, hasNew, last, loading }
 let current = '5m';
 let findings = null;       // { tf, matches:[...] }  sorted by start
 let activeMatch = -1;
 let snapping = false;      // suppress scroll-paging while we programmatically frame a match
-let fibLines = [];         // pole fib (0/0.5/1) price lines drawn for the active match
-function clearFib() { fibLines.forEach(l => { try { series.removePriceLine(l); } catch (e) {} }); fibLines = []; }
+// pole levels for the active match: top (red) / 0.5 (yellow) / bottom (green), drawn as
+// horizontal SEGMENTS anchored at the pole and extending right (not full-chart price lines).
+let fibSeries = [];
+function fibSeg(i) {
+  if (!fibSeries[i]) fibSeries[i] = chart.addLineSeries({ lineWidth: 1, priceLineVisible: false,
+    lastValueVisible: false, crosshairMarkerVisible: false });
+  return fibSeries[i];
+}
+function clearFib() { fibSeries.forEach(s => s.setData([])); }
+
+// anchored VWAP center + band (the consolidation equilibrium the breakout is measured against),
+// drawn for the active match from its emitted per-bar points ([time, center, up, dn]).
+let vwapSeries = null;
+function ensureVwap() {
+  if (!vwapSeries) {
+    const base = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+    vwapSeries = {
+      center: chart.addLineSeries({ color: '#22d3ee', lineWidth: 2, ...base }),
+      up: chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, ...base }),
+      dn: chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, ...base }),
+    };
+  }
+  return vwapSeries;
+}
+function clearVwap() { if (vwapSeries) { vwapSeries.center.setData([]); vwapSeries.up.setData([]); vwapSeries.dn.setData([]); } }
+const hasRegime = () => !!(findings && findings.matches) && findings.matches.some(m => m.aligned != null);
+// per-pattern visibility: muted patterns are hidden everywhere (overlays, summary, nav)
+let patternMute = new Set();
+const DEFAULT_SHOWN = ['rectangle', 'asc_triangle', 'pennant'];   // if a finding has these, show only these by default
+const passFilter = m => !patternMute.has(m.pattern)
+  && (!document.getElementById('tAligned').checked || !hasRegime() || m.aligned === true);
+function initPatternFilter() {
+  patternMute = new Set();
+  if (!findings || !findings.matches) { renderPatternFilter([]); return; }
+  const pats = [...new Set(findings.matches.map(m => m.pattern))];
+  const anyDefault = pats.some(p => DEFAULT_SHOWN.includes(p));
+  if (anyDefault) pats.forEach(p => { if (!DEFAULT_SHOWN.includes(p)) patternMute.add(p); });
+  renderPatternFilter(pats);
+}
+function renderPatternFilter(pats) {
+  const el = document.getElementById('patternFilter');
+  if (!el) return;
+  if (!findings || !pats || pats.length <= 1) { el.innerHTML = ''; return; }
+  const counts = {};
+  findings.matches.forEach(m => { counts[m.pattern] = (counts[m.pattern] || 0) + 1; });
+  el.innerHTML = '<div class="pf-h">patterns</div>' + pats.sort().map(p =>
+    `<label class="pf-row"><input type="checkbox" data-pat="${p}"${patternMute.has(p) ? '' : ' checked'}>`
+    + `<span>${p}</span><span class="pf-cnt">${counts[p] || 0}</span></label>`).join('');
+  el.querySelectorAll('input[data-pat]').forEach(cb => cb.onchange = () => togglePattern(cb.dataset.pat, cb.checked));
+}
+function togglePattern(p, on) {
+  if (on) patternMute.delete(p); else patternMute.add(p);
+  dbg('pattern', p, on ? 'shown' : 'muted', '| muted:', [...patternMute]);
+  renderSummary();
+  if (activeMatch >= 0 && !passFilter(findings.matches[activeMatch])) { const f = firstPassingIdx(); f >= 0 ? gotoMatch(f) : renderOverlays(); }
+  else renderOverlays();
+}
+
+// ── trendline findings (flag_triangle): draw the fitted upper/lower lines, not a band ──
+const TREND_MAX = 200;                     // cap how many patterns get lines at once
+let trendPool = [];                        // pool of reusable 2-point line series
+const isTrend = () => !!(findings && findings.matches && findings.matches.length && findings.matches[0].upper);
+function trendSeries(i) {
+  if (!trendPool[i]) trendPool[i] = chart.addLineSeries({ lineWidth: 1, priceLineVisible: false,
+    lastValueVisible: false, crosshairMarkerVisible: false });
+  return trendPool[i];
+}
+function clearTrend(from = 0) { for (let i = from; i < trendPool.length; i++) trendPool[i].setData([]); }
+// draw lines only for patterns in the VISIBLE range (keeps it cheap while scrolling)
+function redrawTrend() {
+  if (!isTrend()) { clearTrend(); return; }
+  let vr = null;
+  try { vr = chart.timeScale().getVisibleRange(); } catch (e) { vr = null; }   // throws if scale not ready yet
+  let list = findings.matches.filter(passFilter);
+  if (vr) list = list.filter(m => m.end >= vr.from && m.start <= vr.to);
+  let s = 0;
+  for (const m of list.slice(0, TREND_MAX)) {
+    const active = activeMatch >= 0 && findings.matches[activeMatch] === m;
+    const col = m.side === 'long' ? C.green : m.side === 'short' ? C.red : '#4c8dff';
+    for (const key of ['upper', 'lower']) {
+      const pts = m[key]; if (!pts) continue;
+      const ser = trendSeries(s++);
+      ser.applyOptions({ color: col, lineWidth: active ? 3 : 1 });
+      ser.setData(pts.map(([t, v]) => ({ time: t, value: v })));
+    }
+  }
+  clearTrend(s);   // blank any unused pooled series
+}
+let trendRAF = 0;   // throttle trendline redraws to one per animation frame while panning
+function scheduleTrend() { if (trendRAF) return; trendRAF = requestAnimationFrame(() => { trendRAF = 0; redrawTrend(); }); }
+
+// ── structure_detection: swing lines per grain (a different findings type) ──
+let structLines = {};
+const STRUCT_COLORS = { LTF: '#6b7886', MTF: '#4c8dff', HTF: '#ffd700' };
+const STRUCT_WIDTH = { LTF: 1, MTF: 2, HTF: 3 };
+const isStruct = () => !!(findings && findings.grains);
+function clearStructure() { Object.values(structLines).forEach(s => { try { chart.removeSeries(s); } catch (e) {} }); structLines = {}; }
+function renderStructure() {
+  if (!isStruct()) return;
+  findings.grains.forEach(g => {
+    const cb = document.getElementById('grain_' + g.name);
+    if (!cb || cb.checked) {
+      if (!structLines[g.name]) structLines[g.name] = chart.addLineSeries({
+        color: STRUCT_COLORS[g.name] || '#4c8dff', lineWidth: STRUCT_WIDTH[g.name] || 2,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+      structLines[g.name].setData(g.swings.map(s => ({ time: s.t, value: s.p })));
+    } else if (structLines[g.name]) { chart.removeSeries(structLines[g.name]); delete structLines[g.name]; }
+  });
+}
+function setupStructure(data) {
+  document.getElementById('structPanel').innerHTML =
+    `<div class="sh"><b style="color:var(--text)">structure</b> · ${data.tf} · toggle dimensions</div>`
+    + '<div class="struct-toggles">' + data.grains.map(g =>
+      `<label><input type="checkbox" id="grain_${g.name}" checked>`
+      + `<span style="color:${STRUCT_COLORS[g.name] || '#fff'};font-weight:600">${g.name}</span>`
+      + `<span class="cnt2">${g.swings.length.toLocaleString()} swings</span></label>`).join('') + '</div>';
+  data.grains.forEach(g => { document.getElementById('grain_' + g.name).onchange = renderStructure; });
+}
+// show/hide the flag-pattern-only panel controls (forward horizon, legend, nav, stats)
+function showFlagPanel(show) {
+  ['#total', '#totals', '#summary', '#timeline', '#current', '.toggles', '.hz', '.legend', '.navrow']
+    .forEach(sel => { const el = document.querySelector(sel); if (el) el.style.display = show ? '' : 'none'; });
+}
 
 const api = (u) => fetch(u).then(r => r.json());
 const j = () => cache.get(current);
@@ -170,21 +339,162 @@ function showMeta() {
   const st = j(); const el = document.getElementById('meta');
   if (!st || !st.bars.length) { el.textContent = ''; return; }
   const last = st.bars[st.bars.length - 1];
-  const d = new Date(last.time * 1000).toISOString().slice(0, 16).replace('T', ' ');
-  el.textContent = `${current} · ${st.bars.length.toLocaleString()} bars · last ${d} · ${last.close}`;
+  el.textContent = `${current} · ${st.bars.length.toLocaleString()} bars · last ${fmtDateTime12(last.time)} ET · ${last.close}`;
+}
+
+// ── indicators (Bollinger, FRAMA, …) — line overlays that page with the candles ──
+const indState = {};   // name -> { active, params:{}, lines:{key: LineSeries}, spec }
+function indLineStyle(s) {
+  return s === 'dashed' ? LightweightCharts.LineStyle.Dashed
+       : s === 'dotted' ? LightweightCharts.LineStyle.Dotted
+       : LightweightCharts.LineStyle.Solid;
+}
+async function refreshIndicators() {
+  const st = j(); if (!st || !st.bars.length) return;
+  const t0 = st.bars[0].time, t1 = st.bars[st.bars.length - 1].time;
+  for (const name in indState) {
+    const S = indState[name]; if (!S.active) continue;
+    const key = current + '|' + t0 + '|' + t1 + '|' + JSON.stringify(S.params);
+    if (S.lastKey === key) continue;   // same range + params -> already drawn, skip refetch (scroll perf)
+    const qs = new URLSearchParams({ tf: current, name, from: t0, to: t1, ...S.params });
+    let data; try { data = await api('/indicator?' + qs.toString()); } catch (e) { continue; }
+    S.lastKey = key;
+    S.data = data.lines;   // keep raw values around for candle coloring
+    if (S.spec.overlay !== false) for (const ln of S.spec.lines) {   // overlay:false = color-only (no lines drawn)
+      let ser = S.lines[ln.key];
+      if (!ser) {
+        ser = chart.addLineSeries({ color: ln.color, lineWidth: ln.width || 1,
+          lineStyle: indLineStyle(ln.style), priceLineVisible: false,
+          lastValueVisible: false, crosshairMarkerVisible: false });
+        S.lines[ln.key] = ser;
+      }
+      // null value -> whitespace point (breaks the line, so colored segments don't bridge gaps)
+      ser.setData((data.lines[ln.key] || []).map(([t, v]) => (v == null ? { time: t } : { time: t, value: v })));
+    }
+  }
+  applyCandleColors();
+}
+
+// ── volume histogram + high-volume detection ──
+// A bar is "high volume" when its volume exceeds VOL_MULT × the trailing VOL_LOOKBACK average
+// (single running-window pass, cheap enough to redo on every pan). Highlighted bars get the
+// amber color here AND flag their time in volHiSet so applyCandleColors highlights the price.
+function renderVolume() {
+  const st = j(); volHiSet = new Set();
+  if (!st || !st.bars.length || !volOn()) { volSeries.setData([]); return; }
+  const bars = st.bars, n = bars.length, data = new Array(n);
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const v = bars[i].vol || 0;
+    sum += v;
+    if (i >= VOL_LOOKBACK) sum -= bars[i - VOL_LOOKBACK].vol || 0;
+    const cnt = Math.min(i + 1, VOL_LOOKBACK), avg = sum / cnt;
+    const high = i >= 5 && v > VOL_MULT * avg;   // need a little history before calling a spike
+    const up = bars[i].close >= bars[i].open;
+    data[i] = { time: bars[i].time, value: v, color: high ? VOL_HI : (up ? VOL_UP : VOL_DN) };
+    if (high) volHiSet.add(bars[i].time);
+  }
+  volSeries.setData(data);
+}
+
+// ── candle coloring: high-volume highlight (amber), then an indicator's bands on top ──
+let candleColorer = null;   // name of the indicator currently coloring candles, or null
+function clearCandleColors() { applyCandleColors(); }   // recompose (volume highlight may still apply)
+function applyCandleColors() {
+  const st = j(); if (!st || !st.bars.length) return;
+  const S = candleColorer && indState[candleColorer];
+  const cc = (S && S.active && S.data && S.spec.candles) ? S.spec.candles : null;
+  const stateMode = cc && cc.mode === 'state';
+  // band mode: close vs above/below lines; state mode: argmax of several score lines -> its color
+  const above = cc && !stateMode ? new Map((S.data[cc.above] || []).filter(p => p[1] != null)) : null;
+  const below = cc && !stateMode ? new Map((S.data[cc.below] || []).filter(p => p[1] != null)) : null;
+  const stateMaps = stateMode ? cc.keys.map(k => new Map((S.data[k] || []).filter(p => p[1] != null))) : null;
+  const volHi = volOn() && volHiSet.size ? volHiSet : null;
+  if (!cc && !volHi) { series.setData(st.bars); return; }   // nothing to recolor
+  const paint = (b, col) => ({ ...b, color: col, wickColor: col, borderColor: col });
+  const colored = st.bars.map(b => {
+    if (volHi && volHi.has(b.time)) return paint(b, VOL_HI);   // spike wins: make the price bar pop
+    if (stateMode) {
+      let bestK = null, bestV = -Infinity;
+      for (let i = 0; i < cc.keys.length; i++) { const v = stateMaps[i].get(b.time); if (v != null && v > bestV) { bestV = v; bestK = cc.keys[i]; } }
+      if (bestK) return paint(b, cc.colors[bestK]);
+    } else if (cc) {
+      const u = above.get(b.time), l = below.get(b.time);
+      if (u != null && b.close > u) return paint(b, cc.up);
+      if (l != null && b.close < l) return paint(b, cc.down);
+    }
+    return b;   // default green/red candle
+  });
+  series.setData(colored);
+}
+function setCandleColoring(name, on) {
+  if (on) {
+    candleColorer = name;
+    // only one indicator colors candles at a time
+    document.querySelectorAll('input[data-candle]').forEach(cb => { if (cb.dataset.candle !== name) cb.checked = false; });
+    // coloring needs the indicator's bands -> make sure it's active
+    const mainCb = document.querySelector(`#indicators input[type=checkbox][data-ind="${name}"]`);
+    if (mainCb && !mainCb.checked) { mainCb.checked = true; setIndicatorActive(name, true); }
+    refreshIndicators().then(applyCandleColors);
+  } else if (candleColorer === name) {
+    candleColorer = null; clearCandleColors();
+  }
+}
+function setIndicatorActive(name, on) {
+  const S = indState[name]; if (!S) return; S.active = on;
+  if (!on) {
+    for (const k in S.lines) { try { chart.removeSeries(S.lines[k]); } catch (e) {} } S.lines = {}; S.data = null; S.lastKey = null;
+    if (candleColorer === name) {   // it was coloring candles -> stop and reset
+      candleColorer = null; clearCandleColors();
+      const cb = document.querySelector(`input[data-candle="${name}"]`); if (cb) cb.checked = false;
+    }
+  } else refreshIndicators();
+}
+function renderIndicatorPanel(list) {
+  const host = document.getElementById('indicators');
+  host.innerHTML = '<div class="ih">indicators</div>';
+  list.forEach(spec => {
+    indState[spec.name] = { active: false, params: { ...spec.params }, lines: {}, spec };
+    const sw = spec.lines[0] ? spec.lines[0].color : 'var(--accent)';
+    const pk = Object.keys(spec.params);
+    const wrap = document.createElement('div'); wrap.className = 'ind';
+    wrap.innerHTML =
+      `<label><input type="checkbox" data-ind="${spec.name}">`
+      + `<span class="swatch" style="background:${sw}"></span>${spec.label}</label>`
+      + (pk.length ? `<div class="params">` + pk.map(k =>
+          `<label>${k}<input type="number" step="any" data-ind="${spec.name}" data-param="${k}" value="${spec.params[k]}"></label>`
+        ).join('') + `</div>` : '')
+      + (spec.candles ? `<label class="cc"><input type="checkbox" data-candle="${spec.name}"> color candles</label>` : '');
+    host.appendChild(wrap);
+  });
+  host.querySelectorAll('input[data-ind][type=checkbox]').forEach(cb =>
+    cb.onchange = () => setIndicatorActive(cb.dataset.ind, cb.checked));
+  host.querySelectorAll('input[data-candle]').forEach(cb =>
+    cb.onchange = () => setCandleColoring(cb.dataset.candle, cb.checked));
+  host.querySelectorAll('input[type=number]').forEach(inp =>
+    inp.onchange = () => { const S = indState[inp.dataset.ind]; S.params[inp.dataset.param] = inp.value; if (S.active) refreshIndicators(); });
 }
 
 function renderOverlays() {
-  clearFib();
+  renderVolume();        // recompute volume + spike set first, so candle coloring can highlight spikes
+  refreshIndicators();   // indicators are independent of findings — keep them in sync on every redraw
+  clearFib(); clearVwap();
+  if (isStruct()) { bands.setData([]); series.setMarkers([]); clearTrend(); return; }   // structure lines are managed separately
   const st = j();
-  if (!st || !st.bars.length || !findings || findings.tf !== current) { bands.setData([]); series.setMarkers([]); return; }
+  if (!st || !st.bars.length || !findings || findings.tf !== current) { bands.setData([]); series.setMarkers([]); clearTrend(); return; }
   const lo = st.bars[0].time, hi = st.bars[st.bars.length - 1].time;
   const poleN = findings.pole_bars, fwdN = findings.fwd_window || 12;   // poleN null = variable span
-  const vis = findings.matches.filter(m => m.end >= lo && m.start <= hi);
+  const vis = findings.matches.filter(m => m.end >= lo && m.start <= hi && passFilter(m));
+  dbg('renderOverlays:', { current, findingsTf: findings.tf, total: findings.matches.length,
+    visibleInWindow: vis.length, bands: document.getElementById('tBands').checked, marks: document.getElementById('tMarks').checked });
   const fwdOf = m => (m.fwd ? m.fwd[horizon] : undefined);
 
+  // trendline findings (flag_triangle): draw the fitted lines instead of the shaded band
+  const trend = isTrend();
+  if (trend) { redrawTrend(); bands.setData([]); } else clearTrend();
+
   // bands: forward window first (green/red by outcome), setup painted on top (per-match span)
-  if (document.getElementById('tBands').checked) {
+  if (!trend && document.getElementById('tBands').checked) {
     const m2c = new Map();
     for (const m of vis) {
       const fv = fwdOf(m); if (fv === undefined) continue;
@@ -210,7 +520,7 @@ function renderOverlays() {
         color: col, shape: m.side === 'long' ? 'arrowUp' : 'arrowDown', text: '#' + m.rank };
     });
     const am = activeMatch >= 0 ? findings.matches[activeMatch] : null;
-    if (am && am.start >= lo && am.end <= hi) {
+    if (!trend && am && am.start >= lo && am.end <= hi) {
       const a = lb(st.bars, am.start), b = lb(st.bars, am.end);
       marks.push({ time: st.bars[a].time, position: 'aboveBar', color: '#4c8dff', shape: 'circle', text: 'pole' });
       let flagIdx = null;                                    // only if there's a distinct flag region
@@ -222,16 +532,29 @@ function renderOverlays() {
     series.setMarkers(marks.sort((a, b) => a.time - b.time));
   } else series.setMarkers([]);
 
-  // fib 0 / 0.5 / 1 of the pole, for the ACTIVE match — shows whether the flag held above 0.5
+  // pole levels for the ACTIVE match, as horizontal SEGMENTS from the pole extending right
+  // (top=red, 0.5=yellow, bottom=green) — shows whether the flag held these going forward.
   const af = activeMatch >= 0 ? findings.matches[activeMatch] : null;
-  if (af && af.pole_lo != null && af.start >= lo && af.start <= hi) {
-    const mid = (af.pole_lo + af.pole_hi) / 2, dim = '#6b7886';
-    const line = (price, color, style, title) =>
-      fibLines.push(series.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
-    line(af.pole_hi, dim, 2, af.side === 'long' ? '1.0' : '0');
-    line(mid, '#ffd700', 0, '0.5');
-    line(af.pole_lo, dim, 2, af.side === 'long' ? '0' : '1.0');
-  }
+  if (!trend && af && af.pole_lo != null && af.start >= lo && af.start <= hi) {
+    const mid = (af.pole_lo + af.pole_hi) / 2;
+    const t0 = af.start;                                        // left anchor = pole start
+    const bEnd = lb(st.bars, af.end);                           // right anchor = flag end + fwd window
+    const t1 = st.bars[Math.min(st.bars.length - 1, bEnd + fwdN)].time;
+    const seg = (i, price, color) => {
+      const s = fibSeg(i); s.applyOptions({ color });
+      s.setData([{ time: t0, value: price }, { time: t1, value: price }]);
+    };
+    seg(0, af.pole_hi, C.red);      // top of pole
+    seg(1, mid, '#ffd700');         // 0.5 fib
+    seg(2, af.pole_lo, C.green);    // bottom of pole
+    // anchored VWAP center + band across the consolidation (the breakout reference)
+    if (af.vwap && af.vwap.length) {
+      const v = ensureVwap();
+      v.center.setData(af.vwap.map(p => ({ time: p[0], value: p[1] })));
+      v.up.setData(af.vwap.map(p => ({ time: p[0], value: p[2] })));
+      v.dn.setData(af.vwap.map(p => ({ time: p[0], value: p[3] })));
+    } else clearVwap();
+  } else { clearFib(); clearVwap(); }
 }
 
 async function load(tf) {
@@ -283,6 +606,7 @@ async function gotoMatch(k) {
   if (!findings || k < 0 || k >= findings.matches.length) return;
   activeMatch = k; updateCurrent();
   const m = findings.matches[k];
+  dbg('gotoMatch', k, '->', m.pattern, m.side, 'start', new Date(m.start * 1000).toISOString());
   if (current !== findings.tf) await load(findings.tf);
   snapping = true;
   let st = j();
@@ -302,8 +626,9 @@ function renderSummary() {
   const total = document.getElementById('total'), summary = document.getElementById('summary');
   const totals = document.getElementById('totals');
   if (!findings) { total.textContent = 'Pick a findings file.'; totals.innerHTML = ''; summary.innerHTML = ''; document.getElementById('timeline').innerHTML = ''; updateCurrent(); return; }
-  const ms = findings.matches;
-  total.innerHTML = `<b>${ms.length}</b> matches · ${findings.tf}`;
+  const ms = findings.matches.filter(passFilter);
+  const alignOnly = hasRegime() && document.getElementById('tAligned').checked;
+  total.innerHTML = `<b>${ms.length}</b> matches · ${findings.tf}${alignOnly ? ' · aligned' : ''}`;
 
   // ALL matches combined (both patterns) at the selected horizon
   const fwdAll = ms.map(m => m.fwd ? m.fwd[horizon] : undefined).filter(v => v !== undefined);
@@ -314,7 +639,11 @@ function renderSummary() {
     const won = fwdAll.filter(x => x > 0).length, failed = fwdAll.length - won;
     const win = won / fwdAll.length * 100;
     const sumCol = sum >= 0 ? C.green : C.red, muCol = mu >= 0 ? C.green : C.red;
-    totals.innerHTML = `<div class="thead">all ${fwdAll.length} matches · fwd${horizon}</div>`
+    const allM = findings.matches, nAl = allM.filter(m => m.aligned).length;
+    const regLine = hasRegime()
+      ? `<div class="trow">${(findings.regime && findings.regime.htf) || 'HTF'} aligned <b style="color:${C.green}">${nAl}</b> · counter <b style="color:${C.red}">${allM.length - nAl}</b></div>`
+      : '';
+    totals.innerHTML = `<div class="thead">all ${fwdAll.length} matches · fwd${horizon}</div>` + regLine
       + `<div class="trow">won <b style="color:${C.green}">${won}</b> · failed <b style="color:${C.red}">${failed}</b> · ${win.toFixed(0)}% win</div>`
       + `<div class="trow">total <b style="color:${sumCol}">${sum >= 0 ? '+' : ''}${sum.toFixed(2)}%</b>`
       + ` · mean <span style="color:${muCol}">${mu >= 0 ? '+' : ''}${mu.toFixed(3)}%</span></div>`
@@ -322,7 +651,8 @@ function renderSummary() {
       + ` · avg MAE ${maes.length ? mean(maes).toFixed(3) + '%' : '–'}</div>`;
   } else totals.innerHTML = '';
   const groups = {};
-  ms.forEach((m, i) => {
+  findings.matches.forEach((m, i) => {          // iterate ALL so bestIdx stays a real findings index
+    if (!passFilter(m)) return;
     const g = groups[m.pattern] || (groups[m.pattern] = { side: m.side, scores: [], fwd: [], best: Infinity, bestIdx: -1 });
     g.scores.push(m.score);
     const fv = m.fwd ? m.fwd[horizon] : undefined; if (fv !== undefined) g.fwd.push(fv);
@@ -353,6 +683,7 @@ function renderTimeline() {
   const years = {}, months = new Array(12).fill(0);
   let minTs = Infinity, maxTs = -Infinity, w1 = 0, w2 = 0;
   for (const m of findings.matches) {
+    if (!passFilter(m)) continue;
     const d = new Date(m.start * 1000), y = d.getUTCFullYear();
     years[y] = (years[y] || 0) + 1; months[d.getUTCMonth()]++;
     if (m.start < minTs) minTs = m.start;
@@ -390,7 +721,7 @@ function updateCurrent() {
     g.classList.toggle('on', !!findings && activeMatch >= 0 && g.dataset.name === findings.matches[activeMatch].pattern));
   if (!findings || activeMatch < 0) { el.innerHTML = '<span class="pos">‹ prev / next › to step through matches</span>'; return; }
   const m = findings.matches[activeMatch];
-  const d = new Date(m.start * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  const d = fmtDateTime12(m.start) + ' ET';
   const col = m.side === 'long' ? C.green : C.red;
   const fv = m.fwd ? m.fwd[horizon] : undefined;
   const fwdCol = fv === undefined ? C.text2 : (fv >= 0 ? C.green : C.red);
@@ -400,30 +731,63 @@ function updateCurrent() {
   const rtTxt = rt == null ? '' :
     `<br>retrace ${(rt * 100).toFixed(0)}% ` +
     (rt <= 0.5 ? `<span style="color:${C.green}">held 0.5 ✓</span>` : `<span style="color:${C.red}">broke 0.5 ✗</span>`);
+  const alTxt = m.aligned == null ? '' :
+    `<br>regime ${m.regime} ` +
+    (m.aligned ? `<span style="color:${C.green}">aligned ✓</span>` : `<span style="color:${C.red}">counter ✗</span>`);
   el.innerHTML = `<span style="color:${col}">${m.side === 'long' ? '▲' : '▼'} ${m.pattern} #${m.rank}</span><br>`
     + `${d} · score ${m.score.toFixed(4)} <span class="pos">(${activeMatch + 1}/${findings.matches.length})</span><br>`
-    + `fwd${horizon}: ${fwdTxt} · MFE ${mfe} / MAE ${mae}${rtTxt}`;
+    + `fwd${horizon}: ${fwdTxt} · MFE ${mfe} / MAE ${mae}${rtTxt}${alTxt}`;
 }
 
 async function selectFindings(name) {
-  if (!name) { findings = null; renderSummary(); renderOverlays(); return; }
+  dbg('selectFindings ->', name || '(none)');
+  clearStructure();
+  document.getElementById('structPanel').innerHTML = '';
+  if (!name) { findings = null; patternMute = new Set(); renderPatternFilter([]); showFlagPanel(true); renderSummary(); renderOverlays(); return; }
   const data = await api(`/findings/${name}`);
-  data.matches.sort((a, b) => a.start - b.start);   // chronological so prev/next walks the chart
+  dbg('findings loaded:', { source: data.source, tf: data.tf,
+    matches: data.matches ? data.matches.length : undefined, grains: data.grains ? data.grains.length : undefined });
   findings = data; activeMatch = -1;
+  if (data.grains) {                                  // ── structure_detection findings ──
+    renderPatternFilter([]);
+    showFlagPanel(false);
+    setupStructure(data);
+    await load(data.tf);
+    renderStructure();
+    return;
+  }
+  showFlagPanel(true);
+  data.matches.sort((a, b) => a.start - b.start);     // ── flag-style findings (matches) ──
   const hzSel = document.getElementById('hzSel');
   const hs = (data.horizons && data.horizons.length) ? data.horizons : [1, 3, 6, 12, 24];
   if (!hs.map(String).includes(horizon)) horizon = String(hs.includes(6) ? 6 : hs[0]);
   hzSel.innerHTML = hs.map(h => `<option value="${h}"${String(h) === horizon ? ' selected' : ''}>${h}</option>`).join('');
+  initPatternFilter();
   renderSummary();
   await load(findings.tf);
-  gotoMatch(0);
+  const f = firstPassingIdx();
+  f >= 0 ? gotoMatch(f) : renderOverlays();
 }
 
 document.getElementById('tBands').onchange = renderOverlays;
 document.getElementById('tMarks').onchange = renderOverlays;
-document.getElementById('hzSel').onchange = (e) => { horizon = e.target.value; renderOverlays(); renderSummary(); };
-document.getElementById('prev').onclick = () => gotoMatch(activeMatch <= 0 ? 0 : activeMatch - 1);
-document.getElementById('next').onclick = () => gotoMatch(activeMatch < 0 ? 0 : Math.min(activeMatch + 1, (findings ? findings.matches.length - 1 : 0)));
+document.getElementById('tVol').onchange = () => { renderVolume(); applyCandleColors(); };
+document.getElementById('hzSel').onchange = (e) => { if (isStruct()) return; horizon = e.target.value; renderOverlays(); renderSummary(); };
+function firstPassingIdx() { if (!findings || !findings.matches) return -1; for (let i = 0; i < findings.matches.length; i++) if (passFilter(findings.matches[i])) return i; return -1; }
+function stepMatch(dir) {
+  if (!findings || !findings.matches) return;
+  if (activeMatch < 0) { const f = firstPassingIdx(); if (f >= 0) gotoMatch(f); return; }
+  let k = activeMatch;
+  for (let s = 0; s < findings.matches.length; s++) { k += dir; if (k < 0 || k >= findings.matches.length) return; if (passFilter(findings.matches[k])) { gotoMatch(k); return; } }
+}
+document.getElementById('prev').onclick = () => stepMatch(-1);
+document.getElementById('next').onclick = () => stepMatch(1);
+document.getElementById('tAligned').onchange = () => {
+  if (isStruct()) return;
+  renderSummary();
+  if (activeMatch >= 0 && !passFilter(findings.matches[activeMatch])) { const f = firstPassingIdx(); f >= 0 ? gotoMatch(f) : renderOverlays(); }
+  else renderOverlays();
+};
 window.addEventListener('keydown', e => {
   if (!findings) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); document.getElementById('prev').click(); }
@@ -431,6 +795,7 @@ window.addEventListener('keydown', e => {
 });
 
 chart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+  if (isTrend()) scheduleTrend();   // keep trendlines matched to the viewport while panning (throttled)
   if (snapping || !r) return; const st = j(); if (!st) return;
   if ((r.to - r.from) > 2000) return;   // zoomed too far out: don't runaway-page through history
   if (r.from < TRIGGER) loadOlder();
@@ -438,7 +803,9 @@ chart.timeScale().subscribeVisibleLogicalRangeChange(r => {
 });
 
 // ── boot ─────────────────────────────────────────────────
+api('/indicators').then(list => { dbg('indicators loaded:', list.map(i => i.name)); renderIndicatorPanel(list); }).catch(e => dbg('indicators failed', e));
 Promise.all([api('/timeframes'), api('/findings')]).then(([tfs, files]) => {
+  dbg('findings files:', files.map(f => f.id));
   const host = document.getElementById('tfs');
   tfs.forEach(tf => {
     const b = document.createElement('button');

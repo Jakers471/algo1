@@ -22,7 +22,7 @@ import glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # algoproj/
 sys.path.insert(0, ROOT)
 from algokit.data import TF
-from tv_chart.datastore import store
+from tv_chart.datastore import store, indseries
 
 HOST, PORT = "127.0.0.1", 8790
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -83,6 +83,25 @@ def candles_around():
     return jsonify({"tf": tf, "candles": store.around(tf, ts, count)})
 
 
+@app.route("/indicators")
+def indicators_list():
+    """Every registered indicator's spec (name, label, default params, lines)."""
+    return jsonify(indseries.specs())
+
+
+@app.route("/indicator")
+def indicator_series():
+    """Indicator line values for a timeframe over [from, to] epoch seconds.
+
+    Query: tf, name, from, to, plus any param overrides (e.g. n, k)."""
+    tf = request.args.get("tf", "5m")
+    name = request.args["name"]
+    t0, t1 = int(request.args["from"]), int(request.args["to"])
+    reserved = {"tf", "name", "from", "to"}
+    params = {k: v for k, v in request.args.items() if k not in reserved}
+    return jsonify({"name": name, "lines": indseries.window(tf, name, params, t0, t1)})
+
+
 @app.route("/findings")
 def findings_list():
     """Discover findings inside each strategy's own folder: strategy research/<strat>/findings/*.json"""
@@ -100,7 +119,32 @@ def findings_get(fid):
     return send_from_directory(SR_DIR, fid)
 
 
+def _free_port(port):
+    """Kill any process already listening on `port` so the instance we're about to
+    start is the only server — prevents stale servers from serving old code."""
+    import subprocess
+    try:
+        out = subprocess.check_output(["netstat", "-ano"], text=True, stderr=subprocess.DEVNULL)
+    except Exception:
+        return
+    me = os.getpid()
+    pids = set()
+    for line in out.splitlines():
+        p = line.split()
+        if len(p) >= 5 and p[0] == "TCP" and p[-2] == "LISTENING" \
+                and p[1].endswith(f":{port}") and p[-1].isdigit() and int(p[-1]) != me:
+            pids.add(p[-1])
+    for pid in pids:
+        try:
+            subprocess.run(["taskkill", "/PID", pid, "/F"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"freed port {port}: terminated stale server (PID {pid})")
+        except Exception:
+            pass
+
+
 def main():
+    _free_port(PORT)
     if "--warm" in sys.argv:
         print("warming caches…")
         store.warm()

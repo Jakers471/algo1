@@ -30,8 +30,9 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..", "..")))  # algoproj/
 sys.path.insert(0, HERE)                                                   # signal_config
-from algokit.data import load_tf
+from algokit.data import load_tf, align
 from algokit import patterns
+from algokit.regime import regime_score
 import signal_config as cfg
 
 COLS = ["open", "high", "low", "close"]
@@ -114,6 +115,14 @@ def main(tf, pct, save):
     ts = df.index.values.astype("datetime64[s]").astype("int64")
     atr = _atr(values, cfg.ATR_N)
 
+    # higher-timeframe fan regime, forward-filled onto the 5m clock (no look-ahead)
+    bull_a = bear_a = None
+    if cfg.REGIME_ENABLED:
+        lo, hi, eps = cfg.REGIME_FAN
+        hbull, _, hbear = regime_score(load_tf(cfg.REGIME_HTF), lo, hi, eps=eps)
+        bull_a = align(hbull, df.index).to_numpy()
+        bear_a = align(hbear, df.index).to_numpy()
+
     matches, counts = [], {"broke_out": 0, "failed": 0, "timeout": 0, "skip": 0}
     for name, (direction, side, tmpl) in cfg.SETUP.items():
         scores = patterns.scan_free(values, tmpl, cfg.WINDOW)          # magnitude-free SETUP match
@@ -125,6 +134,14 @@ def main(tf, pct, save):
             counts[outcome] = counts.get(outcome, 0) + 1
             if outcome != "broke_out":
                 continue
+            regime = aligned = None
+            if cfg.REGIME_ENABLED:
+                agree = bull_a[brk] if direction > 0 else bear_a[brk]
+                if not np.isnan(agree):
+                    regime = round(float(agree), 1)
+                    aligned = regime >= cfg.REGIME_SPLIT
+                if cfg.REQUIRE_ALIGNED and not aligned:
+                    continue
             fwd, mfe, mae = _forward(values, close, brk, direction)
             matches.append({
                 "pattern": name, "side": side,
@@ -134,6 +151,7 @@ def main(tf, pct, save):
                 "retrace": _retrace(values, close, i, brk, direction, pole_lo, pole_hi),
                 "flag_bars": int(brk - (i + cfg.POLE_BARS)),
                 "pole_lo": round(pole_lo, 2), "pole_hi": round(pole_hi, 2),
+                "regime": regime, "aligned": aligned,
                 "fwd": fwd, "mfe": mfe, "mae": mae})
 
     matches.sort(key=lambda m: (m["pattern"], m["score"]))
@@ -148,13 +166,17 @@ def main(tf, pct, save):
         import statistics as st
         f6 = [m["fwd"].get("6") for m in matches if m["fwd"].get("6") is not None]
         med_bars = st.median([m["flag_bars"] for m in matches])
+        nal = sum(1 for m in matches if m.get("aligned"))
         print(f"kept {len(matches)} breakouts | median flag {med_bars:.0f} bars | "
-              f"fwd6 mean {st.mean(f6):+.3f}%  win {sum(x>0 for x in f6)/len(f6)*100:.0f}%")
+              f"fwd6 mean {st.mean(f6):+.3f}%  win {sum(x>0 for x in f6)/len(f6)*100:.0f}%"
+              + (f" | {cfg.REGIME_HTF}-aligned {nal} / counter {len(matches)-nal}" if cfg.REGIME_ENABLED else ""))
     if save:
         out = {"tf": tf, "source": "nq_flag_breakout", "variable": True,
                "pole_bars": cfg.POLE_BARS, "fwd_window": cfg.FWD_WINDOW, "horizons": cfg.HORIZONS,
                "fib_hold": cfg.FIB_HOLD, "breakout_atr_mult": cfg.BREAKOUT_ATR_MULT,
                "max_watch": cfg.CONSOL_MAX_WATCH, "selector": f"score < p{pct}, norm=free",
+               "regime": {"enabled": cfg.REGIME_ENABLED, "htf": cfg.REGIME_HTF, "split": cfg.REGIME_SPLIT,
+                          "require_aligned": cfg.REQUIRE_ALIGNED},
                "session": {"enabled": cfg.SESSION_ENABLED, "tz": cfg.SESSION_TZ,
                            "start_hour": cfg.SESSION_START_HOUR, "end_hour": cfg.SESSION_END_HOUR},
                "created": dt.datetime.utcnow().isoformat(timespec="seconds") + "Z",

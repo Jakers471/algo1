@@ -188,3 +188,105 @@ and (b) the 32-MA **fan regime** (sourced to `_archive/.../regime/nq_mtf_regime.
 flags (the user's "alignment score", cheap + testable), and long-term as the **adaptive detector**
 that replaces the fixed-template pole (efficiency phases → pole/flag/breakout, nothing fixed) —
 directly answering "I don't like fixed anything." Keep fib/ATR/VWAP as the measurement tools.
+
+---
+
+## Rant 6 — multi-timeframe (3-TF) + outside_feedback.md (2026-06-30)
+
+Had Claude read `outside_feedback.md` (a long outside review of the detection theory: template =
+picture vs. rule; pole is retrospective; the fan/decomposition are *sensors/state-descriptors*, not
+the *state machine*; ATR = magnitude/wrong-axis vs. directional *efficiency* = right axis; the
+machine's failure branch builds the nesting tree causally; "the binding is structural, not computed
+— the machine is the only stateful piece, so memory-of-what-came-before IS the relationship").
+
+> the whole idea with multi timeframe in my head is a split between 3 timeframes. you have a higher
+> timeframe, medium timeframe and lower timeframe [...] 1hr as htf, 15min as mtf, and 1min as ltf.
+> 1hr is context (so what is the overall direction [...] tells us if we should be buying/selling or
+> waiting). again the same fractal flag pattern works across all timeframes [...] 3 states, pole 1,
+> then flag (consolidation), then breakout pole, so 1.2.3. so what thats 3x3 = 9 total states/
+> versions of alignment? each confirm the next timeframe [...] in a perfect world, 1 hour has
+> confirmed a breakout bullish, so we are only placing buys, no sells. within that 1hr breakout [...]
+> drop to the 15min or 5min, we look for the pattern again inside of it [...] once 15min is breaking
+> out, we now [...] step down to the 1min and look for the SAME EXACT PATTERN, but this time, we
+> place our buy stops at the high of the consolidation range, and stops at the consolidation low.
+> this is like our failed vs won patterns [...] even tho we are looking at say strictly 5min returns
+> [...] that might aggregate to much higher returns within that on ltf, because if you have an
+> expansive move up on the 15min, the 1 min has much better risk reward [...] then reverse engineer:
+> the 1min breakout fails, then you keep watching for 1min to setup again unless it falls below the
+> 50% fib on the 15min then we wait for the 15min to setup again, until the higher timeframe breaks
+> down then we wait for the whole sequence all over again.
+
+**Claude (summary):** Documented in NOTES §17 (sensor-vs-machine architecture from the feedback) and
+§18 (this MTF framework). Key synthesis: the MTF split IS the concrete, tractable instantiation of
+the feedback's recursive machine — the 3 timeframes are 3 efficiency scales, coupled top-down (HTF
+state gates whether the LTF may act). The regime-align filter already built (§16) is a validated
+2-TF slice (aligned ~3x better). The LTF-tight-entry / HTF-runway is the R:R mechanism and the
+likely fix for the drawdown problem `forward_horizon` exposed. Held the anchor: it's still all
+detection theory until it produces forward edge — the one real number (regime-align) outweighs the
+architecture until we have more like it.
+
+---
+
+## Rant 8 — dynamic pole, VWAP breakout, R:R, volume (2026-07-01)
+
+A long build session (all in NOTES §22). The arc: unfreeze the pole (trace it candle-by-candle both
+directions, cool-down = fraction-of-pole), tie in the flag-watch off the true pole, then redefine the
+breakout and bring in volume. Key rants verbatim:
+
+> okay we need to redefine the breakout i think.... anyway we can draw a line where the exact average
+> price is over say a 5 bar window? or is that essentially a moving average?
+
+Led to the ⭐ **anchored VWAP** as the consolidation's equilibrium (we have full volume): breakout =
+close beyond VWAP ± k×ATR, drawn on the chart (cyan center + band). Then a band-based R:R backtest:
+
+> in bearish, stop goes above top band, and sell stop at lower band. vice versa for bullish. run on
+> 1/1rr, 1/2 rr and 1/3 and 1/4 rr. either hits stop or profit target, show me number.
+
+→ **first positive R:R** (best 1:2, +0.096R) but gross + in-sample (NOTES §22, big caveats). Then the
+sample-size worry and the volume idea:
+
+> we have volume, one thing i can think of is calculate volume increase and find patterns within that
+> range of time instead of hours.... ? is it longer period of time?
+
+**Claude (summary):** Yes — volume runs past the 2 PM clock (2–4 PM ET ≈ ⅓ of daily volume); only
+~49% of high-vol bars are inside 8–2. Built BOTH: a volume **activity window** (`ACTIVITY_MODE`,
+surge vs rolling baseline — ~2× more seeds, confirms it's longer) and a volume **signature** (pole
+expands / flag contracts / breakout surges — wins 41→45–47% but −75% sample). Also diagnosed the
+funnel: the seed isn't the constraint (loosening 10× only 2×'s the count); the downstream conjunction
+is — real fix = breadth (more TFs/instruments). Anchor held: fwd still ≈0; the only live positive is
+the in-sample band R:R, which must survive costs + an out-of-sample split before it means anything.
+
+---
+
+## Rant 7 — un-freeze the pole: trace it candle-by-candle (2026-07-01)
+
+Context first: bumped the geometry to a **10-bar pole / 30-bar flag** ("stick to the frozen 4 and 5,
+but increase it to 10 for pole and 30 for flag"), fixed the session to a **hard 2:00 PM ET** stop
+(patterns were leaking to 2:55), and made the chart draw the pole's fib as **segments** (red top /
+green bottom / yellow 0.5, from the pole rightward) + display in **ET**. Then the real idea:
+
+> well this is what i was thinking, so we scan and find the patterns. then we track each candle on
+> the pole. if we find a bullish pole, i noticed sometimes the pole continues, but weve already cut
+> it off at 10 bars right. so the idea is this. lets flip it bearish since thats one im looking at
+> rn. the idea is we trace every candle, in a ebarish pole, we look at the cnadles lowest and highest
+> points. if the candle directly after it does not break an dclose above that high in a bearihs pole,
+> we continue to follow it down until it does, marking the low as the poles lowest point... make sense?
+
+> yes i like htose cheap knobs aloot. we cna also do this backwards from pole start because i notice
+> the same thing is like th epole shoudl have started lower.
+
+> [choosing the progress rule — fraction of the pole] odmrhitn glike htis hits me best... cause i was
+> thinking of somehow syaing, if the pole is x bars, we can wait this fratcion of time or %.. like if
+> a pole is 10 bars high, then it starts to cool down a little, we can relaistically wait what like a
+> third of that time to give it oom to keep goig .. but if it s 1/1 then it stops
+
+**Claude (summary):** Built `experiments/dynamic_pole.py` (NOTES §22). The static scan is just a
+**seed inside the move**; the pole grows candle-by-candle to its true extremes in BOTH directions —
+forward until a candle closes back above the prior high (bearish), backward to the true swing origin.
+Buffer knob (ATR) so wicks don't count. Results: static 10-bar pole → **dynamic median 21 bars, 90%
+extend backward** — matches the eye ("should've started higher"). Tried an extra "stopped making
+progress" guard; the 1-bar version was too twitchy (6-bar stubs), but the user confirmed the *concept*
+is right and picked **fraction-of-pole** patience as the fix: wait `f × pole_len` bars (e.g. 1/3) for
+the move to resume before ending — self-scaling to the pole's own size, `f=1` = max patience. Ends on
+whichever fires first: reversal (counter-close) or cooled-down (stall ≥ f×len). Next build: add
+`POLE_TRACE_STALL_FRAC` and eyeball. Anchor held: this is still detection — edge gets measured later.
