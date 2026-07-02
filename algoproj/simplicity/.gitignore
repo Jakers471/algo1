@@ -16,6 +16,8 @@ __pycache__/
 /research/structure/session_anchors/output/
 # volume-profile output (regenerate: volume_profile.py)
 /research/structure/volume_profile/output/
+# base-profile output (regenerate: base_profile.py / make_compare.py)
+/research/structure/base_profile/output/
 # shape-filter + zone-calibration outputs (regenerate: shape_filter.py / zone_calibration.py / make_examples.py)
 /research/gates/profile_shape_filter/output/
 /research/gates/zone_calibration/output/

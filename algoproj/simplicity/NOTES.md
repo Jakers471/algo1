@@ -395,3 +395,19 @@ shape_ok 58.6%->58.9%). Mirrored in chart JS computeShape; chart rebuilt. Verifi
 coil+breakout shape FALLS 74->59 (was rising), prominence near-flat 1.61->1.8 (was 2.86->5.20). Deep cure
 still base_profile (F6): profile the COIL not the whole session and none of these range-normalization
 bugs can occur. THRESHOLD still pending: SHAPE_OK 50 (~59% pass) -> re-raise once user re-checks in replay.
+
+### F18 — base_profile built + side-by-side study vs volume_profile (2026-07-02)
+Built the parallel profiler (F6) WITHOUT touching the whole-session one. `base_profile` detects the tight
+base via a causal contraction scan (band = BAND_MULT=5 x median bar-range; walk back from the last bar
+while the window range stays within band; MIN_BARS=8) and profiles ONLY that window -- so the impulse leg
+/ breakout are excluded and the range-normalization bugs we patched (F5/F16/F17) can't arise. Key design
+win: it emits the SAME profile-dict shape as volume_profile, so shape_filter + zone_calibration score it
+with ZERO changes -- the profile dict is the seam; the gates don't care who produced it. Proves the
+"build a second version, don't rewrite" model.
+Findings (make_compare.py, 2024): base detected in 78% of sessions (median = 27% of session bars). On
+trend/impulse days the WHOLE session reads foggy (correctly -- it's a trend) but the coil INSIDE reads
+clean: shape 46->80, 42->72, 40->69 (+29..+34), and crucially risk 1R collapses ~3-4x (59.6->15.7pt,
+63.8->12.3pt) because you risk against the tight coil not the trending range = the LTF-tight-stop geometry
+made real; entry TF often drops 5m->1m. Already-clean sessions are a wash (-1) -- no harm. Logged to the
+run ledger (kind=base_profile). PROMOTE-PENDING (user decides): base could replace volume_profile, or
+COMPLEMENT it (multi-scale confluence, F15: score both). Still needs in-context validation (F13) before live.

@@ -47,8 +47,11 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[R]` Chart overlay: POC (solid) + VAH/VAL (dashed) per session, color-coded (Indicators `profile` toggle)
 - `[~]` Profile shape / tightness rejection — `research/gates/profile_shape_filter`: `score()` (0-100) + visual
   gallery (`make_examples.py`) built; PROVISIONAL metrics/threshold, refine before promoting
-- `[ ]` **FUTURE / parallel:** `base_profile` — profile the detected tight BASE (leg+base), not the whole
-  session; study side-by-side vs `volume_profile`, promote whichever reads better (NOTES F6). Deferred.
+- `[~]` **`base_profile` BUILT (side-by-side study)** — profiles the detected consolidation BASE, not the
+  whole session; emits the same dict so `shape_filter`/`zone_calibration` score it unchanged (the seam).
+  `make_compare.py` shows session vs base. Finding: base detected in 78% of sessions; on trend days session
+  reads foggy but base reads clean (shape +29..+34) with risk 1R ~3-4x tighter. `research/structure/base_profile`.
+  **Promote-pending — you decide** (replace / complement per F15; validate in-context F13). (NOTES F6/F18)
 
 ## Phase 4 — Setup calibration & bias
 - `[~]` Height% / duration → risk (1R=VA edge) + room + R:R + entry timeframe — `research/gates/zone_calibration`
