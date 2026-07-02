@@ -81,6 +81,28 @@ def compute(df=None, tail=None):
     return out
 
 
+def sessions(df=None, tail=None):
+    """Per-session boundaries: {date, session, sid, open, close, high, low} (Asia/London/NY)."""
+    if df is None:
+        df = data_feed.load("5m")
+    if tail:
+        df = df.tail(tail)
+    et = df.index.tz_convert(cfg.CLOCK)
+    mod = et.hour * 60 + et.minute
+    sess = _sessions(et)
+    sdate = pd.Series(et.tz_localize(None).normalize().values)
+    sdate[(sess == "asia") & (mod < 180)] -= pd.Timedelta(days=1)
+    f = pd.DataFrame({"date": pd.DatetimeIndex(sdate).strftime("%Y-%m-%d"), "session": sess,
+                      "high": df["high"].to_numpy(), "low": df["low"].to_numpy(),
+                      "ts": (et.view("int64") // 1_000_000_000).astype("int64")})
+    f = f[f["session"] != "close"]
+    g = f.groupby(["date", "session"], sort=False).agg(
+        open=("ts", "min"), close=("ts", "max"), high=("high", "max"), low=("low", "min")).reset_index()
+    return [{"date": r.date, "session": r.session, "sid": f"{r.date} {r.session}",
+             "open": int(r.open), "close": int(r.close), "high": round(float(r.high), 2),
+             "low": round(float(r.low), 2)} for r in g.itertuples()]
+
+
 def check():
     lv = compute(tail=20000)                      # recent ~2 months, fast readiness check
     hit = sum(1 for x in lv if x["hit"])

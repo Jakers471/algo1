@@ -77,4 +77,5 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 |-------|-----------|-----------|
 | data_feed | 2026-07-01 | data build (research) → `engine/data_feed.py` (loads all NQ+ES parquets; WIRED 1/10) |
 | vol_filter | 2026-07-01 | `research/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |
-| session_anchors | 2026-07-02 | `research/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach tracking; WIRED 3/10) |
+| session_anchors | 2026-07-02 | `research/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach + boundaries; WIRED 3/10) |
+| volume_profile | 2026-07-02 | `research/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
