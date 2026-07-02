@@ -115,6 +115,15 @@ def main():
     manifest["session_colors"] = scolors
     manifest["data_end"] = data_end
 
+    # volume profiles (Phase 3): per-session POC / value area, in the loaded window
+    vp_path = os.path.join(HERE, "..", "volume_profile", "output", "volume_profile.json")
+    profiles = []
+    if os.path.exists(vp_path):
+        m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
+        cut = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
+        profiles = [P for P in json.load(open(vp_path))["profiles"] if P["start"] >= cut]
+    manifest["profiles"] = profiles
+
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")
     for s in series_meta:

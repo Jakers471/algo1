@@ -85,6 +85,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="high" class="on">High</button><button data-lvl="low" class="on">Low</button></div>
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
         <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span class="ind-note">session open/close verticals</span></div>
+        <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span class="ind-note">POC (solid) + value area (dashed)</span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
     </div>
@@ -152,7 +153,7 @@ function updateShade(){
 function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
 function load(){
   const s=SERIES[inst+"_"+tf], meta=avail[inst][tf];
-  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors(); updateTimes();
+  candle.setData(s.candles); vol.setData(s.volume); updateShade(); updateAnchors(); updateTimes(); updateVP();
   chart.timeScale().fitContent();
   document.getElementById("loaded").innerHTML=
     kv("instrument",inst)+kv("timeframe",tf)+kv("bars",meta.bars)+
@@ -171,7 +172,7 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false;
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, vpOn=false, vpLines=[];
 SESSN.forEach(s=>ancSess[s]=true);
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
@@ -200,6 +201,22 @@ function updateTimes(){
   }
   vsess.setData(Object.keys(seen).map(Number).sort((a,b)=>a-b).map(t=>seen[t]));
 }
+function clearVP(){vpLines.forEach(s=>chart.removeSeries(s));vpLines=[];}
+function updateVP(){  // per-session volume profile: POC (solid) + value area VAH/VAL (dashed)
+  clearVP();
+  const avail=vpOn&&inst==="NQ"&&(tf==="1m"||tf==="5m");
+  if(!avail)return;
+  const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
+  for(const P of (M.profiles||[])){
+    if(!ancSess[P.session]||P.end<tmin||P.start>tmax)continue;
+    const c=SC[P.session]||"#888", a=Math.max(P.start,tmin), b=Math.min(P.end,tmax);
+    for(const spec of [[P.poc,0,2],[P.vah,2,1],[P.val,2,1]]){
+      const s=chart.addLineSeries({color:c,lineWidth:spec[2],priceLineVisible:false,
+        lastValueVisible:false,crosshairMarkerVisible:false,lineStyle:spec[1]});
+      s.setData([{time:a,value:spec[0]},{time:b,value:spec[0]}]); vpLines.push(s);
+    }
+  }
+}
 document.getElementById("indMin").onclick=function(){const m=document.getElementById("indBody").classList.toggle("min");this.textContent=m?"+":"–";};
 document.getElementById("ancMaster").onclick=function(){ancOn=!ancOn;this.classList.toggle("on",ancOn);this.textContent=ancOn?"on":"off";updateAnchors();};
 document.querySelectorAll("[data-lvl]").forEach(b=>b.onclick=function(){ancLvl[this.dataset.lvl]=!ancLvl[this.dataset.lvl];this.classList.toggle("on",ancLvl[this.dataset.lvl]);updateAnchors();});
@@ -207,6 +224,7 @@ document.getElementById("ancSess").innerHTML=SESSN.map(s=>
   `<button data-s="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
 document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";updateTimes();};
+document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.toggle("on",vpOn);this.textContent=vpOn?"on":"off";updateVP();};
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}

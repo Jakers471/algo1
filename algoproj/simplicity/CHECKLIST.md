@@ -38,9 +38,10 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[R]` Session-break stats + edge test — base rates, conditional lift, breakout follow-through vs drift — `research/session_break_stats`. **Verdict: no directional edge** (lifts ~1, follow-through excess ~0); breach data is a descriptor, not a signal.
 
 ## Phase 3 — Volume Profile & Value Area (the zone)
-- `[ ]` Volume Profile between session anchors (not VWAP) — `research/volume_profile`
-- `[ ]` POC + Value Area = the consolidation zone
-- `[ ]` Measure the zone: duration (bars) + height (%)
+- `[R]` Volume Profile per session (bounded by session high↔low; real Up+Down volume) — `research/volume_profile`
+- `[R]` POC + Value Area = the consolidation zone (VAL/VAH, 70%)
+- `[R]` Measure the zone: duration (bars) + height (%) + VA/range%
+- `[R]` Chart overlay: POC (solid) + VAH/VAL (dashed) per session, color-coded (Indicators `profile` toggle)
 - `[ ]` Profile shape / tightness rejection — skip scattered / multi-peaked days — `research/profile_shape_filter`
 
 ## Phase 4 — Setup calibration & bias
@@ -76,3 +77,4 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 |-------|-----------|-----------|
 | data_feed | 2026-07-01 | data build (research) → `engine/data_feed.py` (loads all NQ+ES parquets; WIRED 1/10) |
 | vol_filter | 2026-07-01 | `research/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |
+| session_anchors | 2026-07-02 | `research/session_anchors` → `engine/session_anchors.py` (session hi/lo + breach tracking; WIRED 3/10) |

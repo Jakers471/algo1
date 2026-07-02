@@ -11,6 +11,8 @@ __pycache__/
 
 # large regenerable session-anchor breach data (regenerate: session_anchors.py)
 /research/session_anchors/output/
+# volume-profile output (regenerate: volume_profile.py)
+/research/volume_profile/output/
 
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet
