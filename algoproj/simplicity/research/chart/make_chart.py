@@ -85,7 +85,7 @@ box-shadow:0 0 6px var(--up);animation:blink 1.15s ease-in-out infinite}
         <div class="ind-row"><span class="ind-lab">levels</span><button data-lvl="high" class="on">High</button><button data-lvl="low" class="on">Low</button></div>
         <div class="ind-row"><span class="ind-lab">sessions</span><span id="ancSess"></span></div>
         <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span class="ind-note">session open/close verticals</span></div>
-        <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span class="ind-note">POC (solid) + value area (dashed)</span></div>
+        <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span id="vpSess"></span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
     </div>
@@ -172,8 +172,8 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, vpOn=false, vpLines=[];
-SESSN.forEach(s=>ancSess[s]=true);
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, vpOn=false, vpLines=[], vpSess={};
+SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true;});
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
   clearAnchors();
@@ -208,7 +208,7 @@ function updateVP(){  // per-session volume profile: POC (solid) + value area VA
   if(!avail)return;
   const cs=SERIES[inst+"_"+tf].candles, tmin=cs[0].time, tmax=cs[cs.length-1].time;
   for(const P of (M.profiles||[])){
-    if(!ancSess[P.session]||P.end<tmin||P.start>tmax)continue;
+    if(!vpSess[P.session]||P.end<tmin||P.start>tmax)continue;
     const c=SC[P.session]||"#888", a=Math.max(P.start,tmin), b=Math.min(P.end,tmax);
     for(const spec of [[P.poc,0,2],[P.vah,2,1],[P.val,2,1]]){
       const s=chart.addLineSeries({color:c,lineWidth:spec[2],priceLineVisible:false,
@@ -225,6 +225,9 @@ document.getElementById("ancSess").innerHTML=SESSN.map(s=>
 document.querySelectorAll("[data-s]").forEach(b=>b.onclick=function(){ancSess[this.dataset.s]=!ancSess[this.dataset.s];this.classList.toggle("on",ancSess[this.dataset.s]);updateAnchors();});
 document.getElementById("timesBtn").onclick=function(){timesOn=!timesOn;this.classList.toggle("on",timesOn);this.textContent=timesOn?"on":"off";updateTimes();};
 document.getElementById("vpBtn").onclick=function(){vpOn=!vpOn;this.classList.toggle("on",vpOn);this.textContent=vpOn?"on":"off";updateVP();};
+document.getElementById("vpSess").innerHTML=SESSN.map(s=>
+  `<button data-vs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
+document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=function(){vpSess[this.dataset.vs]=!vpSess[this.dataset.vs];this.classList.toggle("on",vpSess[this.dataset.vs]);updateVP();});
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}
