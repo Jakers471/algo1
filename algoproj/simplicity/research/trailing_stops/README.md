@@ -1,3 +1,6 @@
-# Aggressive trailing stop management off prior candle / range (VISION 15)
+# trailing_stops
 
-_Placeholder — not started._ Tracked in `../../CHECKLIST.md`; full spec in `../../VISION.md`.
+**Purpose:** Aggressive trailing stop management (mechanical, OHLC-based).
+**Plan:** Trail below/above the prior candle or the consolidation range; trail as price confirms the move.
+**Attached to:** VISION 15 · CHECKLIST Phase 5
+**Status:** [ ] not started (placeholder)

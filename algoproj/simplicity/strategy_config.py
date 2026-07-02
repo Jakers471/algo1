@@ -6,6 +6,10 @@ data, the volatility filter/era, the (to-be-built) signal / entry / exit / risk
 rules, and the execution costs. Import this ONE module everywhere. Locking a value
 here locks it project-wide, so the whole setup is replicable from this file alone.
 
+This is the CONCRETE / REAL config (the strategy + frictions). Run/testing knobs
+(ACTIVE_FILTER, starting balance, dates, sweeps) will live in a separate `research_config`
+that imports this -- see ARCHITECTURE.md (two configs -> one engine -> outputs stored per config).
+
 Named `strategy_config` (not `config`) on purpose -- `algoproj/config.py` already
 exists on the path; this avoids the name clash.
 
@@ -74,13 +78,22 @@ SESSIONS = {                     # ET session partition (no gaps, covers 24h)
 # it skews vol-based selection, so we cut it. Set 2005 to use all 20yr.
 ERA_START_YEAR = 2015
 
-# Per-day volatility proxy the filter classifies on:
-#   'avg_range' = (High-Low)/Close*100     |   'mean_vol' = |ln(Close/PrevClose)|*100
+# --- WHEN-TO-TRADE FILTERS (session/hour primary, day optional) --------------------
+# Each toggles independently. A timestamp is tradeable only if ALL *enabled* filters pass.
+# Session & hour are the core (trade inside high-activity windows, not every day equally);
+# the daily vol-regime gate is optional. Flip "on" to enable/disable each.
+FILTER_SESSION = {"on": True,  "allow": ["newyork"]}                 # ET sessions (keys of SESSIONS)
+FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]} # ET hours-of-day
+FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                 # daily vol-regime gate (optional)
+
+# --- daily vol-regime machinery (only used when FILTER_DAY_VOL["on"]) ---------------
+# Per-day volatility proxy: 'avg_range'=(High-Low)/Close*100 | 'mean_vol'=|ln(C/prevC)|*100
 VOL_METRIC = "avg_range"
 TRAIL_WINDOW = 20                # trading days; CAUSAL (prior-window mean, no look-ahead)
 REGIME_PCTILES = (33.0, 66.0)    # low / medium / high split (percentiles within the era)
-TRADEABLE_REGIMES = ("high",)    # regimes the strategy may act in
+TRADEABLE_REGIMES = ("high",)    # locked winning regime (once the hypothesis test confirms)
 MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None = off
+ACTIVE_FILTER = "high"           # TESTING selector for filter_variants: all|high|medium|low|high_medium|not_high|extremes
 
 # ==================================================================================
 # SIGNAL / ENTRY / EXIT                                                        [TBD]

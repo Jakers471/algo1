@@ -1,3 +1,6 @@
-# Profile shape / tightness rejection — skip scattered / multi-peaked days (VISION 8)
+# profile_shape_filter
 
-_Placeholder — not started._ Tracked in `../../CHECKLIST.md`; full spec in `../../VISION.md`.
+**Purpose:** Reject scattered / multi-peaked profiles; keep tight, single-peaked, organized ones.
+**Plan:** A shape/tightness metric on the profile; a rejection gate independent of the calendar volatility filter.
+**Attached to:** VISION 8 · CHECKLIST Phase 3
+**Status:** [ ] not started (placeholder)

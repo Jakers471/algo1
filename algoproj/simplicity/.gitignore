@@ -2,6 +2,13 @@
 __pycache__/
 *.pyc
 
+# engine run logs
+/engine/logs/
+
+# generated chart artifacts (regenerate: build_chart_data.py + make_chart.py; lib/ is kept)
+/research/chart/data/
+/research/chart/chart.html
+
 # Large data parquets — regenerate from the TradeStation source with data/build_data.py
 /data/NQ/*.parquet
 /data/ES/*.parquet

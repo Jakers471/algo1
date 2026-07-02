@@ -85,14 +85,38 @@ explicitly confirms it — the user decides when.** research = discover, engine 
 `strategy_config.py` is the single source of truth (project map, data, era/filter, TBD
 signal/entry/exit/risk slots, execution costs). Layout:
 `research/{volume_buckets, volatility_ranking, volatility_filter, + placeholder step folders}`,
-`engine/` (empty until first promotion).
+`engine/` (data_feed + vol_filter promoted so far).
+
+**See `ARCHITECTURE.md`** for the full configs → engine → outputs wiring: **two selectable configs**
+— `strategy_config` (concrete/real) and `research_config` (run/testing: ACTIVE_FILTER, starting
+balance, dates, sweeps — planned) — feeding **one engine**; the chart can be pointed at either; and
+a future separate `backtest/` folder stores equity-curve PNGs in different places per config
+(research vs real) so they never mix.
 
 ### Job 2 — calendar volatility filter + ranking (`research/volatility_filter`, `volatility_ranking`)  [BUILT 2026-07-01]
 `build_buckets.py` now also computes four volatility stats per slice at every level (Mean Vol %,
 HV %, Vol Range %, Avg Daily Range %) from OHLC — shown in the dashboard as charts + tables.
-`volatility_filter/vol_filter.py` = a causal daily gate (trailing vol → low/med/high regime,
-tradeable = high). `volatility_ranking/rank_volatility.py` = structured most-vs-least-volatile
-output per level. Status: built in research, **awaiting confirmation to promote** (CHECKLIST `[C]`).
+`volatility_filter/vol_filter.py` = the WHEN-TO-TRADE gate: filters **intraday bars by session
+and/or hour** (the core — trade inside high-activity windows) plus an **optional daily vol-regime**
+gate, each **toggleable in config** (`FILTER_SESSION` / `FILTER_HOUR` / `FILTER_DAY_VOL`, ANDed).
+`mask(index)` → boolean over any intraday index; `passes(ts)` for one bar. (Reshaped from a
+daily-only gate 2026-07-01 — filtering belongs at session/hour, not just per-day.)
+`volatility_ranking/rank_volatility.py` = structured most-vs-least-volatile output per level. Status:
+**PROMOTED to `engine/vol_filter.py`** (2026-07-01, WIRED 2/10; self-contained via `data_feed`);
+the research copy stays for testing/variants.
+
+**Filter variants — the hypothesis test (`volatility_filter/filter_variants.py`).** The single
+hypothesis we must confirm: **the strategy performs better in high-volatility / high-activity
+periods.** Locking `tradeable = high` alone doesn't prove it — we need its opposites to compare.
+So a bank of variants over the low/med/high regimes: `all` (baseline), `high` (the claim),
+`medium`, `low` (opposite), `high_medium`, `not_high` (complement of high), `extremes`. When the
+strategy emits per-day R, `evaluate()` reports expectancy under each variant **and vs a Monte-Carlo
+RANDOM same-size baseline** (a null of random day-samples). **Critical: H is real only if `high`
+beats RANDOM (top tail), not merely `low`.** If `high` beats `low` but not random, the "edge" is
+just that low-vol days are unusually bad (a survivorship-flavored artifact), not that high-vol is
+good. Descriptive baseline already shows the volume↔vol link: high-vol days average **~582k**
+contracts vs low-vol **~293k** (~2×), but that's context, not the edge — the real test waits for
+the strategy.
 
 ---
 

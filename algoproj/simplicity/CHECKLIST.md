@@ -20,6 +20,7 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[R]` research/ vs engine/ split + research-first workflow
 - `[R]` Placeholder scaffold + this checklist
 - `[R]` Execution/costs locked (point value, tick, commission, slippage) — `strategy_config` (sizing/entry still TBD)
+- `[E]` **engine/data_feed.py PROMOTED** — loads all NQ+ES clean parquets (run_engine shows WIRED 1/10)
 
 ## Phase 1 — Calendar volatility (WHEN to trade)
 - `[R]` Bucket data hierarchically: all → year → quarter → month → day → hour/session, total volume per slice — `research/volume_buckets`
@@ -27,8 +28,10 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[R]` Volume + volatility dashboard (charts + full tables + Δ vs prev) — `research/volume_buckets/output/volume_dashboard.html`
 - `[R]` Era cutoff — drop the low-vol 2005-2014 decade (recent HV ≈ 2× early) — `strategy_config.ERA_START_YEAR`
 - `[R]` Volatility ranking — structured most-vs-least volatile per level — `research/volatility_ranking`
-- `[C]` **Calendar volatility filter** — causal daily gate (trailing vol → low/med/high regime) — `research/volatility_filter`  ← awaiting your OK to promote
-- `[ ]` → on confirm: promote vol_filter to `engine/`
+- `[E]` **When-to-trade filter PROMOTED** — intraday gate (session/hour + optional daily vol-regime, toggleable `FILTER_SESSION/HOUR/DAY_VOL`) → `engine/vol_filter.py` (WIRED 2/10); research copy kept for testing
+- `[R]` Filter variants bank (high / low / medium / not_high / extremes / all) for A/B testing — `research/volatility_filter/filter_variants.py`
+- `[R]` Random/unconditional baseline in the test (`evaluate()` compares each variant vs a Monte-Carlo same-size random null)
+- `[ ]` **Hypothesis test** — "strategy better in high-vol periods": run `evaluate()` with strategy per-day R; H holds only if `high` beats the **random baseline** (top tail) AND `low` (blocked on the strategy existing)
 
 ## Phase 2 — Session structure (WHERE)
 - `[ ]` Session high/low anchors — London / NY / Asia, single + combinations — `research/session_anchors`
@@ -49,14 +52,27 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 - `[ ]` Value-Area breakout + volume confirmation = the entry signal
 - `[ ]` Aggressive trailing stop management (off prior candle / range) — `research/trailing_stops`
 
+## Phase 6 — Measurement & backtest (FUTURE — blocked on entry/exit + risk mgmt)
+- `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
+- `[ ]` Equity curve (+ drawdown)
+- `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)
+- **Prior art (don't reinvent):** you already built all of this in `algoproj/webui` (Flask+PyWebView+ECharts:
+  Analyzer/Runs/Strategies/WFO; `/api/run/chart` = candles+BUY/SELL markers, `/api/run/equity` = equity+DD,
+  `/api/wfo` = walk-forward) + the original Streamlit `algoproj/_archive/app`; engine =
+  `algokit/{wfo,optimize,validation,significance,runs}`. simplicity's `backtest/` reuses this. See ARCHITECTURE.md.
+
 ## Cross-cutting
-- `[~]` Fresh TradingView lightweight chart — chart + minimal sidebar, overlay everything the code sees; no old flag-strategy baggage — `research/chart`
+- `[~]` **Fresh TradingView lightweight chart** (`research/chart`) — rewired to simplicity data; multi-timeframe (NQ+ES); OHLC cached to JSON, load max ~2000 bars/TF for speed; side menu showing which instrument/TF/config is loaded (clean format); overlay the filter-selected periods. No old flag-strategy baggage.
+- `[R]` Config filter selector `ACTIVE_FILTER` (pick which variant tv/backtest uses) — `strategy_config`
+- `[ ]` Config split (see `ARCHITECTURE.md`): `research_config` (run/testing — `ACTIVE_FILTER`, `STARTING_BALANCE`, dates, sweeps) vs `strategy_config` (concrete/real); delete dead `TRADEABLE_REGIMES`. For now one sectioned config.
+- `[ ]` Chart config selector (research | real) → overlays that config
+- `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
 
 ---
 
 ## Promotion log (research → engine)
-_Nothing promoted yet._
 
 | piece | confirmed | from → to |
 |-------|-----------|-----------|
-| —     | —         | —         |
+| data_feed | 2026-07-01 | data build (research) → `engine/data_feed.py` (loads all NQ+ES parquets; WIRED 1/10) |
+| vol_filter | 2026-07-01 | `research/volatility_filter` → `engine/vol_filter.py` (session/hour + optional day-vol gate; WIRED 2/10) |

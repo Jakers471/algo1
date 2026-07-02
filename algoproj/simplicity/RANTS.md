@@ -65,3 +65,36 @@ intraday 5m data for *proportions* (winsorized at each day's 99th pct).
 is ~90% of everything (newyork 89.4% / close 6.7% / london 3.3% / asia 0.6%). Wrote 9 labeled
 files to `volume_buckets/output/` (all/year/quarter/month/day + per-day hour/session + two
 aggregate profiles). `build_buckets.py` re-runs the whole thing.
+
+---
+
+## Rant 2 — volatility, the data fix, structure, and the filter hypothesis (2026-07-01)
+
+A long session after the buckets. Arc: added four volatility stats per bucket (Mean Vol / HV / Vol
+Range / Avg Daily Range) + Δ-vs-prev to the dashboard; built the **volatility ranking** (most-vs-least)
+and an **era cutoff** (drop the calm 2005-2014 decade — recent HV ~2× it); split the folder into
+**research/** (discover) vs **engine/** (execute; promote only on the user's OK; `run_engine.bat`
+wiring tracker); wrote the master `strategy_config.py`, `CHECKLIST.md`. Then the data bomb: user
+asked *"only 1d has volume no way?"* → proved intraday volume was corrupt, found the cause (the
+TradeStation source has `Up`+`Down` columns the old builder concatenated as text), and **rebuilt
+clean data** (volume = Up+Down) into `data/NQ` + `data/ES`.
+
+Then the filter hypothesis. User, verbatim:
+> we shoudl create "multiple filters" to test based on the volatility ranking. like we have the most
+> volatile, least volatile periods, or the opposite... whatever we dont have in there we can test on
+> too just to add to confirmation of the claim (strategy is better in high volume areas/periods) so
+> we can test that single hypothesis
+
+And the key methodology correction, verbatim:
+> what actually tests the hypothesis is comparing your filtered results against a random/unconditional
+> baseline... if high-vol beats random and beats low-vol, that's real evidence. if high-vol only beats
+> low-vol but doesn't beat random, that's a sign the "edge" might just be that low-vol days are
+> unusually bad rather than high-vol being unusually good.
+
+**Claude (summary):** Built `research/volatility_filter/filter_variants.py` — variants over the
+low/med/high regimes (`all`, `high`=the claim, `medium`, `low`=opposite, `high_medium`, `not_high`,
+`extremes`). `evaluate(per-day R)` now tests each against **both** `low` AND a **Monte-Carlo random
+same-size baseline** (null distribution of random day-samples): **H is real only if `high` beats
+random (top tail), not merely `low`** — otherwise the "edge" is just that low-vol days are bad. Also
+standardized every built research job to a consistent layout (README + code + `output/`). Test is
+wired but blocked on the strategy emitting per-day R.
