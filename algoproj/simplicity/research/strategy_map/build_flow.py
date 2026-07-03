@@ -89,67 +89,91 @@ TEMPLATE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 *{box-sizing:border-box}html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;
 display:flex;flex-direction:column;overflow:hidden}
-.top{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--ring);flex-wrap:wrap;z-index:10}
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--ring);flex-wrap:wrap;z-index:10}
 .top h1{font-size:15px;margin:0;font-weight:660}.top h1 span{color:var(--mut);font-weight:400}
 .top .hint{color:var(--mut);font-size:11.5px}
 .sp{margin-left:auto;display:flex;gap:6px}
 button{background:var(--panel2);border:1px solid var(--ring);color:var(--ink);font:inherit;font-size:12px;
-padding:5px 11px;border-radius:7px;cursor:pointer}button:hover{border-color:#4a9eff}
-button.warm{border-color:rgba(246,70,93,.5);color:#f6b3bd}
-.legend{display:flex;gap:12px;flex-wrap:wrap;padding:6px 14px;border-bottom:1px solid var(--ring);font-size:11px;color:var(--mut)}
-.lg{display:flex;align-items:center;gap:5px}.lg i{width:10px;height:10px;border-radius:3px}
+padding:6px 12px;border-radius:7px;cursor:pointer}button:hover{border-color:#4a9eff}
+button.warm{border-color:rgba(246,70,93,.45);color:#f6b3bd}
 .stage{position:relative;flex:1;overflow:auto;background:
-radial-gradient(circle at 1px 1px,rgba(255,255,255,.05) 1px,transparent 0) 0 0/26px 26px}
-.canvas{position:relative;width:2600px;height:1600px}
+radial-gradient(circle at 1px 1px,rgba(255,255,255,.045) 1px,transparent 0) 0 0/28px 28px}
+.canvas{position:relative;width:2600px;height:1500px}
+.empty{position:absolute;top:70px;left:50%;transform:translateX(-50%);color:var(--mut);font-size:13px;text-align:center;pointer-events:none}
 svg.edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 svg.edges path.hit{pointer-events:stroke;cursor:pointer}
-.node{position:absolute;width:196px;background:var(--panel);border:1px solid var(--ring);border-left:4px solid #888;
-border-radius:9px;padding:8px 11px 9px;z-index:2;box-shadow:0 3px 12px rgba(0,0,0,.35);user-select:none}
+.node{position:absolute;width:198px;background:var(--panel);border:1px solid var(--ring);border-left:4px solid #888;
+border-radius:10px;padding:9px 12px 10px;z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.4);user-select:none}
 .node.sel{outline:2px solid #4a9eff;outline-offset:1px}
 .node .nh{font-size:12.5px;font-weight:660;cursor:grab;display:flex;align-items:center;gap:6px}
 .node .nh .gd{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.node .nx{margin-left:auto;color:var(--mut);cursor:pointer;font-size:15px;line-height:1}.node .nx:hover{color:#f6465d}
 .node .ns{color:var(--mut);font-size:11px;margin:2px 0 5px}
 .node .nk{font:10px ui-monospace,Menlo,monospace;color:#9fb0c2;background:rgba(255,255,255,.04);
 border-radius:4px;padding:2px 5px;word-break:break-word}
-.port{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--panel2);border:2px solid #5a6472;
-top:calc(50% - 6px);cursor:crosshair;z-index:3}
+.port{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--panel2);border:2px solid #5a6472;
+top:calc(50% - 7px);cursor:crosshair;z-index:3}
 .port:hover{background:#4a9eff;border-color:#4a9eff}
-.port.in{left:-8px}.port.out{right:-8px}
-.port.out{border-color:#2ebd85}
-#tip{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--ring);
-border-radius:8px;padding:6px 12px;font-size:11.5px;color:var(--mut);z-index:20}
+.port.in{left:-9px}.port.out{right:-9px;border-color:#2ebd85}
+/* bottom palette tray */
+.palette{border-top:1px solid var(--ring);background:#101319;max-height:210px;overflow-y:auto;padding:10px 14px 14px}
+.phead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.phead b{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+.phead span{color:#5b636e;font-size:11px}
+.pgroups{display:flex;gap:16px;flex-wrap:wrap}
+.pg{min-width:120px}
+.pg .pgl{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px;color:var(--mut);display:flex;align-items:center;gap:5px}
+.pg .pgl i{width:9px;height:9px;border-radius:3px}
+.chips{display:flex;flex-direction:column;gap:4px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--ring);border-left:3px solid #888;
+border-radius:7px;padding:4px 9px;font-size:12px;cursor:grab;white-space:nowrap}
+.chip:hover{border-color:#4a9eff;background:var(--panel2)}
+.chip.placed{opacity:.32;cursor:default;pointer-events:none}
+.chip .cdot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+#ghost{position:fixed;z-index:99;pointer-events:none;background:var(--panel);border:1px solid #4a9eff;border-radius:7px;
+padding:5px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.5);opacity:.95}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span>— flow editor</span></h1>
-  <span class="hint">drag a node by its title · drag the green port → another node's grey port to connect · click a line to cut it</span>
+  <span class="hint">drag a piece up from the tray · move it by its title · drag its green port → another's grey port to link · click a line to cut</span>
   <div class="sp">
     <button id="export">⬇ export flow.json</button>
     <button id="import">⬆ import</button>
-    <button id="tidy">tidy columns</button>
     <button id="clearEdges" class="warm">clear links</button>
-    <button id="reset" class="warm">reset</button>
+    <button id="reset" class="warm">clear board</button>
     <input id="file" type="file" accept="application/json" style="display:none">
   </div>
 </div>
-<div class="legend" id="legend"></div>
-<div class="stage" id="stage"><div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div></div>
-<div id="tip">Tip: your layout auto-saves. Export when you want me to look at it.</div>
+<div class="stage" id="stage"><div class="canvas" id="canvas">
+  <div class="empty" id="empty">Empty board — drag pieces up from the tray below and connect them in the order you think the strategy runs.</div>
+  <svg class="edges" id="edges"></svg></div></div>
+<div class="palette" id="palette">
+  <div class="phead"><b>Components</b><span>drag onto the board · your layout auto-saves</span></div>
+  <div class="pgroups" id="pgroups"></div>
+</div>
 <script>
-const DEF=__NODES__, GROUPS=__GROUPS__, KEY="simplicity_flow_v1";
-const canvas=document.getElementById("canvas"), edgesSvg=document.getElementById("edges");
+const DEF=__NODES__, GROUPS=__GROUPS__, KEY="simplicity_flow_v2";
+const byId={};DEF.forEach(n=>byId[n.id]=n);
+const canvas=document.getElementById("canvas"), edgesSvg=document.getElementById("edges"), stage=document.getElementById("stage");
 let state=load();
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.pos)return s;}catch(e){}
-  return {pos:tidyPos(), edges:[]};}
+  return {pos:{}, edges:[]};}                       // start EMPTY — pull pieces from the tray
 function save(){localStorage.setItem(KEY,JSON.stringify(state));}
-function tidyPos(){const cols={};let order=Object.keys(GROUPS);const pos={};
-  DEF.forEach(n=>{const gi=order.indexOf(n.group);cols[n.group]=(cols[n.group]||0);
-    pos[n.id]={x:40+gi*236,y:30+cols[n.group]*104};cols[n.group]++;});return pos;}
 
-document.getElementById("legend").innerHTML=Object.entries(GROUPS).map(([k,g])=>
-  `<span class="lg"><i style="background:${g.color}"></i>${g.label}</span>`).join("");
+// ---- palette (bottom tray), grouped ----
+function renderPalette(){
+  const g=document.getElementById("pgroups");
+  g.innerHTML=Object.entries(GROUPS).map(([k,grp])=>{
+    const chips=DEF.filter(n=>n.group===k).map(n=>{
+      const placed=state.pos[n.id]?" placed":"";
+      return `<div class="chip${placed}" data-id="${n.id}" style="border-left-color:${grp.color}">
+        <span class="cdot" style="background:${grp.color}"></span>${n.name}</div>`;}).join("");
+    return `<div class="pg"><div class="pgl"><i style="background:${grp.color}"></i>${grp.label}</div>
+      <div class="chips">${chips}</div></div>`;}).join("");
+}
 
-// ---- render nodes ----
+// ---- canvas nodes ----
 function renderNodes(){
   [...canvas.querySelectorAll(".node")].forEach(n=>n.remove());
   DEF.forEach(n=>{
@@ -157,63 +181,81 @@ function renderNodes(){
     const col=GROUPS[n.group].color;
     const el=document.createElement("div");
     el.className="node"; el.dataset.id=n.id; el.style.left=p.x+"px"; el.style.top=p.y+"px"; el.style.borderLeftColor=col;
-    el.innerHTML=`<div class="nh"><span class="gd" style="background:${col}"></span>${n.name}</div>
+    el.innerHTML=`<div class="nh"><span class="gd" style="background:${col}"></span>${n.name}<span class="nx" data-del="${n.id}">&times;</span></div>
       <div class="ns">${n.sub}</div><div class="nk">${n.knob}</div>
       <div class="port in" data-port="in"></div><div class="port out" data-port="out"></div>`;
     canvas.appendChild(el);
   });
+  document.getElementById("empty").style.display=Object.keys(state.pos).length?"none":"block";
+  canvas.querySelectorAll("[data-del]").forEach(x=>x.onclick=ev=>{ev.stopPropagation();removeNode(x.dataset.del);});
 }
+function removeNode(id){state.edges=state.edges.filter(e=>e.from!==id&&e.to!==id);delete state.pos[id];
+  if(sel===id)sel=null;save();render();}
 function portXY(id,side){const el=canvas.querySelector(`.node[data-id="${id}"]`);if(!el)return null;
-  const x=el.offsetLeft+(side==="out"?el.offsetWidth:0), y=el.offsetTop+el.offsetHeight/2;return {x,y};}
+  return {x:el.offsetLeft+(side==="out"?el.offsetWidth:0), y:el.offsetTop+el.offsetHeight/2};}
 function renderEdges(temp){
   let paths="";
   state.edges.forEach((e,i)=>{const a=portXY(e.from,"out"),b=portXY(e.to,"in");if(!a||!b)return;
     const d=curve(a,b);
-    paths+=`<path d="${d}" fill="none" stroke="#4a9eff" stroke-width="2" opacity="0.8"/>`
-         + `<path class="hit" d="${d}" fill="none" stroke="transparent" stroke-width="12" data-edge="${i}"/>`;});
+    paths+=`<path d="${d}" fill="none" stroke="#4a9eff" stroke-width="2" opacity="0.85"/>`
+         + `<path class="hit" d="${d}" fill="none" stroke="transparent" stroke-width="14" data-edge="${i}"/>`;});
   if(temp)paths+=`<path d="${curve(temp.a,temp.b)}" fill="none" stroke="#2ebd85" stroke-width="2" stroke-dasharray="5 4"/>`;
   edgesSvg.innerHTML=paths;
   edgesSvg.querySelectorAll("[data-edge]").forEach(p=>p.onclick=()=>{state.edges.splice(+p.dataset.edge,1);save();renderEdges();});
 }
 function curve(a,b){const dx=Math.max(40,Math.abs(b.x-a.x)*0.5);
   return `M ${a.x} ${a.y} C ${a.x+dx} ${a.y}, ${b.x-dx} ${b.y}, ${b.x} ${b.y}`;}
-function render(){renderNodes();renderEdges();}
+function render(){renderNodes();renderEdges();renderPalette();}
 render();
 
-// ---- interactions: drag node / draw edge / select ----
-let mode=null, dragId=null, dragOff=null, connFrom=null, sel=null;
-const stage=document.getElementById("stage");
+// ---- interactions ----
+let mode=null, dragId=null, dragOff=null, connFrom=null, sel=null, placeId=null, ghost=null;
+function canvasXY(cx,cy){const r=canvas.getBoundingClientRect();return {x:cx-r.left, y:cy-r.top};}
+
+// drag a piece up from the tray
+document.getElementById("palette").addEventListener("pointerdown",e=>{
+  const chip=e.target.closest(".chip"); if(!chip||chip.classList.contains("placed"))return;
+  placeId=chip.dataset.id; mode="place";
+  ghost=document.createElement("div");ghost.id="ghost";ghost.textContent=byId[placeId].name;document.body.appendChild(ghost);
+  moveGhost(e); e.preventDefault();
+});
+function moveGhost(e){if(ghost){ghost.style.left=(e.clientX+10)+"px";ghost.style.top=(e.clientY+8)+"px";}}
+
 canvas.addEventListener("pointerdown",e=>{
   const port=e.target.closest(".port"), node=e.target.closest(".node");
-  if(port&&node){
-    if(port.dataset.port==="out"){mode="conn";connFrom=node.dataset.id;e.preventDefault();}
-    return;
-  }
-  if(node&&e.target.closest(".nh")){
+  if(port&&node){ if(port.dataset.port==="out"){mode="conn";connFrom=node.dataset.id;e.preventDefault();} return; }
+  if(node&&e.target.closest(".nh")&&!e.target.closest(".nx")){
     mode="drag";dragId=node.dataset.id;
     dragOff={x:e.clientX-node.offsetLeft,y:e.clientY-node.offsetTop};
     select(node.dataset.id);e.preventDefault();
   } else if(!node){select(null);}
 });
 window.addEventListener("pointermove",e=>{
+  if(mode==="place"){moveGhost(e);return;}
   if(mode==="drag"&&dragId){
     const x=Math.max(0,e.clientX-dragOff.x), y=Math.max(0,e.clientY-dragOff.y);
     state.pos[dragId]={x,y};
     const el=canvas.querySelector(`.node[data-id="${dragId}"]`);el.style.left=x+"px";el.style.top=y+"px";
     renderEdges();
   } else if(mode==="conn"&&connFrom){
-    const a=portXY(connFrom,"out");
-    const r=canvas.getBoundingClientRect();
-    renderEdges({a,b:{x:e.clientX-r.left,y:e.clientY-r.top}});
+    renderEdges({a:portXY(connFrom,"out"), b:canvasXY(e.clientX,e.clientY)});
   }
 });
 window.addEventListener("pointerup",e=>{
+  if(mode==="place"&&placeId){
+    if(ghost){ghost.remove();ghost=null;}
+    const pr=document.getElementById("palette").getBoundingClientRect();
+    const sr=stage.getBoundingClientRect();
+    if(e.clientY<pr.top && e.clientX>sr.left){                 // dropped over the board
+      const p=canvasXY(e.clientX,e.clientY);
+      state.pos[placeId]={x:Math.max(0,p.x-90),y:Math.max(0,p.y-20)};save();render();
+    }
+    placeId=null;mode=null;return;
+  }
   if(mode==="conn"&&connFrom){
     const node=e.target.closest(".node");
-    if(node&&node.dataset.id!==connFrom){
-      const to=node.dataset.id;
-      if(!state.edges.some(x=>x.from===connFrom&&x.to===to)){state.edges.push({from:connFrom,to});}
-    }
+    if(node&&node.dataset.id!==connFrom){const to=node.dataset.id;
+      if(!state.edges.some(x=>x.from===connFrom&&x.to===to))state.edges.push({from:connFrom,to});}
     connFrom=null;save();renderEdges();
   }
   if(mode==="drag")save();
@@ -221,33 +263,29 @@ window.addEventListener("pointerup",e=>{
 });
 function select(id){sel=id;canvas.querySelectorAll(".node").forEach(n=>n.classList.toggle("sel",n.dataset.id===id));}
 window.addEventListener("keydown",e=>{
-  if((e.key==="Delete"||e.key==="Backspace")&&sel){
-    state.edges=state.edges.filter(x=>x.from!==sel&&x.to!==sel);
-    delete state.pos[sel];sel=null;save();render();
-  }});
+  if((e.key==="Delete"||e.key==="Backspace")&&sel){removeNode(sel);}});
 
 // ---- toolbar ----
-document.getElementById("tidy").onclick=()=>{state.pos=tidyPos();save();render();};
-document.getElementById("clearEdges").onclick=()=>{if(confirm("Remove all links?")){state.edges=[];save();renderEdges();}};
-document.getElementById("reset").onclick=()=>{if(confirm("Reset layout AND links?")){state={pos:tidyPos(),edges:[]};save();render();}};
+document.getElementById("clearEdges").onclick=()=>{if(state.edges.length&&confirm("Remove all links?")){state.edges=[];save();renderEdges();}};
+document.getElementById("reset").onclick=()=>{if(confirm("Clear the whole board (pieces + links)?")){state={pos:{},edges:[]};save();render();}};
 document.getElementById("export").onclick=()=>{
-  const out={nodes:DEF.map(n=>({id:n.id,name:n.name,group:n.group,pos:state.pos[n.id]||null})),
-    edges:state.edges.map(e=>({from:e.from,to:e.to})),
-    order:orderFromEdges()};
+  const out={nodes:DEF.filter(n=>state.pos[n.id]).map(n=>({id:n.id,name:n.name,group:n.group,pos:state.pos[n.id]})),
+    edges:state.edges.map(e=>({from:e.from,to:e.to})), order:orderFromEdges()};
   const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="flow.json";a.click();};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
 document.getElementById("file").onchange=function(){const f=this.files[0];if(!f)return;
-  const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);
-    const pos={};(j.nodes||[]).forEach(n=>{if(n.pos)pos[n.id]=n.pos;});
-    state={pos:Object.keys(pos).length?pos:tidyPos(),edges:(j.edges||[])};save();render();}catch(e){alert("bad json");}};
-  r.readAsText(f);};
-// a readable linear order derived from the links (topological-ish; falls back to layout)
-function orderFromEdges(){const ins={},adj={};DEF.forEach(n=>{ins[n.id]=0;adj[n.id]=[];});
-  state.edges.forEach(e=>{if(adj[e.from]){adj[e.from].push(e.to);ins[e.to]++;}});
-  const q=DEF.map(n=>n.id).filter(id=>ins[id]===0),out=[];
-  while(q.length){const id=q.shift();out.push(id);(adj[id]||[]).forEach(t=>{if(--ins[t]===0)q.push(t);});}
-  return out.length===DEF.length?out:null;}
+  const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);const pos={};
+    (j.nodes||[]).forEach(n=>{if(n.pos)pos[n.id]=n.pos;});
+    state={pos,edges:(j.edges||[])};save();render();}catch(e){alert("bad json");}};
+  r.readAsText(f);this.value="";};
+// linear order derived from the links you drew (topological; among placed nodes)
+function orderFromEdges(){const P=DEF.filter(n=>state.pos[n.id]).map(n=>n.id);const S=new Set(P);
+  const ins={},adj={};P.forEach(id=>{ins[id]=0;adj[id]=[];});
+  state.edges.forEach(e=>{if(S.has(e.from)&&S.has(e.to)){adj[e.from].push(e.to);ins[e.to]++;}});
+  const q=P.filter(id=>ins[id]===0),out=[];
+  while(q.length){const id=q.shift();out.push(id);adj[id].forEach(t=>{if(--ins[t]===0)q.push(t);});}
+  return out.length===P.length?out:null;}
 </script></body></html>"""
 
 
