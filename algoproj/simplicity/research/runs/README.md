@@ -14,9 +14,11 @@ before and after are kept forever. This is the info we refuse to lose.
    before/after is two rows you diff by eye (e.g. `shape_ok_pct` 21.1 → …).
 
 ## Wired so far
-`shape_filter`, `zone_calibration`, `fib_bias` each call `runlog.record(...)` at the end of `main()`,
-and expose every tunable knob in one `PARAMS`/constants block at the top of the file. Add
-`runlog.record(kind, params, metrics, note)` to any new script to enroll it.
+`shape_filter`, `zone_calibration`, `fib_bias`, `base_profile`, `htf_profile`, `target_ladder`, and the
+`backtest` each call `runlog.record(...)` at the end of `main()`, and expose every tunable knob in one
+`PARAMS`/constants block at the top of the file. Add `runlog.record(kind, params, metrics, note)` to any
+new script to enroll it. (The chart/viz builders — `build_trades`, `make_*` — don't log; they produce
+pictures, not metrics.)
 
 ## Files
 - `runlog.py` — `record()` / `load()` / `config_snapshot()` / `git_commit()` / `note_from_argv()`.
