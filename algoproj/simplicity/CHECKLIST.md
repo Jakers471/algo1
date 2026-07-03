@@ -147,6 +147,13 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 ## Phase 6 — Entry & exit mechanics (the substance — R:R geometry, not prediction)
 - `[ ]` Entry: **resting orders before the next open** — breakout stops beyond the range and/or fades at the range edge (bias-gated) — `research/execution/entry_trigger`
 - `[ ]` Value-Area breakout + volume confirmation (the trigger); entry TF smaller than the range TF
+- `[ ]` **Breakout VOLUME CONFIRMATION — future entry refinement (NOTES F43)** — a real break has a volume surge
+  (`breakout_bar_vol >= vol_mult × coil_baseline`, coil_baseline = coil volume / bars). Two variants, config
+  `ENTRY["confirm"]="touch"|"close_volume"`: **A** confirmed-close entry (filters false breaks but worse fill →
+  worse R:R; bends the resting-order model) · **B** rest-then-scratch (fill at edge on touch, exit fast if the
+  break is thin — keeps the good fill + resting model; likely the better fit). Needs raw `volume` loaded in
+  run_backtest (only OHLC today — volume already acts UPSTREAM in the profiles/shape gate, F43). Distinct from a
+  RANGE volume-accumulation gate (arm only if the coil itself gathered enough volume). Both cheap; A/B in the ledger.
 - `[ ]` Stop placement (range/VA edge = invalidation) · breakeven logic · DCA-into-range (decide)
 - `[R]` Risk / position sizing — `strategy_config.RISK` + `STARTING_BALANCE` (fixed-fractional, wired in the backtest)
 - `[R]` **Config-driven TAKE-PROFIT engines (NOTES F40)** — `EXIT["target"]` selector: `fixed_rr` (constant 1:R) ·

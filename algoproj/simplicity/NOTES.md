@@ -820,3 +820,29 @@ old illiquid close open. Per-open edge: **london→NY open = +0.056R (the edge)*
 (a drag). So `allow:["newyork"]` isolates the good half (scan london, trade the NY open). Honest, and it
 matches the intuition that the NY open is the money window. NEXT (queued, in order): #1 arm 15 min before the
 open (needs base_profile to finalize the coil that early — causal), #3 per-session-search replay, #4 pyramiding.
+
+### F43 — where volume actually acts + FUTURE entry refinements (breakout volume confirmation) (2026-07-03)
+CLARIFICATION (user asked, good catch): volume runs the strategy in TWO separate stages, easy to miss:
+  1. **QUALIFY the setup (volume-based, baked in):** the data has real volume (Up+Down, F4); `volume_profile`
+     + `base_profile` distribute it across price to build the profiles (POC/VA/bins); `shape_filter` scores the
+     coil's VOLUME DISTRIBUTION (clean single peak = solid). All of that is computed BEFORE the backtest and
+     stored in the profile JSONs. So volume DECIDES which coils arm.
+  2. **SIMULATE the fill (price-only, by design):** `run_backtest` reads those JSONs + loads only O/H/L/C, because
+     the entry is a PRICE event (a resting stop fills when price touches the coil edge) — no volume needed there.
+So "the backtest loads only OHLC" is NOT a bug: the volume work is upstream, in the profiles. Adding volume on
+the ENTRY BAR (below) is a NEW third use, not currently loaded.
+
+FUTURE ENTRY REFINEMENT — breakout VOLUME CONFIRMATION (deferred; measure vs the plain touch in the ledger):
+a real breakout has a volume surge; a false break is thin. Measure: `breakout_bar_volume >= vol_mult ×
+coil_baseline`, where `coil_baseline = sum(coil bins volume) / coil bars` (avg per-bar volume during the quiet
+consolidation). Two engine variants (config `ENTRY["confirm"] = "touch" | "close_volume"`, + `vol_mult`):
+  * **A — confirmed-close entry:** wait for a bar to CLOSE beyond the edge WITH the volume surge, enter at the
+    close. Filters false breaks BUT enters past the edge → wider 1R → worse R:R (you pay with fill price), and it
+    bends the pure resting-order model into "watch + confirm."
+  * **B — rest-then-scratch (keeps the resting model):** the resting stop still fills AT the edge on touch (good
+    price), then if the breakout bar / next bar is thin (< vol_mult × baseline) exit immediately (fast scratch).
+    Keeps the great entry + cuts the false-break bleed; costs a small scratch loss on hollow breaks. More moving
+    parts. LIKELY the better fit for this strategy (35% win w/ many stop-outs = probably false breaks reversing).
+Needs: load `volume` in run_backtest, compute coil_baseline from the coil dict, the config knob, swap the entry
+check. DISTINCT from the RANGE volume-accumulation gate (arm only if the COIL itself accumulated enough volume —
+a gate on the coil, not the breakout bar). Both are cheap, both deferred as entry-refinement experiments.
