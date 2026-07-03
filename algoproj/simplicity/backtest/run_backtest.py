@@ -227,7 +227,9 @@ def main():
            "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS, "tick": cfg.TICK,
            # --- take-profit / gating config, so the trade-replay state panel reflects the actual strategy ---
            "tp_method": METHOD, "trail_arm_r": TRAIL_ARM, "trail_gap_r": TRAIL_GAP,
-           "setup_on": ARM_ON, "arm_gates": ARM_GATES}
+           "setup_on": ARM_ON, "arm_gates": ARM_GATES,
+           # gate params so the replay can RECOMPUTE the module cards live (bars-so-far), matching the config
+           "gates": {"SHAPE": cfg.SHAPE, "ZONE": cfg.ZONE, "BASE": cfg.BASE, "LADDER": cfg.LADDER}}
     json.dump({"config": ctx, "trades": trades_by_entry}, open(os.path.join(OUT, "trades.json"), "w"))
     d["cumR"] = d["R"].cumsum()
     risk_d = STARTING_BALANCE * cfg.RISK["risk_per_trade_pct"] / 100.0   # $ risked per trade (fixed fractional)

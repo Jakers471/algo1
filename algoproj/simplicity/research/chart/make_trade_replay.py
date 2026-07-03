@@ -137,7 +137,7 @@ chart.priceScale("vol").applyOptions({scaleMargins:{top:0.85,bottom:0}});
 
 // ---- state ----
 let filtered=TR.map((_,i)=>i), fpos=0, priceLines=[], outcomeFilter="all", CUR=null;
-const RP={bars:[],k:0,e0:0,e1:0,playing:false,timer:null,speed:1};
+const RP={bars:[],k:0,e0:0,e1:0,entryK:0,exitK:0,playing:false,timer:null,speed:1};
 
 // ---- price lines (entry/stop/target/coil), redrawn per trade ----
 function clearLines(){priceLines.forEach(pl=>candle.removePriceLine(pl));priceLines=[];}
@@ -194,16 +194,59 @@ function ladderCard(L){
     <b>1R = ${L.risk_pts} pt</b><span class="mut">base = stop &middot; larger scales = targets</span></div>
     <div class="lgrid">${side(L.up,"#2ebd85","UP break")}${side(L.down,"#f6465d","DOWN break")}</div></div>`;
 }
-function renderStack(tr){
+// ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) so the module cards EVOLVE bar-by-bar ----
+const GT=(CFG.gates&&CFG.gates.SHAPE)||{weights:{tight:.4,peak:.3,single:.2,central:.1},tight_peak:40,tight_hi:85,prom_den:2,single_2:.5,single_else:.15,shape_ok:50};
+const GZ=(CFG.gates&&CFG.gates.ZONE)||{rr_min:2,tf_bands:[[0.25,"1m"],[0.60,"5m"],[null,"15m"]]};
+function computeShape(p){const bins=p.bins;if(bins.length<3)return{};
+  const v=bins.map(b=>b.v),total=v.reduce((a,b)=>a+b,0),pocv=Math.max(...v),meanv=total/v.length;
+  const vav=bins.filter(b=>b.va).map(b=>b.v),vam=vav.length?vav.reduce((a,b)=>a+b,0)/vav.length:meanv;
+  const prom=vam>0?pocv/vam:0;let peaks=0;
+  for(let i=0;i<v.length;i++){const l=i>0?v[i-1]:-1,r=i<v.length-1?v[i+1]:-1;if(v[i]>=l&&v[i]>=r&&v[i]>0.5*pocv)peaks++;}
+  const va_pct=p.va_pct_of_range,rng=p.high-p.low,pos=rng>0?(p.poc-p.low)/rng:0.5,bal=Math.abs(pos-0.5),top=pocv/total*100;
+  const W=GT.weights,tp=GT.tight_peak,th=GT.tight_hi;
+  const tight=(va_pct<=tp)?(va_pct/tp):Math.max(0,1-(va_pct-tp)/(th-tp)),peakc=Math.min(1,Math.max(0,(prom-1)/GT.prom_den)),
+    single=peaks<=1?1:(peaks==2?GT.single_2:GT.single_else),central=Math.max(0,1-bal/0.5);
+  const score=Math.round(100*(W.tight*tight+W.peak*peakc+W.single*single+W.central*central));
+  return{shape_score:score,va_pct:+va_pct.toFixed(1),prominence:+prom.toFixed(2),n_peaks:peaks,poc_pos:+pos.toFixed(2),top_share_pct:+top.toFixed(1),shape_ok:score>=GT.shape_ok};}
+function computeZone(p){const rng=p.high-p.low,va=p.vah-p.val;if(rng<=0||va<=0)return{};
+  const rr=+(rng/va).toFixed(2),h=p.height_pct;let etf="15m";for(const b of GZ.tf_bands){if(b[0]==null||h<b[0]){etf=b[1];break;}}
+  return{height_pct:+h.toFixed(3),bars:p.bars,risk_pts:+va.toFixed(1),room_pts:+rng.toFixed(1),rr,entry_tf:etf,rr_ok:rr>=GZ.rr_min};}
+function computeProfile(bars){
+  if(bars.length<2)return null;
+  let hi=-1e18,lo=1e18;for(const b of bars){if(b.high>hi)hi=b.high;if(b.low<lo)lo=b.low;}
+  if(hi<=lo)return null;
+  const ROW=2.0, nb=Math.max(3,Math.round((hi-lo)/ROW)), edges=[];
+  for(let i=0;i<=nb;i++)edges.push(lo+(hi-lo)*i/nb);
+  const centers=[];for(let i=0;i<nb;i++)centers.push((edges[i]+edges[i+1])/2);
+  const vbin=new Array(nb).fill(0);
+  for(const b of bars){const idx=[];for(let i=0;i<nb;i++)if(centers[i]>=b.low&&centers[i]<=b.high)idx.push(i);
+    if(idx.length===0){let j=Math.floor(((b.low+b.high)/2-lo)/(hi-lo)*nb);j=Math.min(nb-1,Math.max(0,j));vbin[j]+=b.value;}
+    else{const sh=b.value/idx.length;for(const j of idx)vbin[j]+=sh;}}
+  const total=vbin.reduce((a,b)=>a+b,0);if(total<=0)return null;
+  let poc=0;for(let i=1;i<nb;i++)if(vbin[i]>vbin[poc])poc=i;
+  let li=poc,ui=poc,acc=vbin[poc];const target=total*0.7;
+  while(acc<target&&(li>0||ui<nb-1)){const up=ui<nb-1?vbin[ui+1]:-1,dn=li>0?vbin[li-1]:-1;
+    if(up>=dn){ui++;acc+=vbin[ui];}else{li--;acc+=vbin[li];}}
+  const pocpx=centers[poc],val=edges[li],vah=edges[ui+1],rng=hi-lo,va=vah-val;
+  const bins=[];for(let i=0;i<nb;i++)if(vbin[i]>0)bins.push({p:+centers[i].toFixed(2),v:+vbin[i].toFixed(1),va:val<=centers[i]&&centers[i]<=vah});
+  const prof={high:+hi.toFixed(2),low:+lo.toFixed(2),poc:+pocpx.toFixed(2),val:+val.toFixed(2),vah:+vah.toFixed(2),
+    bins,height_pct:+(rng/lo*100).toFixed(3),va_pct_of_range:+(va/rng*100).toFixed(1),bars:bars.length};
+  prof.shape=computeShape(prof);prof.zone=computeZone(prof);return prof;}
+
+function renderStack(tr,nowT){
   const sc=tr.scales, allbars=tr.bars.map(B), stack=document.getElementById("stack");
   const inRange=(s,e)=>allbars.filter(c=>c.time>=s&&c.time<=e);
   let html="";
   if(sc.htf){const h=sc.htf, hcs=tr.htf_bars.map(B);
     html+=cardHTML({session:tr.session,date:tr.date,start:h.start,end:h.end,duration_sec:h.end-h.start,
       barsLabel:(h.htf_days||"")+"d week (context)"},h,hcs,"htf");}
-  const P=sc.session, scs=inRange(P.start,P.end);
-  html+=cardHTML({session:tr.session,date:tr.date,start:P.start,end:P.end,duration_sec:P.duration_sec,
-    next_session:P.next_session,next_open:P.next_open},P,scs,"session");
+  // SESSION card — while the session is still FORMING (nowT within it), recompute the profile + scores on bars-so-far
+  const P=sc.session; let sp=P, scs=inRange(P.start,P.end), sEnd=P.end, sDur=P.duration_sec, bl=null;
+  const forming=(nowT!=null && nowT<P.end);
+  if(forming){ scs=inRange(P.start,nowT); const rp=computeProfile(scs);
+    if(rp)sp=Object.assign({},P,rp); sEnd=nowT; sDur=nowT-P.start; bl=scs.length+" bars · forming"; }
+  html+=cardHTML({session:tr.session,date:tr.date,start:P.start,end:sEnd,duration_sec:sDur,
+    next_session:P.next_session,next_open:P.next_open,barsLabel:bl},sp,scs,"session");
   if(sc.base){const b=sc.base, bcs=inRange(b.start,b.end);
     html+=cardHTML({session:tr.session,date:tr.date,start:b.start,end:b.end,duration_sec:b.end-b.start},b,bcs,"base");}
   if(sc.ladder)html+=ladderCard(sc.ladder);
@@ -257,32 +300,36 @@ function selectTrade(pos){
   const tr=TR[filtered[fpos]];
   candle.setData(tr.bars.map(B));
   vol.setData(tr.bars.map(a=>({time:a[0],value:a[5],color:a[4]>=a[1]?"rgba(25,158,112,.4)":"rgba(230,103,103,.4)"})));
-  drawTrade(tr); renderStat(tr); renderStack(tr);
+  drawTrade(tr); renderStat(tr);
   lockView(tr);
   document.getElementById("tIdx").textContent=`${fpos+1} / ${filtered.length}`;
   document.getElementById("tScrub").max=filtered.length-1;
   document.getElementById("tScrub").value=fpos;
-  // set up bar stepping between entry and exit
-  RP.bars=tr.bars; RP.e0=tr.bars.findIndex(a=>a[0]===tr.t_entry);
-  RP.e1=tr.bars.findIndex(a=>a[0]===tr.t_exit); if(RP.e1<0)RP.e1=tr.bars.length-1;
-  if(RP.e0<0)RP.e0=0;
-  RP.k=RP.e0; RP.tr=tr; replayPause(); document.getElementById("rpScrub").min=RP.e0;
+  // replay range = the SETUP SESSION START (watch it FORM) .. EXIT. entry/exit are markers within the range.
+  RP.bars=tr.bars; RP.tr=tr;
+  RP.entryK=tr.bars.findIndex(a=>a[0]===tr.t_entry); if(RP.entryK<0)RP.entryK=0;
+  RP.exitK=tr.bars.findIndex(a=>a[0]===tr.t_exit); if(RP.exitK<0)RP.exitK=tr.bars.length-1;
+  let s0=tr.bars.findIndex(a=>a[0]>=tr.scales.session.start); if(s0<0)s0=0;
+  RP.e0=s0; RP.e1=RP.exitK;
+  RP.k=RP.exitK;   // open laid-out at the outcome; press |< (or play) to replay from the forming phase
+  replayPause(); document.getElementById("rpScrub").min=RP.e0;
   document.getElementById("rpScrub").max=RP.e1; renderNow();
 }
 
 // ---- bar-by-bar "now" line + running mark-to-market R ----
 function renderNow(){
   const sc=document.getElementById("rpScrub"); sc.value=RP.k;
-  redrawOverlay();
   const tr=RP.tr, bar=RP.bars[RP.k]; if(!bar){document.getElementById("rpInfo").textContent="–";return;}
+  renderStack(tr, bar[0]);    // recompute the module cards on bars-so-far (the "numbers changing in the module screen")
+  redrawOverlay();
   const px=bar[4], risk=tr.risk_pts||1;
-  const mtm=(tr.dir==="up"?(px-tr.entry):(tr.entry-px))/risk;   // mark-to-market R at this bar's close
-  const atExit=RP.k>=RP.e1;
-  const rShow=atExit?tr.R:+mtm.toFixed(2);
-  const col=rShow>=0?"#2ebd85":"#e66767";
-  const stage=RP.k<RP.e0?"pre-entry":atExit?tr.outcome.toUpperCase():"in trade";
+  const preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK, forming=bar[0]<tr.scales.session.end;
+  const mtm=(tr.dir==="up"?(px-tr.entry):(tr.entry-px))/risk;
+  const rShow=atExit?tr.R:+mtm.toFixed(2), col=rShow>=0?"#2ebd85":"#e66767";
+  const stage=preEntry?(forming?"forming":"resting"):atExit?tr.outcome.toUpperCase():"in trade";
   document.getElementById("rpInfo").innerHTML=
-    `bar ${RP.k-RP.e0+1}/${RP.e1-RP.e0+1} &middot; ${_t12(bar[0])} &middot; <b style="color:${col}">${rShow>=0?"+":""}${rShow}R</b> &middot; ${stage}`;
+    `bar ${RP.k-RP.e0+1}/${RP.e1-RP.e0+1} &middot; ${_t12(bar[0])} &middot; `
+    + (preEntry?"":`<b style="color:${col}">${rShow>=0?"+":""}${rShow}R</b> &middot; `) + stage;
   updateState(tr);   // the live arm-state / trailing / R panel
 }
 const nowsvg=document.getElementById("nowsvg"), chartEl=document.getElementById("chart");
@@ -291,7 +338,7 @@ function redrawOverlay(){
   while(nowsvg.firstChild)nowsvg.removeChild(nowsvg.firstChild);
   const box=chartEl.getBoundingClientRect();
   nowsvg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`);
-  if(CUR){drawBands(CUR,box); drawResting(CUR,box); if(RP.k>=RP.e0)drawTrail(CUR,box);}
+  if(CUR){drawResting(CUR,box); if(RP.k>=RP.entryK){drawBands(CUR,box); drawTrail(CUR,box);}}
   drawNowLine(box);
 }
 // option 03 — R-multiple ladder: green reward bands (opacity grows per R) + a red 1R risk band. both directions.
@@ -320,7 +367,7 @@ function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
 // ---- LIVE: resting orders (pre-entry) + the trailing-stop staircase + the state panel (all from the sim) ----
 function pathStopAt(tr,t){if(!tr.path)return null;let s=null;for(const p of tr.path){if(p[0]<=t)s=p;else break;}return s;}
 function drawResting(tr,box){    // the two resting breakout-STOP orders at the coil edges (OCO) — bright pre-entry
-  const preEntry=RP.k<RP.e0, up=tr.dir==="up";
+  const preEntry=RP.k<RP.entryK, up=tr.dir==="up";
   const b=tr.scales.base||tr.scales.session; let x0=chart.timeScale().timeToCoordinate(b?b.start:tr.t_entry); if(x0==null||x0<0)x0=0;
   const rest=(price,col,lab,live)=>{const y=candle.priceToCoordinate(price);if(y==null)return;
     nowsvg.appendChild(_sv("line",{x1:x0,y1:y,x2:box.width,y2:y,stroke:col,"stroke-width":1.1,"stroke-dasharray":"6 4","stroke-opacity":live?0.9:0.16}));
@@ -343,32 +390,36 @@ function drawTrail(tr,box){      // the LIVE trailing stop as a stepped staircas
 function updateState(tr){
   const sp=document.getElementById("statepanel"), bar=RP.bars[RP.k]; if(!bar||!tr){sp.innerHTML="";return;}
   const now=bar[0], px=bar[4], risk=tr.risk_pts||1, up=tr.dir==="up";
-  const preEntry=RP.k<RP.e0, atExit=RP.k>=RP.e1;
+  const preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK, inTrade=!preEntry&&!atExit;
+  const forming=now<tr.scales.session.end;
   const st=pathStopAt(tr,now), armedTrail=st?!!st[2]:false;
-  const liveStop=(atExit||preEntry)?null:(st?st[1]:tr.stop);
+  const liveStop=inTrade?(st?st[1]:tr.stop):null;
   const mtm=atExit?tr.R:+(((up?(px-tr.entry):(tr.entry-px))/risk)).toFixed(2);
   const isTrail=tr.method==="trailing";
-  const stage=preEntry?"RESTING · orders placed":atExit?(tr.outcome.toUpperCase()+" · "+(tr.R>=0?"+":"")+tr.R+"R")
+  const stage=preEntry?(forming?"FORMING · setup building":"RESTING · orders placed")
+    :atExit?(tr.outcome.toUpperCase()+" · "+(tr.R>=0?"+":"")+tr.R+"R")
     :(isTrail?(armedTrail?"IN TRADE · trailing":"IN TRADE · pre-arm"):"IN TRADE");
-  const stageCol=preEntry?"#e0a94a":atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
+  const stageCol=preEntry?(forming?"#4a9bff":"#e0a94a"):atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
   const g=tr.arm||{}, pill=(ok,lab)=>`<span class="gpill" style="color:${ok?'#2ebd85':'#e66767'};border-color:${ok?'#2ebd85':'#e66767'}">${lab}</span>`;
   let gates=""; if(tr.arm){gates=(('session'in g)?pill(g.session,'session'):'')+pill(g.shape,'shape '+(tr.arm_shape??''))+pill(g.rr,'rr '+(tr.arm_rr??''));}
   const method=isTrail?`trailing · arm ${CFG.trail_arm_r} / gap ${CFG.trail_gap_r}`:`${tr.method} · ${CFG.target_r}R`;
   const rToStop=(liveStop!=null)?(((up?(px-liveStop):(liveStop-px))/risk)).toFixed(2):"—";
   sp.innerHTML=`<div class="stage" style="color:${stageCol}">${stage}</div>`
-    +((tr.armed&&tr.arm)?`<div class="sh">setup_arm</div><div>${gates}</div>`:'')
+    +((tr.armed&&tr.arm)?`<div class="sh">setup_arm ${preEntry?'(evaluating)':'✓ armed'}</div><div>${gates}</div>`:'')
     +`<div class="sh">take-profit</div><div class="sr"><span>method</span><b>${method}</b></div>`
-    +`<div class="sh">live</div>`
-    +`<div class="sr"><span>mark-to-mkt</span><b style="color:${mtm>=0?'#2ebd85':'#e66767'}">${mtm>=0?'+':''}${mtm}R</b></div>`
-    +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
-    +`<div class="sr"><span>R to stop</span><b>${rToStop}</b></div>`;
+    +(preEntry
+      ?`<div class="sh">orders</div><div class="sr"><span>buy-stop</span><b style="color:#2ebd85">${tr.coil_hi}</b></div><div class="sr"><span>sell-stop</span><b style="color:#e66767">${tr.coil_lo}</b></div>`
+      :`<div class="sh">live</div><div class="sr"><span>mark-to-mkt</span><b style="color:${mtm>=0?'#2ebd85':'#e66767'}">${mtm>=0?'+':''}${mtm}R</b></div>`
+        +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
+        +`<div class="sr"><span>R to stop</span><b>${rToStop}</b></div>`);
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redrawOverlay);
 new ResizeObserver(redrawOverlay).observe(chartEl);
 
-function rpGo(cmd){if(cmd==="start")RP.k=RP.e0;else if(cmd==="back")RP.k=Math.max(0,RP.k-1);
-  else if(cmd==="fwd")RP.k=Math.min(RP.bars.length-1,RP.k+1);else if(cmd==="end")RP.k=RP.e1;renderNow();}
+function rpGo(cmd){if(cmd==="start")RP.k=RP.e0;else if(cmd==="back")RP.k=Math.max(RP.e0,RP.k-1);
+  else if(cmd==="fwd")RP.k=Math.min(RP.e1,RP.k+1);else if(cmd==="end")RP.k=RP.e1;renderNow();}
 function replayPlay(){RP.playing=true;document.getElementById("rpPlay").textContent="pause";
+  if(RP.k>=RP.e1)RP.k=RP.e0;   // at the end -> restart the replay from the FORMING phase
   RP.timer=setInterval(()=>{if(RP.k>=RP.e1){replayPause();return;}RP.k++;renderNow();},600/RP.speed);}
 function replayPause(){RP.playing=false;document.getElementById("rpPlay").textContent="play";
   if(RP.timer){clearInterval(RP.timer);RP.timer=null;}}

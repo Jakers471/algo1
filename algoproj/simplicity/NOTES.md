@@ -788,3 +788,10 @@ shape_score & rr values) + `method`; the page RENDERS them, never re-simulates. 
 Everything is CONFIG-DRIVEN off the run's exported config (tp_method, trail_arm/gap, setup_on) — so the replay
 shows whatever the strategy actually did. This is the diagnostic surface for the trailing "still dying" problem:
 step a losing trade and watch whether the trail armed too early / sat too tight / gave back an MFE.
+**Extended (same session):** the trade replay now BUILDS UP bar-by-bar like the main chart's session replay,
+not laid-out-static. The replay range starts at the setup-SESSION START; while the session is FORMING the
+module card RECOMPUTES on bars-so-far (ported computeProfile/Shape/Zone into the replay; the run exports the
+gate params in `config.gates`) — so shape/VA%/prominence/peaks/R:R EVOLVE as it plays, then the coil sets →
+RESTING (both breakout-stop orders drawn at the coil edges) → the fill fires → trailing manages → EXIT. The
+state panel shows the phase (FORMING/RESTING/IN-TRADE·pre-arm/trailing/EXIT). Press |< or play to replay from
+the forming phase; play restarts from the top. = "watch the setup actually happen", the full-execution replay.
