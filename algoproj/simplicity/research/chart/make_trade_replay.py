@@ -117,6 +117,14 @@ button:hover:not(:disabled):not(.on){border-color:var(--acc)}
 <script>
 const TD=window.TRADES_DATA, TR=TD.trades, CFG=TD.config, CLOCK="America/New_York";
 const SC={asia:"#e0a94a",london:"#4a9bff",newyork:"#9a7cff",close:"#8a94a6"};
+// ET session windows (fixed; from strategy_config.SESSIONS). Used to draw session boundaries + label the current session.
+const SESS=(CFG.sessions)||{asia:["18:00","03:00"],london:["03:00","09:30"],newyork:["09:30","16:00"],close:["16:00","18:00"]};
+const _toMin=s=>{const p=(""+s).split(":");return (+p[0])*60+(+p[1]);};
+function etMin(t){const s=new Date(t*1000).toLocaleTimeString("en-GB",{timeZone:CLOCK,hour12:false,hour:"2-digit",minute:"2-digit"});return _toMin(s);}
+function sessionOf(t){const m=etMin(t);
+  for(const nm in SESS){const a=_toMin(SESS[nm][0]),b=_toMin(SESS[nm][1]);
+    if(a<b){if(m>=a&&m<b)return nm;}else{if(m>=a||m<b)return nm;}}   // wrap (asia 18:00->03:00)
+  return null;}
 const _TZ={timeZone:CLOCK};
 const _t12=t=>new Date(t*1000).toLocaleTimeString("en-US",{..._TZ,hour:"numeric",minute:"2-digit",hour12:true});
 function fmtET(t){return _t12(t)+" "+new Date(t*1000).toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});}
@@ -381,8 +389,32 @@ function redrawOverlay(){
   while(nowsvg.firstChild)nowsvg.removeChild(nowsvg.firstChild);
   const box=chartEl.getBoundingClientRect();
   nowsvg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`);
+  drawSessions(box);        // vertical session-boundary lines (behind everything)
   if(CUR){drawResting(CUR,box); if(RP.k>=RP.entryK){drawBands(CUR,box); drawTrail(CUR,box);}}
   drawNowLine(box);
+}
+// vertical lines at each session open/close, color-coded + labeled; the SETUP session's open/close are emphasized
+function drawSessions(box){
+  if(!RP.bars.length)return;
+  const last=RP.k>=RP.exitK?RP.bars.length-1:RP.k, ts=chart.timeScale();
+  const sStart=RP.tr&&RP.tr.scales.session.start, sEnd=RP.tr&&RP.tr.scales.session.end;
+  let prev=null;
+  for(let i=0;i<=last;i++){
+    const t=RP.bars[i][0], s=sessionOf(t);
+    if(s!==prev){
+      if(i>0){                                   // a boundary: prev session CLOSED, s OPENED
+        const x=ts.timeToCoordinate(t);
+        if(x!=null){const col=SC[s]||"#888", setup=(sStart!=null&&Math.abs(t-sStart)<300);
+          nowsvg.appendChild(_sv("line",{x1:x,y1:0,x2:x,y2:box.height,stroke:col,"stroke-width":setup?1.4:1,"stroke-dasharray":setup?"":"3 4","stroke-opacity":setup?0.85:0.4}));
+          const tx=_sv("text",{x:x+3,y:11,fill:col,"font-size":9,"font-family":"ui-monospace,monospace","fill-opacity":0.95});
+          tx.textContent=s.toUpperCase()+(setup?" OPEN ▶ setup":" open");nowsvg.appendChild(tx);}
+      }
+      prev=s;
+    }
+  }
+  if(sEnd!=null){const xe=ts.timeToCoordinate(sEnd);   // the setup session CLOSE (emphasized)
+    if(xe!=null){nowsvg.appendChild(_sv("line",{x1:xe,y1:0,x2:xe,y2:box.height,stroke:"#c3c2b7","stroke-width":1.2,"stroke-dasharray":"5 3","stroke-opacity":0.6}));
+      const tx=_sv("text",{x:xe+3,y:22,fill:"#c3c2b7","font-size":9,"font-family":"ui-monospace,monospace"});tx.textContent="setup CLOSE ▶ arm";nowsvg.appendChild(tx);}}
 }
 // option 03 — R-multiple ladder: green reward bands (opacity grows per R) + a red 1R risk band. both directions.
 function drawBands(tr,box){
@@ -477,7 +509,9 @@ function updateState(tr){
       +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
       +`<div class="sr"><span>R to stop</span><b>${(liveStop!=null)?(((up?(px-liveStop):(liveStop-px))/risk)).toFixed(2):'—'}</b></div>`;
   }
-  sp.innerHTML=`<div class="stage" style="color:${stageCol}">${stage}</div>`+body;
+  const cs=sessionOf(now), csc=SC[cs]||"#888";
+  const chip=`<div style="margin-bottom:6px"><span class="gpill" style="color:${csc};border-color:${csc}">● ${cs?cs.toUpperCase():"—"} session</span></div>`;
+  sp.innerHTML=chip+`<div class="stage" style="color:${stageCol}">${stage}</div>`+body;
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redrawOverlay);
 new ResizeObserver(redrawOverlay).observe(chartEl);

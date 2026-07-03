@@ -229,7 +229,8 @@ def main():
            "tp_method": METHOD, "trail_arm_r": TRAIL_ARM, "trail_gap_r": TRAIL_GAP,
            "setup_on": ARM_ON, "arm_gates": ARM_GATES,
            # gate params so the replay can RECOMPUTE the module cards live (bars-so-far), matching the config
-           "gates": {"SHAPE": cfg.SHAPE, "ZONE": cfg.ZONE, "BASE": cfg.BASE, "LADDER": cfg.LADDER}}
+           "gates": {"SHAPE": cfg.SHAPE, "ZONE": cfg.ZONE, "BASE": cfg.BASE, "LADDER": cfg.LADDER},
+           "sessions": {k: list(v) for k, v in cfg.SESSIONS.items()}}   # ET session windows -> replay draws boundaries
     json.dump({"config": ctx, "trades": trades_by_entry}, open(os.path.join(OUT, "trades.json"), "w"))
     d["cumR"] = d["R"].cumsum()
     risk_d = STARTING_BALANCE * cfg.RISK["risk_per_trade_pct"] / 100.0   # $ risked per trade (fixed fractional)
