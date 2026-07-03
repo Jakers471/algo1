@@ -591,3 +591,34 @@ risk band entry->stop, and entry(gold)/stop/target axis lines + entry & exit mar
 price bands) so it redraws on pan/zoom; bands capped at 8 (target line still marks the true R). You read
 profit in R straight off the chart. NEXT natural step: once setup_arm exists, this same page shows only the
 ARMED trades + the gate states that armed them.
+
+### F32 — per-run PERFORMANCE REPORTS live under research/runs (machine-readable + clean HTML view) (2026-07-03)
+User: the loose backtest/output equity.png (stale matplotlib, still showing the void -322R numbers) looked
+bad AND felt duplicated vs the runs ledger. Resolution: the RUNS SYSTEM owns the detailed analysis, saved
+BOTH machine-readable and as a clean HTML view. Pipeline: `run_backtest.py` records per-trade excursion
+(MAE/MFE/ETD + bars) + writes trades.json (+context), then calls `research/runs/make_report.build()` ->
+`research/runs/analytics.analyze()` computes the full NinjaTrader-style breakdown (returns, Sharpe/Sortino/
+Calmar/Ulcer, trade quality, excursion, Monte-Carlo risk-of-ruin, time&exposure) split ALL/LONG/SHORT +
+a daily equity/drawdown series -> writes `reports/<run_id>/analysis.json` (SOURCE OF TRUTH, mineable, incl.
+the full trade list) + `report.html` (professional dark view: headline cards + ECharts equity/drawdown +
+tables, matching the algoproj webui "Quant Analyzer") + rebuilds `reports/index.html` (the "< all runs"
+browser). ECharts vendored from webui (`research/runs/lib/echarts.min.js`, offline). The retired equity.png/
+equity.html are gone; `_report` SVG removed from run_backtest. .gitignore TRACKS analysis.json (durable
+archive), regenerates the HTML. FIXES found while building: (a) equity dropped Sun-eve/holiday trades ->
+built the day calendar as business-days ∪ trade-exit-days so equity reconciles to start+total_pnl exactly
+($72,267 = 100k-27,733; net -27.73%, not the buggy -35%); (b) equity curve was green on a LOSING run ->
+colored by net sign (red when final<start); (c) right y-axis labels ($k) were cut off -> grid right margin.
+Entry point is `reports/index.html` (each run = a new timestamped folder; open the newest). This is the
+per-RUN analytics twin of the ledger scorecard: runs.jsonl = index, reports/<id>/ = the drill-down.
+
+### F33 — FUTURE gate: red-folder fundamental NEWS filter (ForexFactory) (2026-07-03)
+User's idea (documented, deferred): download high-impact ("red folder") fundamental news events from
+ForexFactory (https://www.forexfactory.com/calendar) and use them as a TIMING gate -- e.g. do NOT trade
+30 min before or after a red-folder release (FOMC, CPI, NFP, etc.). Fits the WHEN-to-trade layer alongside
+the vol/session filter: a `research/gates/news_filter` that loads a news-events table (date/time/impact,
+ET) and exposes `blocked(ts, window=30min)` -> setup_arm/backtest skip bars inside any red-folder window.
+Needs: (1) a manual/one-time download of the red-folder calendar to a data file (ForexFactory has no clean
+free API; export or scrape the weekly calendar, store as CSV/parquet in ET), (2) map events onto the bar
+timeline, (3) a config knob (BLOCK_MINUTES, which impact levels). In-context test (F13): does blocking news
+windows improve the WIRED setup's R? Deferred until setup_arm exists. Connects to volatility_filter (both
+are WHEN gates).

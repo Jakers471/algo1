@@ -38,5 +38,8 @@ __pycache__/
 # target-ladder output (regenerate: target_ladder.py)
 /research/setup/target_ladder/output/
 
-# backtest output (regenerate: run_backtest.py)
+# backtest output (regenerate: run_backtest.py) — trades handoff for the chart pipeline
 /backtest/output/
+# per-run reports: KEEP the machine-readable analysis.json (the durable archive); the HTML views regenerate
+/research/runs/reports/*/report.html
+/research/runs/reports/index.html

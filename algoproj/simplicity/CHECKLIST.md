@@ -102,12 +102,15 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   (base⊂session⊂HTF) + target ladder the main chart shows. Browse prev/next, scrub, filter by outcome.
   Caps to the most-recent N trades (default 300, config `MAX_TRADES`; `0`=all) to stay light. (NOTES F31)
 - `[R]` **Backtest engine BUILT** (`backtest/run_backtest.py`) — honest sim of the target_ladder trades
-  (coil-edge fills, 1R=coil, TP=ladder rung, time-stop, costs, no look-ahead); crisp HTML equity dashboard
-  (curve+drawdown+R-dist+breakdowns). **UNCONDITIONAL base rate ≈ BREAKEVEN** (1,592 trades, 29.6% win,
-  -0.017R, PF 0.97, max DD 75R) after fixing the era/profile mismatch bug (F30; v1's -0.170R/-322R cliff was
-  305 pre-era profiles entering at bar 0 vs a different price regime). The number `setup_arm` must beat with
-  lift: 29.6% → ~33%+ win. (NOTES F28/F29/F30)
-- `[R]` Equity curve (+ drawdown) — in the backtest HTML dashboard
+  (coil-edge fills, 1R=coil, TP=ladder rung, time-stop, costs, no look-ahead; records MAE/MFE/ETD excursion).
+  **UNCONDITIONAL base rate ≈ BREAKEVEN** (1,592 trades, 29.6% win, -0.017R, PF 0.97, max DD 75R) after fixing
+  the era/profile mismatch bug (F30). The number `setup_arm` must beat with lift: 29.6% → ~33%+ win. (F28/F29/F30)
+- `[R]` **Per-run PERFORMANCE REPORTS** (`research/runs/analytics.py` + `make_report.py`) — every backtest run
+  writes `reports/<run_id>/analysis.json` (machine-readable, full NinjaTrader-style breakdown ALL/LONG/SHORT +
+  daily equity/drawdown + the trade list) and a clean `report.html` (dark, ECharts equity/drawdown + headline
+  cards + tables, matching the webui Quant Analyzer); `reports/index.html` = the "< all runs" browser. Runs owns
+  the analysis (no more loose equity.png). Open `research/runs/reports/index.html` → newest run. (NOTES F32)
+- `[R]` Equity curve (+ drawdown) — ECharts, in each run's `report.html` (colored by net result; reconciles to $)
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)
 - **Prior art (don't reinvent):** you already built all of this in `algoproj/webui` (Flask+PyWebView+ECharts:
   Analyzer/Runs/Strategies/WFO; `/api/run/chart` = candles+BUY/SELL markers, `/api/run/equity` = equity+DD,
@@ -155,6 +158,10 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   TFs, decipher which timeframes line up best for R:R + scores (the "which TF to enter on" decision from the
   structure's own durations, F21). Deep dive later.
 - `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
+- `[ ]` **News filter gate** (`research/gates/news_filter`) — red-folder fundamental events from ForexFactory
+  (https://www.forexfactory.com/calendar; manual download → CSV/parquet in ET); `blocked(ts, window=30min)` so
+  the backtest/setup_arm skip bars within ±30min of a high-impact release (FOMC/CPI/NFP). A WHEN-to-trade gate
+  alongside the vol/session filter; config knob BLOCK_MINUTES + impact levels. Deferred to after setup_arm. (NOTES F33)
 
 ---
 
