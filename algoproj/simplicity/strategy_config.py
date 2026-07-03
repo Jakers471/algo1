@@ -80,6 +80,10 @@ SESSIONS = {                     # ET session partition (no gaps, covers 24h)
 # it skews vol-based selection, so we cut it. Set 2005 to use all 20yr.
 ERA_START_YEAR = 2015
 
+# Which config this is (the identity). research_config overrides to "research". Runs are SAVED
+# separated by source (reports/<source>/…). strategy = the main/real truth a good strategy graduates to.
+CONFIG_SOURCE = "strategy"
+
 # --- WHEN-TO-TRADE FILTERS (session/hour primary, day optional) --------------------
 # Each toggles independently. A timestamp is tradeable only if ALL *enabled* filters pass.
 # Session & hour are the core (trade inside high-activity windows, not every day equally);

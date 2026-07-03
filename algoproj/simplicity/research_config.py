@@ -12,6 +12,9 @@ Rule: a value is here only if it's a property of a RUN/experiment, not the strat
 """
 from strategy_config import *  # noqa: F401,F403  (re-export the concrete config)
 
+CONFIG_SOURCE = "research"     # identity (overrides strategy_config's) — the backtest runs off THIS by default;
+#                               its runs are saved under reports/research/. Graduate a good one to strategy_config.
+
 # --- run / experiment knobs (research only; never in strategy_config) ---------------
 ACTIVE_FILTER = "high"        # filter_variants variant to test / overlay:
 #                               all | high | medium | low | high_medium | not_high | extremes

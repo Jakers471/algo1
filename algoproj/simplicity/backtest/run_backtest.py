@@ -27,9 +27,15 @@ _SIM = os.path.dirname(HERE)
 sys.path.insert(0, _SIM)
 sys.path.insert(0, os.path.join(_SIM, "research", "setup", "target_ladder"))
 sys.path.insert(0, os.path.join(_SIM, "research", "runs"))
-import research_config as cfg    # run config: re-exports strategy_config + STARTING_BALANCE / dates
+# default: run off research_config (the experimental truth). `--real` runs off strategy_config (the graduated one).
+if "--real" in sys.argv:
+    import strategy_config as cfg
+else:
+    import research_config as cfg    # re-exports strategy_config + STARTING_BALANCE / dates
 import target_ladder as tl
 import runlog
+
+STARTING_BALANCE = getattr(cfg, "STARTING_BALANCE", 100_000)   # research-only knob; default when running --real
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 RES = os.path.join(_SIM, "research")
@@ -150,14 +156,14 @@ def main():
     trades_by_entry = sorted(trades, key=lambda x: x["t_entry"])
     ctx = {"era_start": cfg.ERA_START_YEAR, "target_r": TRR, "entry_window_bars": EWIN,
            "max_hold_bars": HOLD, "entry_tf": "5m", "point_value": cfg.POINT_VALUE,
-           "starting_balance": cfg.STARTING_BALANCE, "risk_pct": cfg.RISK["risk_per_trade_pct"],
+           "starting_balance": STARTING_BALANCE, "risk_pct": cfg.RISK["risk_per_trade_pct"],
            "n_bars": int(n), "start_ts": int(t[0]), "end_ts": int(t[-1]), "bar_seconds": 300,
            "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS, "tick": cfg.TICK}
     json.dump({"config": ctx, "trades": trades_by_entry}, open(os.path.join(OUT, "trades.json"), "w"))
     d["cumR"] = d["R"].cumsum()
-    risk_d = cfg.STARTING_BALANCE * cfg.RISK["risk_per_trade_pct"] / 100.0   # $ risked per trade (fixed fractional)
+    risk_d = STARTING_BALANCE * cfg.RISK["risk_per_trade_pct"] / 100.0   # $ risked per trade (fixed fractional)
     d["pnl"] = d["R"] * risk_d                          # normalized $: each trade risks the same $ (not 1 contract)
-    d["equity"] = cfg.STARTING_BALANCE + d["pnl"].cumsum()
+    d["equity"] = STARTING_BALANCE + d["pnl"].cumsum()
     dd_r = (d["cumR"].cummax() - d["cumR"]).max()
     dd_d = (d["equity"].cummax() - d["equity"]).max()
     n_t, wr = len(d), (d["R"] > 0).mean() * 100
@@ -175,15 +181,17 @@ def main():
     print(f"  profit fac  {pf:.2f}   max DD {dd_r:.1f}R / ${dd_d:,.0f}")
     print(f"  by session  " + " ".join(f"{s}={d[d.session==s]['R'].mean():+.3f}R(n{len(d[d.session==s])})"
                                         for s in ["asia", "london", "newyork"] if len(d[d.session == s])))
+    source = getattr(cfg, "CONFIG_SOURCE", "research")   # which config produced this run -> runs saved separated by it
     rec = runlog.record("backtest",
                   {"target_r": TRR, "entry_window": EWIN, "max_hold": HOLD, "entry": cfg.ENTRY["type"],
                    "stop": cfg.EXIT["stop"], "target": cfg.EXIT["target"], "conditional": "none (base rate)"},
                   {"trades": n_t, "win_pct": round(float(wr), 1), "avg_R": round(float(d["R"].mean()), 3),
                    "total_R": round(float(d["R"].sum()), 1), "total_pnl": round(float(d["pnl"].sum()), 0),
-                   "max_dd_R": round(float(dd_r), 1), "target_pct": round(oc.get("target", 0) / n_t * 100, 1)})
+                   "max_dd_R": round(float(dd_r), 1), "target_pct": round(oc.get("target", 0) / n_t * 100, 1),
+                   "config_source": source})
     # the DETAILED, machine-readable per-run breakdown + its clean HTML view live under research/runs (not here)
     import make_report
-    ctx["run"] = {"run_id": rec["run_id"], "git": rec["git"], "note": rec["note"], "kind": "backtest"}
+    ctx["run"] = {"run_id": rec["run_id"], "git": rec["git"], "note": rec["note"], "kind": "backtest", "source": source}
     make_report.build(trades_by_entry, ctx)
 
 

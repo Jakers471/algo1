@@ -1,9 +1,10 @@
 {
  "run": {
-  "run_id": "2026-07-03T01-58-36Z",
-  "git": "642efee9a",
-  "note": "analytics-report",
-  "kind": "backtest"
+  "run_id": "2026-07-03T02-58-11Z",
+  "git": "0cb99afe6",
+  "note": "config-source-separation",
+  "kind": "backtest",
+  "source": "research"
  },
  "period": {
   "start": "2015-01-01",

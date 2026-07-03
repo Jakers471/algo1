@@ -196,12 +196,13 @@ def _html(A):
 
 def build(trades, ctx):
     A = analytics.analyze(trades, ctx)
-    run_id = ctx.get("run", {}).get("run_id", "adhoc")
-    d = os.path.join(REPORTS, run_id); os.makedirs(d, exist_ok=True)
+    run = ctx.get("run", {})
+    run_id = run.get("run_id", "adhoc"); source = run.get("source", "research")   # runs separated by config source
+    d = os.path.join(REPORTS, source, run_id); os.makedirs(d, exist_ok=True)
     json.dump(A, open(os.path.join(d, "analysis.json"), "w"), indent=1)
     open(os.path.join(d, "report.html"), "w", encoding="utf-8").write(_html(A))
     build_index()
-    print(f"[report] research/runs/reports/{run_id}/report.html  (+ analysis.json) · index updated")
+    print(f"[report] research/runs/reports/{source}/{run_id}/report.html  (+ analysis.json) · index updated")
     return A
 
 
@@ -209,18 +210,21 @@ def build_index():
     rows = ""
     runs = [json.loads(l) for l in open(LEDGER, encoding="utf-8")] if os.path.exists(LEDGER) else []
     bt = [r for r in runs if r.get("kind") == "backtest"][::-1]
+    scol = {"strategy": "#9a7cff", "research": "#4a9eff"}
     for r in bt:
-        rid = r["run_id"]; m = r.get("metrics", {})
-        has = os.path.exists(os.path.join(REPORTS, rid, "report.html"))
-        link = f'<a href="{rid}/report.html">open &rarr;</a>' if has else '<span class="mut">no report</span>'
-        avgR = m.get("avg_R"); totR = m.get("total_R")
-        rows += (f'<tr><td>{rid}</td><td>{r.get("note") or "&mdash;"}</td>'
+        rid = r["run_id"]; m = r.get("metrics", {}); source = m.get("config_source", "research")
+        has = os.path.exists(os.path.join(REPORTS, source, rid, "report.html"))
+        link = f'<a href="{source}/{rid}/report.html">open &rarr;</a>' if has else '<span class="mut">no report</span>'
+        avgR = m.get("avg_R"); totR = m.get("total_R"); sc = scol.get(source, "#8a94a6")
+        rows += (f'<tr><td>{rid}</td>'
+                 f'<td><span class="tag" style="color:{sc};border:1px solid {sc};border-radius:5px;padding:1px 7px;font-size:11px">{source}</span></td>'
+                 f'<td>{r.get("note") or "&mdash;"}</td>'
                  f'<td class="num">{m.get("trades","&mdash;"):,}</td><td class="num">{m.get("win_pct","&mdash;")}%</td>'
                  f'<td class="num {"up" if (avgR or 0)>=0 else "dn"}">{avgR:+.3f}R</td>'
                  f'<td class="num {"up" if (totR or 0)>=0 else "dn"}">{totR:+.1f}R</td>'
                  f'<td class="num">${m.get("total_pnl",0):,.0f}</td><td class="mut">git {r.get("git","?")}</td>'
                  f'<td>{link}</td></tr>')
-    html = INDEX_TEMPLATE.replace("__ROWS__", rows or '<tr><td colspan="9" class="mut">no backtest runs yet</td></tr>')
+    html = INDEX_TEMPLATE.replace("__ROWS__", rows or '<tr><td colspan="10" class="mut">no backtest runs yet</td></tr>')
     os.makedirs(REPORTS, exist_ok=True)
     open(os.path.join(REPORTS, "index.html"), "w", encoding="utf-8").write(html)
 
@@ -263,9 +267,9 @@ tbody tr:last-child td{border-bottom:none}
 
 TEMPLATE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__</title>
-<script src="../../lib/echarts.min.js"></script>
+<script src="../../../lib/echarts.min.js"></script>
 <style>__CSS__</style></head><body>
-<div class="crumb"><a href="../index.html">&lt; all runs</a> &nbsp; Performance / __TITLERUN__</div>
+<div class="crumb"><a href="../../index.html">&lt; all runs</a> &nbsp; Performance / __TITLERUN__</div>
 <h1>Performance</h1>
 <div class="meta">__META__</div>
 <div class="cards">__CARDS__</div>
@@ -321,7 +325,7 @@ table.runs tr:last-child td{border-bottom:none}table.runs tbody tr:hover{backgro
 <h1>Backtest runs</h1>
 <div class="meta">Every run's detailed breakdown lives under <span class="mono">reports/&lt;run_id&gt;/</span>
 (machine-readable <span class="mono">analysis.json</span> + this HTML view). Newest first.</div>
-<table class="runs"><thead><tr><th>Run</th><th>Note</th><th style="text-align:right">Trades</th>
+<table class="runs"><thead><tr><th>Run</th><th>Config</th><th>Note</th><th style="text-align:right">Trades</th>
 <th style="text-align:right">Win%</th><th style="text-align:right">Avg R</th><th style="text-align:right">Total R</th>
 <th style="text-align:right">P&amp;L</th><th>Commit</th><th></th></tr></thead><tbody>__ROWS__</tbody></table>
 </body></html>"""
