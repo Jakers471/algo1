@@ -35,8 +35,8 @@ RES = os.path.join(SIM, "research")
 BT = os.path.join(SIM, "backtest", "output", "trades.json")
 
 # how many most-recent trades to export -> research_config.MAX_REPLAY_TRADES (the run knob; CLI arg overrides).
-PRE_BARS = 12          # a few 5m bars before the setup session opens (context on the main chart)
-POST_BARS = 8          # a few bars after exit (see the outcome resolve)
+PRE_SECONDS = 86400    # ~1 DAY of candles before the setup session (see the prior sessions + how the day set up)
+POST_SECONDS = 86400   # ~1 DAY after the exit
 HTF_TARGET = 70        # downsample the trailing-week HTF slice to ~this many bars (keeps file small)
 
 
@@ -115,8 +115,8 @@ def main():
         P["next_session"] = ns; P["next_open"] = no; P["duration_sec"] = int(P["end"] - P["start"])
         lad = tlm.ladder({"base": base, "session": P, "htf": htf})   # None when base is off (needs the coil for 1R)
         # main window: from just before the setup session through the trade's exit
-        t0 = min(P["start"], tr["t_entry"]) - PRE_BARS * step
-        t1 = max(P["end"], tr["t_exit"]) + POST_BARS * step
+        t0 = min(P["start"], tr["t_entry"]) - PRE_SECONDS
+        t1 = max(P["end"], tr["t_exit"]) + POST_SECONDS
         bars = _slice(t, o, h, l, c, v, t0, t1)
         htf_bars = []
         if htf:

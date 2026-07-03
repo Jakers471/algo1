@@ -142,7 +142,7 @@ chart.priceScale("vol").applyOptions({scaleMargins:{top:0.85,bottom:0}});
 
 // ---- state ----
 let filtered=TR.map((_,i)=>i), fpos=0, priceLines=[], outcomeFilter="all", CUR=null;
-const RP={bars:[],k:0,e0:0,e1:0,entryK:0,exitK:0,armK:0,playing:false,timer:null,speed:1};
+const RP={bars:[],k:0,e0:0,e1:0,entryK:0,exitK:0,armK:0,sessStartK:0,playing:false,timer:null,speed:1};
 
 // ---- price lines (entry/stop/target/coil), redrawn per trade ----
 function clearLines(){priceLines.forEach(pl=>candle.removePriceLine(pl));priceLines=[];}
@@ -245,13 +245,22 @@ function renderStack(tr,nowT){
   if(sc.htf){const h=sc.htf, hcs=tr.htf_bars.map(B);
     html+=cardHTML({session:tr.session,date:tr.date,start:h.start,end:h.end,duration_sec:h.end-h.start,
       barsLabel:(h.htf_days||"")+"d week (context)"},h,hcs,"htf");}
-  // SESSION card — while the session is still FORMING (nowT within it), recompute the profile + scores on bars-so-far
-  const P=sc.session; let sp=P, scs=inRange(P.start,P.end), sEnd=P.end, sDur=P.duration_sec, bl=null;
-  const forming=(nowT!=null && nowT<P.end);
-  if(forming){ scs=inRange(P.start,nowT); const rp=computeProfile(scs);
-    if(rp)sp=Object.assign({},P,rp); sEnd=nowT; sDur=nowT-P.start; bl=scs.length+" bars · forming"; }
-  html+=cardHTML({session:tr.session,date:tr.date,start:P.start,end:sEnd,duration_sec:sDur,
-    next_session:P.next_session,next_open:P.next_open,barsLabel:bl},sp,scs,"session");
+  // SESSION card. BEFORE the setup session opens -> placeholder. While FORMING -> recompute on bars-so-far (what the strategy "sees").
+  const P=sc.session;
+  if(nowT!=null && nowT<P.start){
+    RP.liveProf=null;
+    html+=`<div class="smod"><div class="smod-h"><span class="smod-tag" style="color:#8a94a6;border-color:#8a94a6">${tr.session} SESSION</span>`
+      +`<b>${tr.date}</b><span class="mut">opens ${fmtET(P.start)}</span></div>`
+      +`<div style="padding:15px 14px;color:var(--mut);font-size:12px">the setup session hasn't opened yet &mdash; watching the prior sessions. no coil to evaluate until this session builds.</div></div>`;
+  } else {
+    let sp=P, scs=inRange(P.start,P.end), sEnd=P.end, sDur=P.duration_sec, bl=null;
+    const forming=(nowT!=null && nowT<P.end);
+    if(forming){ scs=inRange(P.start,nowT); const rp=computeProfile(scs);
+      if(rp)sp=Object.assign({},P,rp); sEnd=nowT; sDur=nowT-P.start; bl=scs.length+" bars · forming"; }
+    RP.liveProf=sp;    // the profile the strategy currently SEES (for the live decision panel)
+    html+=cardHTML({session:tr.session,date:tr.date,start:P.start,end:sEnd,duration_sec:sDur,
+      next_session:P.next_session,next_open:P.next_open,barsLabel:bl},sp,scs,"session");
+  }
   if(sc.base){const b=sc.base, bcs=inRange(b.start,b.end);
     html+=cardHTML({session:tr.session,date:tr.date,start:b.start,end:b.end,duration_sec:b.end-b.start},b,bcs,"base");}
   if(sc.ladder)html+=ladderCard(sc.ladder);
@@ -333,9 +342,11 @@ function selectTrade(pos){
   RP.entryK=tr.bars.findIndex(a=>a[0]===tr.t_entry); if(RP.entryK<0)RP.entryK=0;
   RP.exitK=tr.bars.findIndex(a=>a[0]===tr.t_exit); if(RP.exitK<0)RP.exitK=tr.bars.length-1;
   let s0=tr.bars.findIndex(a=>a[0]>=tr.scales.session.start); if(s0<0)s0=0;
-  RP.e0=s0; RP.e1=RP.exitK;
+  RP.sessStartK=s0;                    // when the setup session OPENS (the coil starts forming)
+  RP.e0=0; RP.e1=RP.exitK;             // replay range = the FULL loaded slice (a day behind) .. exit — watch the day set up
+  RP.viewFrom=tr.bars[0][0];           // view starts from the slice start so the whole day reveals
   // ARM moment = session close (that's when setup_arm evaluated the coil + placed the resting orders in the sim)
-  let ak=tr.bars.findIndex(a=>a[0]>tr.scales.session.end); if(ak<0)ak=RP.entryK; RP.armK=Math.max(RP.e0,Math.min(ak,RP.entryK));
+  let ak=tr.bars.findIndex(a=>a[0]>tr.scales.session.end); if(ak<0)ak=RP.entryK; RP.armK=Math.max(RP.sessStartK,Math.min(ak,RP.entryK));
   RP.k=RP.exitK;   // open laid-out at the outcome; press |< (or play) to replay from the forming phase
   replayPause(); document.getElementById("rpScrub").min=RP.e0;
   document.getElementById("rpScrub").max=RP.e1; renderNow();
@@ -354,10 +365,11 @@ function renderNow(){
   drawTradeLines(tr);         // entry/stop/target only after the fill
   redrawOverlay();
   const px=bar[4], risk=tr.risk_pts||1;
-  const preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK, forming=bar[0]<tr.scales.session.end;
+  const preSession=RP.k<RP.sessStartK, preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK;
+  const forming=!preSession && bar[0]<tr.scales.session.end;
   const mtm=(tr.dir==="up"?(px-tr.entry):(tr.entry-px))/risk;
   const rShow=atExit?tr.R:+mtm.toFixed(2), col=rShow>=0?"#2ebd85":"#e66767";
-  const stage=preEntry?(forming?"forming":"resting"):atExit?tr.outcome.toUpperCase():"in trade";
+  const stage=preSession?"before setup session":preEntry?(forming?"forming":"resting"):atExit?tr.outcome.toUpperCase():"in trade";
   document.getElementById("rpInfo").innerHTML=
     `bar ${RP.k-RP.e0+1}/${RP.e1-RP.e0+1} &middot; ${_t12(bar[0])} &middot; `
     + (preEntry?"":`<b style="color:${col}">${rShow>=0?"+":""}${rShow}R</b> &middot; `) + stage;
@@ -422,25 +434,37 @@ function drawTrail(tr,box){      // the LIVE trailing stop as a stepped staircas
 function updateState(tr){
   const sp=document.getElementById("statepanel"), bar=RP.bars[RP.k]; if(!bar||!tr){sp.innerHTML="";return;}
   const now=bar[0], px=bar[4], risk=tr.risk_pts||1, up=tr.dir==="up";
-  // phases keyed to the sim: FORMING (coil building) -> ARMED/RESTING (session close: gates checked, orders placed) -> IN TRADE -> EXIT
-  const forming=RP.k<RP.armK, resting=RP.k>=RP.armK&&RP.k<RP.entryK, atExit=RP.k>=RP.exitK, inTrade=!forming&&!resting&&!atExit;
+  // phases keyed to the sim: BEFORE SETUP -> FORMING (coil building) -> ARMED (session close) -> IN TRADE -> EXIT
+  const preSession=RP.k<RP.sessStartK;
+  const forming=!preSession && RP.k<RP.armK, resting=RP.k>=RP.armK&&RP.k<RP.entryK, atExit=RP.k>=RP.exitK, inTrade=RP.k>=RP.entryK&&!atExit;
   const st=pathStopAt(tr,now), armedTrail=st?!!st[2]:false;
   const liveStop=inTrade?(st?st[1]:tr.stop):null;
   const mtm=atExit?tr.R:+(((up?(px-tr.entry):(tr.entry-px))/risk)).toFixed(2);
   const isTrail=tr.method==="trailing";
-  const stage=forming?"FORMING · coil building"
+  const G=CFG.gates||{}, sok=(G.SHAPE&&G.SHAPE.shape_ok), rmin=(G.ZONE&&G.ZONE.rr_min);
+  const okc=v=>v?"#2ebd85":"#e66767", mk=v=>v?"✓":"✗";
+  const stage=preSession?"BEFORE SETUP · watching"
+    :forming?"FORMING · coil building"
     :resting?"ARMED · orders resting"
     :atExit?(tr.outcome.toUpperCase()+" · "+(tr.R>=0?"+":"")+tr.R+"R")
     :(isTrail?(armedTrail?"IN TRADE · trailing":"IN TRADE · pre-arm"):"IN TRADE");
-  const stageCol=forming?"#4a9bff":resting?"#e0a94a":atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
+  const stageCol=preSession?"#8a94a6":forming?"#4a9bff":resting?"#e0a94a":atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
   const g=tr.arm||{}, pill=(ok,lab)=>`<span class="gpill" style="color:${ok?'#2ebd85':'#e66767'};border-color:${ok?'#2ebd85':'#e66767'}">${lab}</span>`;
   let gates=""; if(tr.arm){gates=(('session'in g)?pill(g.session,'session'):'')+pill(g.shape,'shape '+(tr.arm_shape??''))+pill(g.rr,'rr '+(tr.arm_rr??''));}
   const method=isTrail?`trailing · arm ${CFG.trail_arm_r} / gap ${CFG.trail_gap_r}`:`${tr.method} · ${CFG.target_r}R`;
   let body;
-  if(forming){
-    body=`<div class="sh">what's happening</div><div class="sr"><span>the coil is</span><b>still forming</b></div>`
-      +`<div class="sr"><span>bars so far</span><b>${RP.k-RP.e0+1}</b></div>`
-      +`<div class="sr"><span>waiting for</span><b>session close → arm</b></div>`;
+  if(preSession){
+    body=`<div class="sh">strategy is</div><div class="sr"><span>doing</span><b>watching prior sessions</b></div>`
+      +`<div class="sr"><span>setup session</span><b>${tr.session}</b></div>`
+      +`<div class="sr"><span>opens</span><b>${_t12(tr.scales.session.start)}</b></div>`;
+  } else if(forming){                       // LIVE: what the strategy computes on bars-so-far vs its gate thresholds
+    const lp=RP.liveProf||{}, shp=(lp.shape&&lp.shape.shape_score!=null)?lp.shape.shape_score:null, rr=(lp.zone&&lp.zone.rr!=null)?lp.zone.rr:null;
+    const shOk=shp!=null&&sok!=null&&shp>=sok, rrOk=rr!=null&&rmin!=null&&rr>=rmin;
+    body=`<div class="sh">what it SEES (live, bars-so-far)</div>`
+      +`<div class="sr"><span>shape (clean?)</span><b style="color:${shp!=null?okc(shOk):'#8a8880'}">${shp!=null?shp+" ≥ "+sok+" "+mk(shOk):"—"}</b></div>`
+      +`<div class="sr"><span>R:R (room?)</span><b style="color:${rr!=null?okc(rrOk):'#8a8880'}">${rr!=null?rr+" ≥ "+rmin+" "+mk(rrOk):"—"}</b></div>`
+      +`<div class="sr"><span>VA % of range</span><b>${lp.va_pct_of_range!=null?lp.va_pct_of_range+"%":"—"}</b></div>`
+      +`<div class="sh">deciding</div><div class="sr"><span>coil</span><b>building → arm at close</b></div>`;
   } else if(resting){                       // THE CAUSE: the gates that armed it, + the resting orders now live
     body=(tr.arm?`<div class="sh">why it ARMED (setup_arm)</div><div>${gates}</div>`
                 :`<div class="sh">unconditional (no gate)</div>`)
