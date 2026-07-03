@@ -583,5 +583,11 @@ the main chart shows (the setup context that armed the trade). SIZE: all ~1600 t
 ~43MB (too heavy to inline), so build_trades caps to the most-recent N (default MAX_TRADES=300 -> 6.3MB;
 `0`=all) and stores bars as compact arrays [t,o,h,l,c,v] loaded via `<script src=trades_data.js>` (works on
 file://, unlike fetch). Verified end-to-end on real data (nav / filter / stepping / final-R = sim R). The
-user only wanted a practical recent slice, not the whole history at once. NEXT natural step: once setup_arm
-exists, this same page shows only the ARMED trades + the gate states that armed them.
+user only wanted a practical recent slice, not the whole history at once.
+TRADE-DRAW STYLE (chosen from a 6-option mockup, 2026-07-03): the **R-multiple ladder** (option 03) --
+green reward bands stacked away from entry (opacity grows per R) with dashed kR dividers + labels, a red 1R
+risk band entry->stop, and entry(gold)/stop/target axis lines + entry & exit markers. Direction-aware
+(reward above for longs, below for shorts). Drawn on the SVG overlay (lightweight-charts has no native filled
+price bands) so it redraws on pan/zoom; bands capped at 8 (target line still marks the true R). You read
+profit in R straight off the chart. NEXT natural step: once setup_arm exists, this same page shows only the
+ARMED trades + the gate states that armed them.

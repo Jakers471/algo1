@@ -129,7 +129,7 @@ const vol=chart.addHistogramSeries({priceFormat:{type:"volume"},priceScaleId:"vo
 chart.priceScale("vol").applyOptions({scaleMargins:{top:0.85,bottom:0}});
 
 // ---- state ----
-let filtered=TR.map((_,i)=>i), fpos=0, priceLines=[], outcomeFilter="all";
+let filtered=TR.map((_,i)=>i), fpos=0, priceLines=[], outcomeFilter="all", CUR=null;
 const RP={bars:[],k:0,e0:0,e1:0,playing:false,timer:null,speed:1};
 
 // ---- price lines (entry/stop/target/coil), redrawn per trade ----
@@ -221,19 +221,19 @@ function renderStat(tr){
       ${cell("net",(tr.net_pts>=0?"+":"")+tr.net_pts+" pt",rCol)}${cell("entry ET",_t12(tr.t_entry))}</div>`;
 }
 
-// ---- draw entry/stop/target/coil price lines + entry/exit markers ----
+// ---- entry/stop/target axis lines + R-ladder bands (option 03) + entry/exit markers ----
+function fmtR(r){return Math.abs(r-Math.round(r))<0.05?Math.round(r):r.toFixed(1);}
 function drawTrade(tr){
-  clearLines();
+  CUR=tr; clearLines();
+  const Rr=Math.abs(tr.target-tr.entry)/(tr.risk_pts||1);
   line(tr.entry,"#f0b000",0,"entry "+tr.entry);
-  line(tr.stop,"#e66767",2,"stop "+tr.stop);
-  line(tr.target,"#2ebd85",2,"target "+tr.target);
-  line(tr.coil_hi,"rgba(240,176,0,.5)",3,"coil hi");
-  line(tr.coil_lo,"rgba(240,176,0,.5)",3,"coil lo");
+  line(tr.stop,"#e66767",2,"stop −1R");
+  line(tr.target,"#199e70",2,"target +"+fmtR(Rr)+"R");
   const up=tr.dir==="up";
   candle.setMarkers([
     {time:tr.t_entry,position:up?"belowBar":"aboveBar",color:"#f0b000",shape:up?"arrowUp":"arrowDown",text:"ENTRY"},
     {time:tr.t_exit,position:up?"aboveBar":"belowBar",
-     color:tr.outcome==="target"?"#2ebd85":tr.outcome==="stop"?"#e66767":"#8a94a6",
+     color:tr.outcome==="target"?"#199e70":tr.outcome==="stop"?"#e66767":"#8a94a6",
      shape:"circle",text:tr.outcome.toUpperCase()+" "+(tr.R>=0?"+":"")+tr.R+"R"}]);
 }
 
@@ -259,7 +259,7 @@ function selectTrade(pos){
 // ---- bar-by-bar "now" line + running mark-to-market R ----
 function renderNow(){
   const sc=document.getElementById("rpScrub"); sc.value=RP.k;
-  drawNow();
+  redrawOverlay();
   const tr=RP.tr, bar=RP.bars[RP.k]; if(!bar){document.getElementById("rpInfo").textContent="–";return;}
   const px=bar[4], risk=tr.risk_pts||1;
   const mtm=(tr.dir==="up"?(px-tr.entry):(tr.entry-px))/risk;   // mark-to-market R at this bar's close
@@ -271,15 +271,36 @@ function renderNow(){
     `bar ${RP.k-RP.e0+1}/${RP.e1-RP.e0+1} &middot; ${_t12(bar[0])} &middot; <b style="color:${col}">${rShow>=0?"+":""}${rShow}R</b> &middot; ${stage}`;
 }
 const nowsvg=document.getElementById("nowsvg"), chartEl=document.getElementById("chart");
-function drawNow(){while(nowsvg.firstChild)nowsvg.removeChild(nowsvg.firstChild);
-  const bar=RP.bars[RP.k]; if(!bar)return;
-  const x=chart.timeScale().timeToCoordinate(bar[0]); if(x==null)return;
-  const box=chartEl.getBoundingClientRect(); nowsvg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`);
-  const l=document.createElementNS("http://www.w3.org/2000/svg","line");
-  l.setAttribute("x1",x);l.setAttribute("y1",0);l.setAttribute("x2",x);l.setAttribute("y2",box.height);
-  l.setAttribute("stroke","#f0b000");l.setAttribute("stroke-width","1.3");l.setAttribute("stroke-opacity",".9");nowsvg.appendChild(l);}
-chart.timeScale().subscribeVisibleLogicalRangeChange(drawNow);
-new ResizeObserver(drawNow).observe(chartEl);
+function _sv(tag,a){const e=document.createElementNS("http://www.w3.org/2000/svg",tag);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function redrawOverlay(){
+  while(nowsvg.firstChild)nowsvg.removeChild(nowsvg.firstChild);
+  const box=chartEl.getBoundingClientRect();
+  nowsvg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`);
+  if(CUR)drawBands(CUR,box);
+  drawNowLine(box);
+}
+// option 03 — R-multiple ladder: green reward bands (opacity grows per R) + a red 1R risk band. both directions.
+function drawBands(tr,box){
+  const ts=chart.timeScale(), plotW=(ts.width&&ts.width())||box.width;
+  const risk=tr.risk_pts||1, sgn=tr.dir==="up"?1:-1, E=tr.entry, yOf=p=>candle.priceToCoordinate(p);
+  const Rr=Math.abs(tr.target-E)/risk, nB=Math.min(8,Math.max(3,Math.ceil(Rr-1e-6)));  // cap bands; target line still marks true R
+  for(let k=1;k<=nB;k++){                                   // reward bands stacked away from entry
+    const yt=yOf(E+sgn*k*risk), yb=yOf(E+sgn*(k-1)*risk); if(yt==null||yb==null)continue;
+    nowsvg.appendChild(_sv("rect",{x:0,y:Math.min(yt,yb),width:plotW,height:Math.abs(yb-yt),fill:"#199e70","fill-opacity":(0.05+0.035*Math.min(k,4)).toFixed(3)}));
+    nowsvg.appendChild(_sv("line",{x1:0,y1:yt,x2:plotW,y2:yt,stroke:"#199e70","stroke-width":0.8,"stroke-dasharray":"3 4","stroke-opacity":0.5}));
+    const t=_sv("text",{x:5,y:(yt+11).toFixed(1),fill:"#199e70","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent=k+"R";nowsvg.appendChild(t);
+  }
+  const ys=yOf(tr.stop), ye=yOf(E);                         // 1R risk band entry->stop
+  if(ys!=null&&ye!=null){
+    nowsvg.appendChild(_sv("rect",{x:0,y:Math.min(ys,ye),width:plotW,height:Math.abs(ys-ye),fill:"#e66767","fill-opacity":0.11}));
+    const t=_sv("text",{x:5,y:((ys+ye)/2+3.5).toFixed(1),fill:"#e66767","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent="−1R";nowsvg.appendChild(t);
+  }
+}
+function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
+  const x=chart.timeScale().timeToCoordinate(bar[0]);if(x==null)return;
+  nowsvg.appendChild(_sv("line",{x1:x,y1:0,x2:x,y2:box.height,stroke:"#f0b000","stroke-width":1.3,"stroke-opacity":0.9}));}
+chart.timeScale().subscribeVisibleLogicalRangeChange(redrawOverlay);
+new ResizeObserver(redrawOverlay).observe(chartEl);
 
 function rpGo(cmd){if(cmd==="start")RP.k=RP.e0;else if(cmd==="back")RP.k=Math.max(0,RP.k-1);
   else if(cmd==="fwd")RP.k=Math.min(RP.bars.length-1,RP.k+1);else if(cmd==="end")RP.k=RP.e1;renderNow();}
