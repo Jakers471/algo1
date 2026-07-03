@@ -50,6 +50,7 @@ def _series(df):
 
 def main():
     series_meta = []
+    data_range = None
     for inst, src in (("NQ", cfg.TF_SOURCES), ("ES", cfg.ES_SOURCES)):
         for tf, fname in src.items():
             p = os.path.join(cfg.DATA_DIR, fname)
@@ -57,6 +58,8 @@ def main():
                 continue
             df = pd.read_parquet(p)
             df.index = pd.DatetimeIndex(df.index)
+            if inst == "NQ" and tf == "5m":         # TRUE full data range (before tailing) -> the run-window picker floor
+                data_range = {"first": str(df.index[0])[:10], "last": str(df.index[-1])[:10]}
             df = df.tail(MAX_BARS)
             candles, vol = _series(df)
             key = f"{inst}_{tf}"
@@ -181,6 +184,7 @@ def main():
               f" · htf {'ON ('+str(n_htf)+')' if cfg.HTF.get('on') else 'off'}")
     manifest["profiles"] = profiles
     manifest["config_panel"] = cpanel.panel(cfg)
+    manifest["data_range"] = data_range          # true full data range (for the run-window picker floor)
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")

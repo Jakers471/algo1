@@ -661,12 +661,14 @@ const runStat=document.getElementById("runStat"), runBtn=document.getElementById
 if(!_served){runBtn.disabled=true;runStat.innerHTML='Static file — start <b>run_chart.bat</b> to enable running.';}
 // default + CONSTRAIN the run window to the BACKTEST range (era start .. data end). NOTE: m5.first is only the
 // CHART's loaded window (~last 6000 bars), NOT the data start — so the floor is the era, not m5.first.
-(function(){const m5=(M.series||[]).find(s=>s.key==="NQ_5m")||{};
-  const last=(m5.last||"").slice(0,10), era=(C.era_start||2015)+"-01-01";
+(function(){const m5=(M.series||[]).find(s=>s.key==="NQ_5m")||{}, dr=M.data_range||{};
+  const era=(C.era_start||2015)+"-01-01";
+  const first=(dr.first||"").slice(0,10)||era;           // TRUE data start = floor -> you can run FULL history
+  const last=(dr.last||m5.last||"").slice(0,10);
   const bs=document.getElementById("btStart"), be=document.getElementById("btEnd");
-  if(last){bs.min=be.min=era; bs.max=be.max=last;        // pickable range = era start .. data end
-    bs.value=era; be.value=last;
-    runStat.innerHTML=`backtest range ${era} → ${last}`;}
+  if(last){bs.min=be.min=first; bs.max=be.max=last;       // pickable all the way back to the data start
+    bs.value=era; be.value=last;                          // default start = era (recommended); drag back to ${first} for full history
+    runStat.innerHTML=`range ${first} → ${last} · default from era ${C.era_start||2015}`;}
 })();
 const runBar=document.getElementById("runBar").firstElementChild;
 runBtn.onclick=async()=>{
@@ -674,23 +676,34 @@ runBtn.onclick=async()=>{
   const source=document.getElementById("btSource").value;
   // open the two result windows NOW (in the click gesture) so popup-blockers don't kill them; fill on done
   const wRep=window.open("about:blank","_blank"), wRep2=window.open("about:blank","_blank");
-  // paint a themed "running…" placeholder so they're not blank white while the backtest runs (~15s)
-  const _wait=(w,label)=>{try{if(w)w.document.write('<title>running… '+label+'</title><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0d;color:#8a8880;font:15px system-ui,sans-serif">running backtest… <b style="color:#c3c2b7;margin-left:7px">'+label+'</b>&nbsp;will load here</body>');}catch(e){}};
-  _wait(wRep,"report"); _wait(wRep2,"replay");
+  const wins=[[wRep,"report"],[wRep2,"replay"]];
+  // paint a themed placeholder WITH a live countdown + progress bar (not blank white) while the backtest runs
+  const paint=(w,label)=>{try{if(w)w.document.write(
+    '<title>running… '+label+'</title>'+
+    '<body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0d0d;color:#8a8880;font:15px system-ui,sans-serif">'+
+    '<div style="font-size:16px;color:#c3c2b7;margin-bottom:5px">running backtest…</div>'+
+    '<div id="rs" style="margin-bottom:14px">starting…</div>'+
+    '<div style="width:300px;height:6px;background:#1c1c1c;border-radius:4px;overflow:hidden"><i id="rb" style="display:block;height:100%;width:0;background:#199e70;transition:width .25s ease"></i></div>'+
+    '<div style="margin-top:14px;font-size:12px;color:#5a5a55">'+label+' loads here when it finishes</div>'+
+    '</body>');}catch(e){}};
+  wins.forEach(([w,l])=>paint(w,l));
+  const upd=(pct,txt)=>wins.forEach(([w])=>{try{if(w&&!w.closed){const b=w.document.getElementById("rb"),s=w.document.getElementById("rs");if(b)b.style.width=pct+"%";if(s)s.textContent=txt;}}catch(e){}});
   runBtn.disabled=true;
   const t0=Date.now(), est=Math.max(6000,+(localStorage.getItem("simp_run_ms")||18000));
-  const tick=setInterval(()=>{const el=Date.now()-t0, rem=Math.ceil((est-el)/1000);
-    runBar.style.width=Math.min(97,el/est*100).toFixed(0)+"%";
-    runStat.innerHTML=rem>0?`running backtest… <b>~${rem}s</b> left`:`running backtest… <b>${Math.round(el/1000)}s</b> · almost there`;},250);
+  const tick=setInterval(()=>{const el=Date.now()-t0, rem=Math.ceil((est-el)/1000), pct=Math.min(97,el/est*100);
+    const txt=rem>0?`~${rem}s left`:`${Math.round(el/1000)}s · almost there`;
+    runBar.style.width=pct.toFixed(0)+"%";
+    runStat.innerHTML=`running backtest… <b>${txt}</b>`;
+    upd(pct.toFixed(0), txt);},250);        // mirror the countdown + bar into both result windows
   try{
     const r=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({start,end,source})});
     const j=await r.json(); clearInterval(tick);
-    if(j.ok){localStorage.setItem("simp_run_ms",Date.now()-t0);runBar.style.width="100%";
+    if(j.ok){localStorage.setItem("simp_run_ms",Date.now()-t0);runBar.style.width="100%";upd(100,"done · loading…");
       runStat.innerHTML=`done in ${Math.round((Date.now()-t0)/1000)}s → <b>${j.source}/${j.run_id}</b> · opened report + replay`;
       if(wRep)wRep.location=j.report; if(wRep2)wRep2.location=j.replay;
       setTimeout(()=>{runBar.style.width="0";},1400);}
-    else{runBar.style.width="0";runStat.textContent="failed: "+(j.error||"see server log");if(wRep)wRep.close();if(wRep2)wRep2.close();}
-  }catch(e){clearInterval(tick);runBar.style.width="0";runStat.textContent="no server — launch run_chart.bat";if(wRep)wRep.close();if(wRep2)wRep2.close();}
+    else{runBar.style.width="0";const m="failed: "+(j.error||"see server log");runStat.textContent=m;upd(0,m);}
+  }catch(e){clearInterval(tick);runBar.style.width="0";const m="no server — launch run_chart.bat";runStat.textContent=m;upd(0,m);}
   runBtn.disabled=false;};
 
 renderInsts();load();

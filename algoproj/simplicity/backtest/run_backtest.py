@@ -75,13 +75,15 @@ def main():
     df = pd.read_parquet(os.path.join(cfg.DATA_DIR, cfg.TF_SOURCES["5m"]))
     df.index = pd.DatetimeIndex(df.index)
     _data_first, _data_last = str(df.index[0])[:10], str(df.index[-1])[:10]   # raw range, for a clear empty-window message
-    yr = df.index.tz_convert(cfg.CLOCK).year
-    df = df[yr >= cfg.ERA_START_YEAR]
-    # date window: env override (from the chart Run button via serve.py) > research_config knob > full era
+    # date window (env override from the chart > research_config knob). An explicit START OVERRIDES the era
+    # floor, so you can run FULL history back to the data start; with no explicit start, ERA_START_YEAR is the floor.
     bstart = os.environ.get("SIMP_BT_START") or getattr(cfg, "BACKTEST_START", None)
     bend = os.environ.get("SIMP_BT_END") or getattr(cfg, "BACKTEST_END", None)
     if bstart:
         df = df[df.index >= pd.Timestamp(bstart, tz=cfg.CLOCK)]
+    else:
+        yr = df.index.tz_convert(cfg.CLOCK).year
+        df = df[yr >= cfg.ERA_START_YEAR]
     if bend:
         df = df[df.index <= pd.Timestamp(bend, tz=cfg.CLOCK)]
     t = (df.index.view("int64") // 1_000_000_000).astype("int64")
@@ -229,7 +231,8 @@ def main():
     _tp = {"fixed_rr": f"TP fixed 1:{TRR}", "ladder_rung": f"TP ladder>={TRR}R",
            "trailing": f"TP trail arm{TRAIL_ARM}/gap{TRAIL_GAP}"}.get(METHOD, METHOD)
     _htf = "htf-on" if cfg.HTF.get("on") else "htf-off"
-    print(f"BACKTEST -- coil breakout, {_cond}, {_tp} ({_htf}), era>={cfg.ERA_START_YEAR}, 1 contract")
+    _rng = (f"from {bstart}" if bstart else f"era>={cfg.ERA_START_YEAR}") + (f"..{bend}" if bend else "")
+    print(f"BACKTEST -- coil breakout, {_cond}, {_tp} ({_htf}), {_rng}, 1 contract")
     print(f"  trades      {n_t:,}   ({oc.get('target',0)} target / {oc.get('stop',0)} stop / {oc.get('time',0)} time)")
     print(f"  win rate    {wr:.1f}%")
     print(f"  avg R       {d['R'].mean():+.3f}   (median {d['R'].median():+.2f})")
