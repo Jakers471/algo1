@@ -116,6 +116,21 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
 .rpc input[type=range]{flex:1;accent-color:var(--acc);min-width:60px}
 .rpc select{background:var(--s);border:1px solid var(--ring);color:var(--ink2);border-radius:6px;font-size:11px;padding:2px}
 .rpinfo{color:var(--mut);font-size:10.5px;white-space:nowrap;min-width:94px;text-align:right}
+/* Run backtest + config-status panel (in the sidebar) */
+.runrow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.runrow label{color:var(--mut);font-size:11px;min-width:30px}
+.runrow input[type=date],.runrow select{background:var(--s);border:1px solid var(--ring);color:var(--ink);border-radius:6px;font:inherit;font-size:11.5px;padding:3px 6px;min-width:0}
+.runrow input[type=date]{flex:1}.runrow select{flex:1}
+#runBtn{background:var(--up);border-color:var(--up);color:#fff;font-weight:650}#runBtn:disabled{opacity:.4}
+.runstat{font-size:11px;color:var(--ink2);min-height:14px;margin-top:2px}
+.runbar{height:4px;background:var(--ring);border-radius:3px;overflow:hidden;margin-top:6px}
+.runbar i{display:block;height:100%;width:0;background:var(--up);transition:width .25s ease}
+.cpleg2{font-weight:400;font-size:9px;color:var(--mut);text-transform:none;letter-spacing:0}
+.cpleg2 i{width:8px;height:8px;border-radius:50%;display:inline-block;margin:0 1px 0 6px;vertical-align:middle}
+.cpsec{margin-bottom:11px}.cpst{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
+.cprow{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.cpn{display:flex;align-items:center;gap:3px}.cpv{color:var(--ink2);text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums}
+.sd{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:2px;flex:0 0 auto}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span style="color:var(--mut);font-weight:400">chart</span></h1>
@@ -154,12 +169,16 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
     </div>
   </div>
   <div class="side">
-    <h2>Config</h2><div id="cfgSel" class="cfgbtns"></div><div id="cfgLoaded" class="loaded"></div>
+    <h2>Run backtest</h2>
+    <div class="runrow"><label>from</label><input type="date" id="btStart"><label>to</label><input type="date" id="btEnd"></div>
+    <div class="runrow"><label>config</label>
+      <select id="btSource"><option value="research">research</option><option value="strategy">strategy (real)</option></select>
+      <button id="runBtn">▶ Run</button></div>
+    <div class="runstat" id="runStat"></div><div class="runbar" id="runBar"><i></i></div>
     <h2>Loaded</h2><div id="loaded"></div>
-    <h2>When-to-trade filters</h2><div id="filters"></div>
-    <h2>Config on chart</h2><div id="cfg"></div>
-    <h2>Sessions (ET)</h2><div id="sess"></div>
-    <h2>Costs</h2><div id="costs"></div>
+    <h2>Vol-day overlay</h2><div id="cfgSel" class="cfgbtns"></div><div id="cfgLoaded" class="loaded"></div>
+    <h2>Config <span class="cpleg2"><i style="background:#199e70"></i>live <i style="background:#f6465d"></i>off <i style="background:#e0a94a"></i>unwired <i style="background:#9a7cff"></i>no-engine</span></h2>
+    <div id="cpBody"></div>
   </div>
 </div>
 <script>
@@ -616,14 +635,10 @@ updateChatCount();
 
 // sidebar
 function onoff(f){return f.on?`<span class="on-pill">ON</span>`:`<span class="off-pill">off</span>`;}
-document.getElementById("filters").innerHTML=
-  kv("session "+onoff(C.filter_session), C.filter_session.allow.join(", "))+
-  kv("hour "+onoff(C.filter_hour), C.filter_hour.on?C.filter_hour.allow.join(","):"—")+
-  kv("day_vol "+onoff(C.filter_day_vol), C.filter_day_vol.on?C.filter_day_vol.regimes.join(","):"—");
 function renderCfg(){document.getElementById("cfgSel").innerHTML=Object.keys(M.configs).map(k=>
   `<button data-c="${k}" class="${k==cfgSel?'on':''}">${k}</button>`).join("");
-  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();renderCfgSidebar();updateShade();logConfig();});
-  document.getElementById("cfgLoaded").innerHTML=`<span class="dot"></span>${cfgSel} attached &amp; loaded`;}
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();updateShade();logConfig();});
+  document.getElementById("cfgLoaded").innerHTML=`<span class="dot"></span>${cfgSel} vol-days loaded`;}
 function logConfig(){const cc=M.configs[cfgSel];
   console.log(`%c[simplicity] CONFIG LOADED -> ${cfgSel}`,"color:#199e70;font-weight:bold;font-size:13px");
   console.table({
@@ -635,17 +650,41 @@ function logConfig(){const cc=M.configs[cfgSel];
     era_start:C.era_start, vol_metric:C.vol_metric, trail_window:C.trail_window+"d",
     instrument:inst, timeframe:tf});
   console.log("  first selected days:",cc.selected_days.slice(0,8),`... (${cc.selected_days.length} total)`);}
-function renderCfgSidebar(){const cc=M.configs[cfgSel];
-  document.getElementById("cfg").innerHTML=
-    kv("config",`<span class="pill">${cfgSel}</span>`)+kv("&rarr;",cc.label)+
-    kv("vol-days",cc.selected_days.length+" d / "+cc.selected_runs.length+" periods")+
-    kv("note",cc.note)+kv("era start",C.era_start)+kv("vol metric",C.vol_metric)+
-    kv("trail window",C.trail_window+"d")+kv("regime pctiles",C.regime_pctiles.join(" / "));}
-renderCfg(); renderCfgSidebar(); logConfig();
-document.getElementById("sess").innerHTML=Object.entries(C.sessions).map(([k,v])=>kv(k,v[0]+"–"+v[1])).join("");
-document.getElementById("costs").innerHTML=
-  kv("point value","$"+C.point_value)+kv("tick",C.tick)+kv("commission","$"+C.commission_per_side+"/side")+
-  kv("slippage",C.slippage_ticks+" tick");
+renderCfg(); logConfig();
+// ---- config-status panel + Run backtest (needs serve.py; on file:// the button is disabled) ----
+const CP=M.config_panel||[];
+function _dots(it){let d="";
+  if(it.enabled===false)d+='<span class="sd" style="background:#f6465d" title="not turned on"></span>';
+  if(!it.wired)d+='<span class="sd" style="background:#e0a94a" title="not wired into the backtest"></span>';
+  if(!it.engine)d+='<span class="sd" style="background:#9a7cff" title="no engine module yet"></span>';
+  if(!d)d='<span class="sd" style="background:#199e70" title="live"></span>';return d;}
+document.getElementById("cpBody").innerHTML=CP.map(s=>`<div class="cpsec"><div class="cpst">${s.title}</div>`+
+  s.items.map(it=>`<div class="cprow"><span class="cpn">${_dots(it)}${it.name}</span><span class="cpv">${it.value}</span></div>`).join("")+`</div>`).join("");
+const _served=location.protocol.startsWith("http");
+const runStat=document.getElementById("runStat"), runBtn=document.getElementById("runBtn");
+if(!_served){runBtn.disabled=true;runStat.innerHTML='Static file — start <b>run_chart.bat</b> to enable running.';}
+const runBar=document.getElementById("runBar").firstElementChild;
+runBtn.onclick=async()=>{
+  const start=document.getElementById("btStart").value, end=document.getElementById("btEnd").value;
+  const source=document.getElementById("btSource").value;
+  // open the two result windows NOW (in the click gesture) so popup-blockers don't kill them; fill on done
+  const wRep=window.open("about:blank","_blank"), wRep2=window.open("about:blank","_blank");
+  runBtn.disabled=true;
+  const t0=Date.now(), est=Math.max(6000,+(localStorage.getItem("simp_run_ms")||18000));
+  const tick=setInterval(()=>{const el=Date.now()-t0, rem=Math.ceil((est-el)/1000);
+    runBar.style.width=Math.min(97,el/est*100).toFixed(0)+"%";
+    runStat.innerHTML=rem>0?`running backtest… <b>~${rem}s</b> left`:`running backtest… <b>${Math.round(el/1000)}s</b> · almost there`;},250);
+  try{
+    const r=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({start,end,source})});
+    const j=await r.json(); clearInterval(tick);
+    if(j.ok){localStorage.setItem("simp_run_ms",Date.now()-t0);runBar.style.width="100%";
+      runStat.innerHTML=`done in ${Math.round((Date.now()-t0)/1000)}s → <b>${j.source}/${j.run_id}</b> · opened report + replay`;
+      if(wRep)wRep.location=j.report; if(wRep2)wRep2.location=j.replay;
+      setTimeout(()=>{runBar.style.width="0";},1400);}
+    else{runBar.style.width="0";runStat.textContent="failed: "+(j.error||"see server log");if(wRep)wRep.close();if(wRep2)wRep2.close();}
+  }catch(e){clearInterval(tick);runBar.style.width="0";runStat.textContent="no server — launch run_chart.bat";if(wRep)wRep.close();if(wRep2)wRep2.close();}
+  runBtn.disabled=false;};
+
 renderInsts();load();
 </script></body></html>"""
 
