@@ -237,6 +237,12 @@ function drawTrade(tr){
      shape:"circle",text:tr.outcome.toUpperCase()+" "+(tr.R>=0?"+":"")+tr.R+"R"}]);
 }
 
+// ---- auto-lock the view onto the setup (coil -> exit), not the whole slice ----
+function lockView(tr){
+  const b=tr.scales.base||tr.scales.session;
+  const from=(b?b.start:tr.t_entry)-6*300, to=tr.t_exit+8*300;   // a few bars of coil context .. a few past exit
+  try{chart.timeScale().setVisibleRange({from,to});}catch(e){chart.timeScale().fitContent();}
+}
 // ---- select a trade ----
 function selectTrade(pos){
   fpos=(pos+filtered.length)%filtered.length;
@@ -244,7 +250,7 @@ function selectTrade(pos){
   candle.setData(tr.bars.map(B));
   vol.setData(tr.bars.map(a=>({time:a[0],value:a[5],color:a[4]>=a[1]?"rgba(25,158,112,.4)":"rgba(230,103,103,.4)"})));
   drawTrade(tr); renderStat(tr); renderStack(tr);
-  chart.timeScale().fitContent();
+  lockView(tr);
   document.getElementById("tIdx").textContent=`${fpos+1} / ${filtered.length}`;
   document.getElementById("tScrub").max=filtered.length-1;
   document.getElementById("tScrub").value=fpos;
@@ -283,17 +289,19 @@ function redrawOverlay(){
 function drawBands(tr,box){
   const ts=chart.timeScale(), plotW=(ts.width&&ts.width())||box.width;
   const risk=tr.risk_pts||1, sgn=tr.dir==="up"?1:-1, E=tr.entry, yOf=p=>candle.priceToCoordinate(p);
+  let x0=ts.timeToCoordinate(tr.t_entry); if(x0==null||x0<0)x0=0;   // bands live from ENTRY -> right only (not over the setup)
+  const bw=Math.max(0,plotW-x0), lx=x0+5;
   const Rr=Math.abs(tr.target-E)/risk, nB=Math.min(8,Math.max(3,Math.ceil(Rr-1e-6)));  // cap bands; target line still marks true R
   for(let k=1;k<=nB;k++){                                   // reward bands stacked away from entry
     const yt=yOf(E+sgn*k*risk), yb=yOf(E+sgn*(k-1)*risk); if(yt==null||yb==null)continue;
-    nowsvg.appendChild(_sv("rect",{x:0,y:Math.min(yt,yb),width:plotW,height:Math.abs(yb-yt),fill:"#199e70","fill-opacity":(0.05+0.035*Math.min(k,4)).toFixed(3)}));
-    nowsvg.appendChild(_sv("line",{x1:0,y1:yt,x2:plotW,y2:yt,stroke:"#199e70","stroke-width":0.8,"stroke-dasharray":"3 4","stroke-opacity":0.5}));
-    const t=_sv("text",{x:5,y:(yt+11).toFixed(1),fill:"#199e70","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent=k+"R";nowsvg.appendChild(t);
+    nowsvg.appendChild(_sv("rect",{x:x0,y:Math.min(yt,yb),width:bw,height:Math.abs(yb-yt),fill:"#199e70","fill-opacity":(0.05+0.035*Math.min(k,4)).toFixed(3)}));
+    nowsvg.appendChild(_sv("line",{x1:x0,y1:yt,x2:plotW,y2:yt,stroke:"#199e70","stroke-width":0.8,"stroke-dasharray":"3 4","stroke-opacity":0.5}));
+    const t=_sv("text",{x:lx,y:(yt+11).toFixed(1),fill:"#199e70","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent=k+"R";nowsvg.appendChild(t);
   }
   const ys=yOf(tr.stop), ye=yOf(E);                         // 1R risk band entry->stop
   if(ys!=null&&ye!=null){
-    nowsvg.appendChild(_sv("rect",{x:0,y:Math.min(ys,ye),width:plotW,height:Math.abs(ys-ye),fill:"#e66767","fill-opacity":0.11}));
-    const t=_sv("text",{x:5,y:((ys+ye)/2+3.5).toFixed(1),fill:"#e66767","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent="−1R";nowsvg.appendChild(t);
+    nowsvg.appendChild(_sv("rect",{x:x0,y:Math.min(ys,ye),width:bw,height:Math.abs(ys-ye),fill:"#e66767","fill-opacity":0.11}));
+    const t=_sv("text",{x:lx,y:((ys+ye)/2+3.5).toFixed(1),fill:"#e66767","font-size":10,"font-family":"ui-monospace,Menlo,monospace","fill-opacity":0.85});t.textContent="−1R";nowsvg.appendChild(t);
   }
 }
 function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
