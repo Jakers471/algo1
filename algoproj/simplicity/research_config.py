@@ -16,5 +16,6 @@ from strategy_config import *  # noqa: F401,F403  (re-export the concrete config
 ACTIVE_FILTER = "high"        # filter_variants variant to test / overlay:
 #                               all | high | medium | low | high_medium | not_high | extremes
 STARTING_BALANCE = 100_000    # $ account size for backtest equity curves (research runs)
-BACKTEST_START = None         # e.g. "2018-01-01"; None = full available history
-BACKTEST_END = None           # e.g. "2024-12-31"; None = latest
+BACKTEST_START = None         # e.g. "2018-01-01"; None = full available history  (honored by run_backtest)
+BACKTEST_END = None           # e.g. "2024-12-31"; None = latest                  (honored by run_backtest)
+MAX_REPLAY_TRADES = 300       # trade-replay export size (research/chart/build_trades.py); 0 = all. CLI arg overrides.

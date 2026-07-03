@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 sys.path.insert(0, os.path.join(SIM, "research", "setup", "target_ladder"))
 import strategy_config as cfg
+import research_config as rcfg
 import shape_filter as sf
 import zone_calibration as zc
 import target_ladder as tlm
@@ -33,8 +34,7 @@ DATA = os.path.join(HERE, "data"); os.makedirs(DATA, exist_ok=True)
 RES = os.path.join(SIM, "research")
 BT = os.path.join(SIM, "backtest", "output", "trades.json")
 
-MAX_TRADES = 300       # only export the most-recent N trades (don't need all ~1600 -> keeps the page light).
-                       #   override:  python research/chart/build_trades.py 500   (0 = all)
+# how many most-recent trades to export -> research_config.MAX_REPLAY_TRADES (the run knob; CLI arg overrides).
 PRE_BARS = 12          # a few 5m bars before the setup session opens (context on the main chart)
 POST_BARS = 8          # a few bars after exit (see the outcome resolve)
 HTF_TARGET = 70        # downsample the trailing-week HTF slice to ~this many bars (keeps file small)
@@ -75,7 +75,7 @@ def _downsample(bars, target):
 
 def main():
     bt = json.load(open(BT))
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else MAX_TRADES
+    limit = int(sys.argv[1]) if len(sys.argv) > 1 else rcfg.MAX_REPLAY_TRADES
     trades = bt["trades"]                          # sorted by t_entry ascending
     if limit and len(trades) > limit:
         trades = trades[-limit:]                   # most-recent N (most relevant); set limit=0 for all

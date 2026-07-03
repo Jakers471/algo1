@@ -60,6 +60,11 @@ def main():
     df.index = pd.DatetimeIndex(df.index)
     yr = df.index.tz_convert(cfg.CLOCK).year
     df = df[yr >= cfg.ERA_START_YEAR]
+    # optional research_config date window (None = full era); honored so the knob isn't dead
+    if getattr(cfg, "BACKTEST_START", None):
+        df = df[df.index >= pd.Timestamp(cfg.BACKTEST_START, tz=cfg.CLOCK)]
+    if getattr(cfg, "BACKTEST_END", None):
+        df = df[df.index <= pd.Timestamp(cfg.BACKTEST_END, tz=cfg.CLOCK)]
     t = (df.index.view("int64") // 1_000_000_000).astype("int64")
     o, h, l, c = (df[k].to_numpy() for k in ("open", "high", "low", "close"))
     n = len(t)
