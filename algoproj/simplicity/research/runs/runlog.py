@@ -50,10 +50,13 @@ def config_snapshot():
             "filter_session": cfg.FILTER_SESSION.get("allow") if cfg.FILTER_SESSION.get("on") else "off",
             "filter_hour": cfg.FILTER_HOUR.get("allow") if cfg.FILTER_HOUR.get("on") else "off",
             "filter_day_vol": cfg.FILTER_DAY_VOL.get("regimes") if cfg.FILTER_DAY_VOL.get("on") else "off"}
-    # the tunable gate params live in strategy_config -> captured here so config == what produced the run
-    for k in ("PROFILE", "SHAPE", "ZONE", "BASE", "HTF", "FIB"):
+    # the tunable strategy blocks live in strategy_config -> captured here so config == what produced the run
+    for k in ("PROFILE", "SHAPE", "ZONE", "BASE", "HTF", "FIB", "LADDER", "SETUP", "ENTRY", "EXIT", "RISK"):
         if hasattr(cfg, k):
             snap[k.lower()] = getattr(cfg, k)
+    snap["config_source"] = getattr(cfg, "CONFIG_SOURCE", "strategy")
+    snap["costs"] = {"point_value": cfg.POINT_VALUE, "tick": cfg.TICK,
+                     "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS}
     try:
         import research_config as rcfg
         snap["active_filter"] = rcfg.ACTIVE_FILTER

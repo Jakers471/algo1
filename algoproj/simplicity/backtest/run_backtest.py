@@ -37,8 +37,9 @@ import target_ladder as tl
 import setup_arm
 import runlog
 
-# setup_arm gating: ON if env SIMP_ARM=1 (chart/CLI override) or cfg.SETUP["on"]. OFF = unconditional base rate.
-ARM_ON = os.environ.get("SIMP_ARM") == "1" or bool(getattr(cfg, "SETUP", {}).get("on"))
+# setup_arm gating: env SIMP_ARM forces it (1=on, 0=off) else cfg.SETUP["on"]. OFF = unconditional base rate.
+_arm_env = os.environ.get("SIMP_ARM")
+ARM_ON = (_arm_env == "1") if _arm_env is not None else bool(getattr(cfg, "SETUP", {}).get("on"))
 ARM_GATES = getattr(cfg, "SETUP", {}).get("gates", [])
 
 STARTING_BALANCE = getattr(cfg, "STARTING_BALANCE", 100_000)   # research-only knob; default when running --real
@@ -50,6 +51,9 @@ COMM_PTS = 2 * cfg.COMMISSION_PER_SIDE / cfg.POINT_VALUE     # round-trip commis
 EWIN = cfg.ENTRY["entry_window_bars"]
 HOLD = cfg.EXIT["max_hold_bars"]
 TRR = cfg.EXIT["target_r"]
+METHOD = cfg.EXIT.get("target", "ladder_rung")          # TP engine: "fixed_rr" | "ladder_rung" | "trailing"
+TRAIL_ARM = cfg.EXIT.get("trail_arm_r", 1.0)            # trailing: arm once +arm_r in profit
+TRAIL_GAP = cfg.EXIT.get("trail_gap_r", 1.5)            # trailing: hold stop this many R behind best
 
 
 def _load_profiles(name, sub):
@@ -88,15 +92,22 @@ def main():
     n_disarmed = 0
     for b in sorted(B.values(), key=lambda x: x["session_end"]):
         sid = b["sid"]
-        lad = tl.ladder({"base": b, "session": S.get(sid), "htf": H.get(sid)})
-        if not lad:
-            continue
+        htf_scale = H.get(sid) if cfg.HTF.get("on") else None   # HTF toggle is REAL: off -> not fed to the ladder
+        lad = tl.ladder({"base": b, "session": S.get(sid), "htf": htf_scale})
         H_, L_ = b["high"], b["low"]
         if H_ <= L_ or b.get("height_pct", 0) < cfg.ENTRY["min_coil_pct"]:   # skip degenerate / noise coils
             continue
-        up_tgt, dn_tgt = _first_rung(lad["up"]["targets"]), _first_rung(lad["down"]["targets"])
-        if up_tgt is None and dn_tgt is None:
-            continue
+        # target availability + per-side tradeability depend on the TP METHOD
+        if METHOD == "ladder_rung":
+            if not lad:
+                continue
+            up_tgt, dn_tgt = _first_rung(lad["up"]["targets"]), _first_rung(lad["down"]["targets"])
+            if up_tgt is None and dn_tgt is None:
+                continue
+            up_ok, dn_ok = up_tgt is not None, dn_tgt is not None
+        else:                                    # fixed_rr / trailing: target derived at fill; both sides tradeable
+            up_tgt = dn_tgt = None
+            up_ok = dn_ok = True
         i0 = int(np.searchsorted(t, b["session_end"], "right"))
         if i0 <= 0 or i0 >= n:   # profile's session lies outside the era-filtered bars — not tradeable here
             continue             # (pre-era profiles else map to bar 0 = coil vs a different price regime, ~2500pt fake risk)
@@ -110,8 +121,8 @@ def main():
         edir = entry = stop = tgt = risk = None
         ei = -1
         for i in range(i0, min(i0 + EWIN, n)):
-            up = h[i] >= H_ and up_tgt is not None
-            dn = l[i] <= L_ and dn_tgt is not None
+            up = h[i] >= H_ and up_ok
+            dn = l[i] <= L_ and dn_ok
             if up and dn:
                 edir = "up" if c[i] >= (H_ + L_) / 2 else "down"
             elif up:
@@ -121,27 +132,54 @@ def main():
             if edir:
                 if edir == "up":
                     entry = (o[i] if o[i] > H_ else H_) + SLIP     # fill at the level, or the open on a gap
-                    stop, tgt = L_, up_tgt; risk = entry - stop
+                    stop = L_; risk = entry - stop
                 else:
                     entry = (o[i] if o[i] < L_ else L_) - SLIP
-                    stop, tgt = H_, dn_tgt; risk = stop - entry
+                    stop = H_; risk = stop - entry
+                if risk > 0:                                       # TAKE-PROFIT target per the configured method
+                    if METHOD == "fixed_rr":
+                        tgt = entry + TRR * risk if edir == "up" else entry - TRR * risk
+                    elif METHOD == "ladder_rung":
+                        tgt = up_tgt if edir == "up" else dn_tgt
+                    else:                                          # trailing: no fixed TP
+                        tgt = None
                 ei = i
                 break
         if entry is None or risk <= 0:
             continue
         # --- manage from the NEXT bar (no look-ahead within the entry bar) ---
         exit_px = None; outcome = None; exit_i = None
-        for i in range(ei + 1, min(ei + HOLD, n)):
-            if edir == "up":
-                if l[i] <= stop:
-                    exit_px, outcome, exit_i = stop - SLIP, "stop", i; break
-                if h[i] >= tgt:
-                    exit_px, outcome, exit_i = tgt, "target", i; break
-            else:
-                if h[i] >= stop:
-                    exit_px, outcome, exit_i = stop + SLIP, "stop", i; break
-                if l[i] <= tgt:
-                    exit_px, outcome, exit_i = tgt, "target", i; break
+        if METHOD == "trailing":
+            best = entry; trail = stop; armed = False
+            for i in range(ei + 1, min(ei + HOLD, n)):
+                if edir == "up":
+                    if l[i] <= trail:      # trailed out: a WIN if the stop was ratcheted into profit, else a base-stop loss
+                        exit_px, outcome, exit_i = trail - SLIP, ("target" if armed else "stop"), i; break
+                    best = max(best, h[i])
+                    if not armed and (best - entry) >= TRAIL_ARM * risk:
+                        armed = True
+                    if armed:
+                        trail = max(trail, best - TRAIL_GAP * risk)
+                else:
+                    if h[i] >= trail:
+                        exit_px, outcome, exit_i = trail + SLIP, ("target" if armed else "stop"), i; break
+                    best = min(best, l[i])
+                    if not armed and (entry - best) >= TRAIL_ARM * risk:
+                        armed = True
+                    if armed:
+                        trail = min(trail, best + TRAIL_GAP * risk)
+        else:                                                      # fixed_rr / ladder_rung: fixed target vs stop
+            for i in range(ei + 1, min(ei + HOLD, n)):
+                if edir == "up":
+                    if l[i] <= stop:
+                        exit_px, outcome, exit_i = stop - SLIP, "stop", i; break
+                    if h[i] >= tgt:
+                        exit_px, outcome, exit_i = tgt, "target", i; break
+                else:
+                    if h[i] >= stop:
+                        exit_px, outcome, exit_i = stop + SLIP, "stop", i; break
+                    if l[i] <= tgt:
+                        exit_px, outcome, exit_i = tgt, "target", i; break
         if exit_px is None:
             exit_i = min(ei + HOLD, n) - 1
             exit_px, outcome = c[exit_i], "time"
@@ -159,7 +197,7 @@ def main():
                        "exit": round(exit_px, 2), "risk_pts": round(risk, 1), "net_pts": round(net, 2),
                        "R": round(net / risk, 3), "outcome": outcome, "t_exit": int(t[exit_i]),
                        # --- geometry for the chart trade-replay (source of truth = this sim) ---
-                       "stop": round(stop, 2), "target": round(tgt, 2), "coil_hi": round(H_, 2), "coil_lo": round(L_, 2),
+                       "stop": round(stop, 2), "target": round(tgt if tgt is not None else exit_px, 2), "coil_hi": round(H_, 2), "coil_lo": round(L_, 2),
                        "entry_i": int(ei), "exit_i": int(exit_i), "t_entry": int(t[ei]),
                        # --- excursion + duration for the analytics report ---
                        "mae": round(mae, 5), "mfe": round(mfe, 5), "etd": round(etd, 5), "bars": int(exit_i - ei)})
@@ -188,8 +226,10 @@ def main():
 
     _cond = ("setup_arm ON [" + "+".join(ARM_GATES) + f"] — disarmed {n_disarmed} coils") if ARM_ON \
         else "UNCONDITIONAL (no gating — base rate)"
-    print(f"BACKTEST -- target_ladder trades, {_cond}, era>={cfg.ERA_START_YEAR}, "
-          f"target>={TRR}R, 1 contract")
+    _tp = {"fixed_rr": f"TP fixed 1:{TRR}", "ladder_rung": f"TP ladder>={TRR}R",
+           "trailing": f"TP trail arm{TRAIL_ARM}/gap{TRAIL_GAP}"}.get(METHOD, METHOD)
+    _htf = "htf-on" if cfg.HTF.get("on") else "htf-off"
+    print(f"BACKTEST -- coil breakout, {_cond}, {_tp} ({_htf}), era>={cfg.ERA_START_YEAR}, 1 contract")
     print(f"  trades      {n_t:,}   ({oc.get('target',0)} target / {oc.get('stop',0)} stop / {oc.get('time',0)} time)")
     print(f"  win rate    {wr:.1f}%")
     print(f"  avg R       {d['R'].mean():+.3f}   (median {d['R'].median():+.2f})")
@@ -203,7 +243,8 @@ def main():
     source = getattr(cfg, "CONFIG_SOURCE", "research")   # which config produced this run -> runs saved separated by it
     rec = runlog.record("backtest",
                   {"target_r": TRR, "entry_window": EWIN, "max_hold": HOLD, "entry": cfg.ENTRY["type"],
-                   "stop": cfg.EXIT["stop"], "target": cfg.EXIT["target"],
+                   "stop": cfg.EXIT["stop"], "tp_method": METHOD, "htf_on": bool(cfg.HTF.get("on")),
+                   "trail": f"{TRAIL_ARM}/{TRAIL_GAP}" if METHOD == "trailing" else None,
                    "conditional": ("+".join(ARM_GATES) if ARM_ON else "none (base rate)")},
                   {"trades": n_t, "win_pct": round(float(wr), 1), "avg_R": round(float(d["R"].mean()), 3),
                    "total_R": round(float(d["R"].sum()), 1), "total_pnl": round(float(d["pnl"].sum()), 0),
@@ -212,6 +253,7 @@ def main():
     # the DETAILED, machine-readable per-run breakdown + its clean HTML view live under research/runs (not here)
     import make_report
     ctx["run"] = {"run_id": rec["run_id"], "git": rec["git"], "note": rec["note"], "kind": "backtest", "source": source}
+    ctx["config_snapshot"] = rec.get("config", {})   # the FULL strategy_config that produced this run -> into analysis.json
     make_report.build(trades_by_entry, ctx)
     print(f"RESULT {rec['run_id']} {source}")   # machine-readable line the chart server (serve.py) parses
 

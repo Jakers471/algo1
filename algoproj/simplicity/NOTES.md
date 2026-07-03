@@ -728,3 +728,45 @@ DATA range** — data ends 2025-01-10, but the picker had defaulted to the 2026 
 "no trades" → serve.py 500. Now `run_backtest` prints a clear empty-window reason (`... matched 0 bars (data
 available 2005-01-11..2025-01-10)`), `serve.py` surfaces it to the chart, and a stray double-bind on port 8765
 was cleared. (NQ data is ~18mo stale vs today — refresh via `data/build_data.py` when wanted.)
+
+### F40 — config-driven TP engines + real scale toggles → FIRST honestly-positive config; + engine promotions (2026-07-03)
+Three things this session, all wired for real and verified end-to-end.
+
+**1. Scale toggles made REAL.** `HTF["on"]` now gates whether htf levels feed the `target_ladder` in the
+**backtest** (not just the chart) — off ⇒ session-only ladder targets. `run_backtest` passes
+`htf=None` when off; `build_trades` already gates the replay cards. base = the core trade universe (coil =
+entry/1R), always used; its flag gates only the base-card display. So "off" now means *not used*, everywhere.
+
+**2. New config-driven TAKE-PROFIT engines** (`EXIT["target"]` selector, all wired):
+  - `fixed_rr`  — a clean constant 1:target_r TP (e.g. 1:3), independent of the ladder.
+  - `ladder_rung` — the existing multi-scale first-rung ≥ target_r.
+  - `trailing` — no fixed TP; arm at +`trail_arm_r`, hold the stop `trail_gap_r` behind the best price.
+Target is derived at FILL for fixed_rr/trailing (both sides tradeable); the manage loop branches on the method.
+
+**RESULT — the first positive expectancy** (era≥2015, after costs, honest fills):
+
+| config | trades | win% | avg R | PF | maxDD |
+|---|---|---|---|---|---|
+| ladder 2R (old base rate) | 1,592 | 29.6% | -0.017 | 0.97 | 75R |
+| fixed_rr 1:3 (ungated) | 6,124 | 34.1% | +0.007 | 1.01 | 141R |
+| trailing (ungated) | 6,124 | 39.8% | +0.026 | 1.05 | 71R |
+| **trailing + setup_arm (default)** | 959 | **47.8%** | **+0.035** | **1.10** | **19R** |
+
+Trailing beat both fixed targets — it directly cures F39's 68%-time-out disease (rides partial moves instead
+of dying at a far target). And **setup_arm gating STACKS on trailing**: expectancy +0.026→+0.035R, PF
+1.05→1.10, DD 71R→19R. So the DEFAULTS are now `EXIT.target="trailing"` + `SETUP["on"]=True` (the graduated
+config). Honest caveats (F13/F28): PF 1.10 is modest and unvalidated — still needs OOS / ES / walk-forward
+before it means anything; ~96 trades/yr. But it's the first time gating + exit + costs all point positive.
+`SIMP_ARM=0/1` forces gating off/on for A/Bs regardless of config.
+
+**3. Promotions to engine/ (5/13 → 8/13 WIRED).** Migrated the mature, self-contained pieces out of
+research: `shape_filter` + `zone_calibration` → `engine/gates/`; `setup_arm` + `target_ladder` →
+`engine/setup/` (each = a pure function + the engine path-bootstrap + `DESCRIBE`/`check()`, reading params
+live from strategy_config). `run_simplicity` now shows shape_filter / zone_calibration / setup_arm WIRED.
+`fib_bias` deliberately NOT promoted (it's a study with no live edge, F11). The backtest still runs off the
+research copies for now (research = the test bench); rewiring the backtest onto engine/ is a later migration.
+
+**Also:** every backtest now saves the FULL config that produced it — `runlog.config_snapshot()` extended to
+LADDER/SETUP/ENTRY/EXIT/RISK/costs/source, and `analytics.analyze` writes it as `analysis.json.config_snapshot`
+(so each run's report is self-describing / reproducible). And the trade-replay module cards are config-driven
+(only enabled scales show; disabled ones hidden, trade lines stay truthful from the sim record).

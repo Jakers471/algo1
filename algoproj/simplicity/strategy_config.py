@@ -48,9 +48,15 @@ ENTRY = {
 }
 EXIT = {
     "stop": "coil_edge",         # 1R = the base coil (the other edge)
-    "target": "ladder_rung",     # take-profit = first target_ladder rung with R:R >= target_r
-    "target_r": 2.0,
-    "max_hold_bars": 156,        # time-stop: exit at market if neither hit (~2 sessions)
+    # --- TAKE-PROFIT ENGINE (pick ONE; all config-driven, all wired) --------------------
+    "target": "trailing",        # [WIRED] "fixed_rr" | "ladder_rung" | "trailing"
+    #   fixed_rr    -> a clean, constant TP at 1:target_r (e.g. 1:3), independent of the ladder
+    #   ladder_rung -> first target_ladder rung with R:R >= target_r (multi-scale geometry)
+    #   trailing    -> no fixed TP; ride a trailing stop (arm at +arm_r, hold gap_r behind best)
+    "target_r": 3.0,             # fixed_rr: the fixed R:R (1:3)   ·   ladder_rung: min rung R:R to take
+    "trail_arm_r": 1.0,          # trailing: start trailing once the trade reaches +arm_r in profit
+    "trail_gap_r": 1.5,          # trailing: keep the stop this many R behind the best price reached
+    "max_hold_bars": 156,        # time-stop: exit at market if nothing hit (~2 sessions)
     "same_bar": "stop_first",    # if stop & target hit in one bar, assume STOP (pessimistic / honest)
 }
 RISK = {
@@ -71,19 +77,20 @@ CONFIG_SOURCE = "strategy"
 # CHANGING THESE requires rebuilding the profile JSONs (run the volume_profile / base_profile /
 # htf_profile scripts) before the backtest sees the change — they're baked in at build time.
 #
-# HONESTY NOTE on the scale toggles: BASE["on"]/HTF["on"] currently only affect the CHART display.
-# The BACKTEST always uses all three profiles (base = the coil/trade universe, session + htf = ladder
-# targets), regardless of these flags. Making the toggles real is part of the setup_arm work.
+# SCALE TOGGLES are now REAL (2026-07-03): HTF["on"] gates whether htf levels feed the target_ladder in
+# the backtest (off -> session-only ladder targets) AND whether the htf card shows. BASE is the core trade
+# universe (the coil = entry + 1R), always used by the backtest; its "on" flag gates only the base-card
+# DISPLAY. session (PROFILE) is the always-on base dimension. (Only relevant when EXIT.target="ladder_rung".)
 PROFILE = {"row_size": 2.0, "va_pct": 0.70}                    # [WIRED] the 5m session profile (base dimension)
-BASE = {"on": False, "band_mult": 5.0, "min_bars": 8}          # [CHART toggle / WIRED params] the coil (LTF)
-HTF  = {"on": False, "days": 7, "bins": 70, "min_bars": 200}   # [CHART toggle / WIRED params] trailing composite
+BASE = {"on": False, "band_mult": 5.0, "min_bars": 8}          # [WIRED core / display toggle] the coil (LTF)
+HTF  = {"on": False, "days": 7, "bins": 70, "min_bars": 200}   # [WIRED when on] trailing composite -> ladder targets
 # multi-scale TARGET LADDER (R:R geometry): 1R = the base coil; targets = the larger scales' VA/POC/extremes.
 LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}   # [WIRED]
 
 # The confluence ARM/DISARM engine (setup_arm, v1 built 2026-07-03). Reads the gates above.
 # [WIRED when "on"] — flip "on" True to gate the backtest; False = unconditional base rate.
 SETUP = {
-    "on": False,                          # master switch: apply setup_arm gating (False = base rate)
+    "on": True,                           # master switch: apply setup_arm gating (False = base rate). ON: it adds lift (F40)
     "gates": ["session", "shape_ok", "rr_min"],   # v1 confluence stack (ANDed) — the enabled sensors
     "arm_rule": "all",                    # ARM when ALL enabled gates pass (arm-once)
     "invalidate": None,                   # what DISARMS + pulls the resting orders mid-window (v2)

@@ -31,13 +31,15 @@ def panel(cfg):
             _it("entry", f"{cfg.ENTRY['type']} · tf {cfg.ENTRY['entry_tf']} · win {cfg.ENTRY['entry_window_bars']}", "wired"),
             _it("min coil %", cfg.ENTRY["min_coil_pct"], "wired"),
             _it("stop", f"{cfg.EXIT['stop']} = 1R", "wired"),
-            _it("target", f"{cfg.EXIT['target']} · {cfg.EXIT['target_r']}R", "wired"),
+            _it("take-profit", (f"trailing · arm {cfg.EXIT['trail_arm_r']} / gap {cfg.EXIT['trail_gap_r']}"
+                                if cfg.EXIT['target'] == "trailing"
+                                else f"{cfg.EXIT['target']} · {cfg.EXIT['target_r']}R"), "wired"),
             _it("time stop", f"{cfg.EXIT['max_hold_bars']} bars", "wired"),
             _it("risk %/trade", f"{cfg.RISK['risk_per_trade_pct']}%", "wired")]},
         {"title": "Structure — feeds backtest (rebuild JSON after edits)", "items": [
             _it("volume_profile · 5m", f"row {cfg.PROFILE['row_size']} · va {cfg.PROFILE['va_pct']}", "wired"),
             _it("base_profile", ("on" if cfg.BASE["on"] else "off (chart)") + f" · band {cfg.BASE['band_mult']} · min {cfg.BASE['min_bars']}", "wired"),
-            _it("htf_profile", ("on" if cfg.HTF["on"] else "off (chart)") + f" · days {cfg.HTF['days']} · bins {cfg.HTF['bins']}", "wired"),
+            _it("htf_profile", ("on -> ladder targets" if cfg.HTF["on"] else "off (not used)") + f" · days {cfg.HTF['days']} · bins {cfg.HTF['bins']}", "wired" if cfg.HTF["on"] else "sensor"),
             _it("target_ladder", f"min_rr {cfg.LADDER['min_rr']} · {'+'.join(cfg.LADDER['sources'])}", "wired"),
             _it("setup_arm", ("ON · " + "+".join(cfg.SETUP.get("gates", []))) if cfg.SETUP.get("on")
                 else "built · off (base rate)", "wired" if cfg.SETUP.get("on") else "sensor")]},

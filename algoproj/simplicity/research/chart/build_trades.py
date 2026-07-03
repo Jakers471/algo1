@@ -105,10 +105,15 @@ def main():
         P = S.get(sid)
         if not P:
             skipped += 1; continue
-        P = _enrich(P); base = _enrich(B.get(sid)); htf = _enrich(H.get(sid))
+        P = _enrich(P)
+        # module cards are CONFIG-DRIVEN (match the main chart): a larger-dimension card is attached only when
+        # that scale is ON in config. session = the always-on base dimension; base/htf appear once wired + enabled.
+        # (The trade's entry/stop/target lines come from the sim record, so they stay truthful regardless.)
+        base = _enrich(B.get(sid)) if cfg.BASE.get("on") else None
+        htf = _enrich(H.get(sid)) if cfg.HTF.get("on") else None
         ns, no = nxt.get(sid, (None, None))
         P["next_session"] = ns; P["next_open"] = no; P["duration_sec"] = int(P["end"] - P["start"])
-        lad = tlm.ladder({"base": base, "session": P, "htf": htf})
+        lad = tlm.ladder({"base": base, "session": P, "htf": htf})   # None when base is off (needs the coil for 1R)
         # main window: from just before the setup session through the trade's exit
         t0 = min(P["start"], tr["t_entry"]) - PRE_BARS * step
         t1 = max(P["end"], tr["t_exit"]) + POST_BARS * step

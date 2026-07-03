@@ -160,5 +160,6 @@ def analyze(trades, ctx):
         "groups": {"all": g_all, "long": g_long, "short": g_short},
         "equity": equity_series,
         "config": {k: ctx[k] for k in ("starting_balance", "risk_pct", "era_start", "target_r") if k in ctx},
+        "config_snapshot": ctx.get("config_snapshot", {}),   # FULL strategy_config that produced this run (provenance)
         "trades": trades,   # the run's full trade list -> analysis.json is a self-contained, mineable archive
     }

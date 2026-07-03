@@ -55,6 +55,13 @@ not "this is what produces the backtest."
 `_archive/strategy_config_full_2026-07-02.py`; the readable mock is `config_proposal_v2.yaml` +
 `viz/config_viz.html`. The chart sidebar renders these same wiring tags live (`serve.py` `/config`).
 
+**Update 2026-07-03 (NOTES F40):** `setup_arm` is now BUILT + default ON, so `shape_filter` + `zone_calibration`
+flipped from `[SENSOR]` (measured, not gating) to **`[WIRED]` — they now gate the backtest** (via setup_arm).
+`session filter` likewise gates now. `htf` toggle is **real** (off ⇒ not fed to the ladder, not just hidden).
+New `[WIRED]` take-profit selector (`fixed_rr` / `ladder_rung` / `trailing`; default `trailing`). Promotions:
+shape_filter · zone_calibration · setup_arm · target_ladder → `engine/` (WIRED 8/13). `fib_bias` stays a
+`[SENSOR]`/study (no live edge). Every run now stores its full `config_snapshot` in `analysis.json`.
+
 ---
 
 ## Phase 0 — Foundation & workflow
@@ -129,8 +136,13 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` Entry: **resting orders before the next open** — breakout stops beyond the range and/or fades at the range edge (bias-gated) — `research/execution/entry_trigger`
 - `[ ]` Value-Area breakout + volume confirmation (the trigger); entry TF smaller than the range TF
 - `[ ]` Stop placement (range/VA edge = invalidation) · breakeven logic · DCA-into-range (decide)
-- `[ ]` Risk / position sizing — `strategy_config.RISK` + `STARTING_BALANCE`
-- `[ ]` **Aggressive volume-based trailing stop** — trail down/up as the move confirms — `research/execution/trailing_stops`
+- `[R]` Risk / position sizing — `strategy_config.RISK` + `STARTING_BALANCE` (fixed-fractional, wired in the backtest)
+- `[R]` **Config-driven TAKE-PROFIT engines (NOTES F40)** — `EXIT["target"]` selector: `fixed_rr` (constant 1:R) ·
+  `ladder_rung` (multi-scale) · `trailing` (arm at +arm_r, hold gap_r behind best). All wired in the backtest.
+  **Trailing won** (first positive expectancy: trailing + setup_arm = PF 1.10 / +0.035R / 47.8% / DD 19R) — it
+  cures the F39 time-out problem. Defaults now `trailing` + `SETUP.on=True`.
+- `[R]` **Trailing stop (fixed-R version) BUILT** — currently inline in `run_backtest` (arm/gap in R). TODO:
+  the *volume-based* aggressive trail + breakeven + a promoted `engine/execution/trailing_stop.py` — `research/execution/trailing_stops` (still a stub).
 
 ## Phase 7 — Measurement & backtest (FUTURE — blocked on Phases 5-6)
 - `[R]` **Per-session module cards** — Indicators `modules` on, click a session (NQ 1m/5m) → floating card
@@ -245,3 +257,8 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 | volume_profile | 2026-07-02 | `research/structure/volume_profile` → `engine/volume_profile.py` (per-session POC + value area; WIRED 4/10) |
 | session_state | 2026-07-02 | built directly in engine (the spine) → `engine/session_state.py` (per-bar causal session state; WIRED 5/13) |
 | volume_profile (H-L fix) | 2026-07-02 | re-promoted `research/structure/volume_profile` → `engine/structure/volume_profile.py` (spread volume across bar H-L, not close-only; NOTES F5) |
+| shape_filter | 2026-07-03 | `research/gates/profile_shape_filter` → `engine/gates/shape_filter.py` (pure `score(profile)`; params live from `cfg.SHAPE`; NOTES F40) |
+| zone_calibration | 2026-07-03 | `research/gates/zone_calibration` → `engine/gates/zone_calibration.py` (pure `calibrate(profile)`; `cfg.ZONE`; NOTES F40) |
+| target_ladder | 2026-07-03 | `research/setup/target_ladder` → `engine/setup/target_ladder.py` (pure `ladder(scales)`; `cfg.LADDER`; disabled scales drop out; NOTES F40) |
+| setup_arm | 2026-07-03 | `research/setup/setup_arm` → `engine/setup/setup_arm.py` (v1 `decide(coil)` = session AND shape_ok AND rr_min; imports engine gates; NOTES F40) |
+| — engine WIRED 5/13 → **8/13** | 2026-07-03 | shape_filter / zone_calibration / setup_arm now WIRED in `run_simplicity`. Backtest still runs off research copies (test bench); rewiring the backtest onto engine/ is a later migration. |
