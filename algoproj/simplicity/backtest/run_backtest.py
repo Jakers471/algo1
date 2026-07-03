@@ -114,11 +114,11 @@ def main():
         if i0 <= 0 or i0 >= n:   # profile's session lies outside the era-filtered bars — not tradeable here
             continue             # (pre-era profiles else map to bar 0 = coil vs a different price regime, ~2500pt fake risk)
         # --- setup_arm gate: ARM this coil only if the confluence stack passes (else the base rate) ---
-        if ARM_ON:
-            armed, _why = setup_arm.decide(b, S.get(sid), H.get(sid), cfg=cfg)
-            if not armed:
-                n_disarmed += 1
-                continue
+        # compute the gates ALWAYS (so the trade-replay state panel can show them); gate only when ARM_ON.
+        arm_pass, arm_info = setup_arm.decide(b, S.get(sid), H.get(sid), cfg=cfg)
+        if ARM_ON and not arm_pass:
+            n_disarmed += 1
+            continue
         # --- entry phase: first coil breakout within the window (OCO). Stop order fills at the coil edge. ---
         edir = entry = stop = tgt = risk = None
         ei = -1
@@ -151,9 +151,11 @@ def main():
             continue
         # --- manage from the NEXT bar (no look-ahead within the entry bar) ---
         exit_px = None; outcome = None; exit_i = None
+        path = []                                                  # per-bar LIVE stop (the trailing ratchet) -> the replay renders it
         if METHOD == "trailing":
             best = entry; trail = stop; armed = False
             for i in range(ei + 1, min(ei + HOLD, n)):
+                path.append([int(t[i]), round(trail, 2), 1 if armed else 0])   # [t, live stop, armed] coming into this bar
                 if edir == "up":
                     if l[i] <= trail:      # trailed out: a WIN if the stop was ratcheted into profit, else a base-stop loss
                         exit_px, outcome, exit_i = trail - SLIP, ("target" if armed else "stop"), i; break
@@ -172,6 +174,7 @@ def main():
                         trail = min(trail, best + TRAIL_GAP * risk)
         else:                                                      # fixed_rr / ladder_rung: fixed target vs stop
             for i in range(ei + 1, min(ei + HOLD, n)):
+                path.append([int(t[i]), round(stop, 2), 1])        # stop is constant for fixed methods
                 if edir == "up":
                     if l[i] <= stop:
                         exit_px, outcome, exit_i = stop - SLIP, "stop", i; break
@@ -201,6 +204,12 @@ def main():
                        # --- geometry for the chart trade-replay (source of truth = this sim) ---
                        "stop": round(stop, 2), "target": round(tgt if tgt is not None else exit_px, 2), "coil_hi": round(H_, 2), "coil_lo": round(L_, 2),
                        "entry_i": int(ei), "exit_i": int(exit_i), "t_entry": int(t[ei]),
+                       # --- LIVE replay: per-bar trailing-stop path + the setup_arm gate states that armed it ---
+                       "method": METHOD, "path": path,
+                       "arm": (arm_info.get("gates") if arm_info else None),
+                       "arm_shape": (arm_info.get("shape_score") if arm_info else None),
+                       "arm_rr": (arm_info.get("rr") if arm_info else None),
+                       "armed": bool(ARM_ON),
                        # --- excursion + duration for the analytics report ---
                        "mae": round(mae, 5), "mfe": round(mfe, 5), "etd": round(etd, 5), "bars": int(exit_i - ei)})
 
@@ -215,7 +224,10 @@ def main():
            "max_hold_bars": HOLD, "entry_tf": "5m", "point_value": cfg.POINT_VALUE,
            "starting_balance": STARTING_BALANCE, "risk_pct": cfg.RISK["risk_per_trade_pct"],
            "n_bars": int(n), "start_ts": int(t[0]), "end_ts": int(t[-1]), "bar_seconds": 300,
-           "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS, "tick": cfg.TICK}
+           "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS, "tick": cfg.TICK,
+           # --- take-profit / gating config, so the trade-replay state panel reflects the actual strategy ---
+           "tp_method": METHOD, "trail_arm_r": TRAIL_ARM, "trail_gap_r": TRAIL_GAP,
+           "setup_on": ARM_ON, "arm_gates": ARM_GATES}
     json.dump({"config": ctx, "trades": trades_by_entry}, open(os.path.join(OUT, "trades.json"), "w"))
     d["cumR"] = d["R"].cumsum()
     risk_d = STARTING_BALANCE * cfg.RISK["risk_per_trade_pct"] / 100.0   # $ risked per trade (fixed fractional)

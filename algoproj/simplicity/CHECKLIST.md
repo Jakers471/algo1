@@ -239,7 +239,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[ ]` **Bar-aggregation engine → best entry timeframe** — intercept X source TFs, aggregate to Y target
   TFs, decipher which timeframes line up best for R:R + scores (the "which TF to enter on" decision from the
   structure's own durations, F21). Deep dive later.
-- `[ ]` **Replay state panel** — ARM/DISARM + validations/invalidations on the session module card, once `setup_arm` gates exist. (NOTES F8.)
+- `[R]` **Replay state panel — BUILT (NOTES F41)** — the trade-replay now shows per-bar arm-gate states
+  (session/shape/rr pills), resting orders (buy/sell-stop at the coil edges), and the **trailing stop as a live
+  staircase** climbing bar-by-bar, + a state panel (stage / method / mark-to-market R / live stop). Config-driven
+  off the run's exported config. The sim exports the per-bar `path` + `arm`; the page renders (F31, no re-sim).
+  TODO: continuous DISARM validations/invalidations once setup_arm v2 (mid-window) exists.
 - `[ ]` **News filter gate** (`research/gates/news_filter`) — red-folder fundamental events from ForexFactory
   (https://www.forexfactory.com/calendar; manual download → CSV/parquet in ET); `blocked(ts, window=30min)` so
   the backtest/setup_arm skip bars within ±30min of a high-impact release (FOMC/CPI/NFP). A WHEN-to-trade gate

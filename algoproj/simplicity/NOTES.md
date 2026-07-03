@@ -770,3 +770,21 @@ research copies for now (research = the test bench); rewiring the backtest onto 
 LADDER/SETUP/ENTRY/EXIT/RISK/costs/source, and `analytics.analyze` writes it as `analysis.json.config_snapshot`
 (so each run's report is self-describing / reproducible). And the trade-replay module cards are config-driven
 (only enabled scales show; disabled ones hidden, trade lines stay truthful from the sim record).
+
+### F41 — LIVE trade-replay: arm states + resting orders + the trailing stop shown bar-by-bar (2026-07-03)
+To see WHY trades die under trailing (not just the final R), extended the trade-replay into a full per-trade
+LIVE replay — the "replay state panel" parked since F8, now buildable because setup_arm exists. ACCURACY
+(F31): the sim is the source of truth — `run_backtest` now EXPORTS, per trade, the per-bar **`path`**
+(`[t, live-stop, armed]` — the actual trailing ratchet) + the **`arm`** gate states (session/shape/rr + the
+shape_score & rr values) + `method`; the page RENDERS them, never re-simulates. (build_trades needed no change
+— `rec = dict(tr)` carries new fields through.) On the page, as you scrub/play a trade:
+  - **resting orders** drawn pre-entry (buy-stop ↑ / sell-stop ↓ at the coil edges, OCO); the untriggered side
+    fades after the fill;
+  - the **trailing stop as a stepped staircase** climbing bar-by-bar (you watch it ratchet up and then take you
+    out) — for fixed methods it's a flat line;
+  - a **state panel** (top-left) that updates each bar: STAGE (resting → in-trade · pre-arm → trailing → EXIT),
+    the setup_arm gate pills (session/shape/rr, green/red), the TP method (trailing arm/gap, or fixed R), and
+    live mark-to-market R / live stop / R-to-stop.
+Everything is CONFIG-DRIVEN off the run's exported config (tp_method, trail_arm/gap, setup_on) — so the replay
+shows whatever the strategy actually did. This is the diagnostic surface for the trailing "still dying" problem:
+step a losing trade and watch whether the trail armed too early / sat too tight / gave back an MFE.

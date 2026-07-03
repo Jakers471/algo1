@@ -72,6 +72,12 @@ button:hover:not(:disabled):not(.on){border-color:var(--acc)}
 .lttl{font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
 .lr{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid #1c2330;font-size:11.5px}
 .lr span{color:var(--mut)}.lr .rr{color:var(--ink2);min-width:46px;text-align:right;font-weight:600}
+.statepanel{position:absolute;top:10px;left:10px;z-index:4;background:rgba(13,13,13,.9);border:1px solid var(--ring);border-radius:9px;padding:9px 11px;font-size:11.5px;min-width:186px;pointer-events:none;font-variant-numeric:tabular-nums}
+.statepanel .stage{font-weight:700;letter-spacing:.3px;margin-bottom:6px}
+.statepanel .sh{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:6px 0 3px}
+.statepanel .sr{display:flex;justify-content:space-between;gap:10px;padding:1.5px 0}
+.statepanel .sr span{color:var(--mut)}.statepanel .sr b{font-weight:600}
+.gpill{display:inline-block;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:700;margin:1px 3px 0 0;border:1px solid}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span>trade replay</span></h1>
@@ -88,6 +94,7 @@ button:hover:not(:disabled):not(.on){border-color:var(--acc)}
   <div class="chartwrap">
     <div id="chart"></div>
     <svg id="nowsvg" class="nowsvg"></svg>
+    <div class="statepanel" id="statepanel"></div>
     <div class="rpc">
       <button class="rpb" data-rp="start">|&lt;</button><button class="rpb" data-rp="back">&lt;</button>
       <button class="rpb" id="rpPlay">play</button>
@@ -228,7 +235,8 @@ function drawTrade(tr){
   const Rr=Math.abs(tr.target-tr.entry)/(tr.risk_pts||1);
   line(tr.entry,"#f0b000",0,"entry "+tr.entry);
   line(tr.stop,"#e66767",2,"stop −1R");
-  line(tr.target,"#199e70",2,"target +"+fmtR(Rr)+"R");
+  if(tr.method==="trailing") line(tr.target,"#2ebd85",2,"trail exit "+tr.target);   // trailing has no fixed target
+  else line(tr.target,"#199e70",2,"target +"+fmtR(Rr)+"R");
   const up=tr.dir==="up";
   candle.setMarkers([
     {time:tr.t_entry,position:up?"belowBar":"aboveBar",color:"#f0b000",shape:up?"arrowUp":"arrowDown",text:"ENTRY"},
@@ -275,6 +283,7 @@ function renderNow(){
   const stage=RP.k<RP.e0?"pre-entry":atExit?tr.outcome.toUpperCase():"in trade";
   document.getElementById("rpInfo").innerHTML=
     `bar ${RP.k-RP.e0+1}/${RP.e1-RP.e0+1} &middot; ${_t12(bar[0])} &middot; <b style="color:${col}">${rShow>=0?"+":""}${rShow}R</b> &middot; ${stage}`;
+  updateState(tr);   // the live arm-state / trailing / R panel
 }
 const nowsvg=document.getElementById("nowsvg"), chartEl=document.getElementById("chart");
 function _sv(tag,a){const e=document.createElementNS("http://www.w3.org/2000/svg",tag);for(const k in a)e.setAttribute(k,a[k]);return e;}
@@ -282,7 +291,7 @@ function redrawOverlay(){
   while(nowsvg.firstChild)nowsvg.removeChild(nowsvg.firstChild);
   const box=chartEl.getBoundingClientRect();
   nowsvg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`);
-  if(CUR)drawBands(CUR,box);
+  if(CUR){drawBands(CUR,box); drawResting(CUR,box); if(RP.k>=RP.e0)drawTrail(CUR,box);}
   drawNowLine(box);
 }
 // option 03 — R-multiple ladder: green reward bands (opacity grows per R) + a red 1R risk band. both directions.
@@ -307,6 +316,53 @@ function drawBands(tr,box){
 function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
   const x=chart.timeScale().timeToCoordinate(bar[0]);if(x==null)return;
   nowsvg.appendChild(_sv("line",{x1:x,y1:0,x2:x,y2:box.height,stroke:"#f0b000","stroke-width":1.3,"stroke-opacity":0.9}));}
+
+// ---- LIVE: resting orders (pre-entry) + the trailing-stop staircase + the state panel (all from the sim) ----
+function pathStopAt(tr,t){if(!tr.path)return null;let s=null;for(const p of tr.path){if(p[0]<=t)s=p;else break;}return s;}
+function drawResting(tr,box){    // the two resting breakout-STOP orders at the coil edges (OCO) — bright pre-entry
+  const preEntry=RP.k<RP.e0, up=tr.dir==="up";
+  const b=tr.scales.base||tr.scales.session; let x0=chart.timeScale().timeToCoordinate(b?b.start:tr.t_entry); if(x0==null||x0<0)x0=0;
+  const rest=(price,col,lab,live)=>{const y=candle.priceToCoordinate(price);if(y==null)return;
+    nowsvg.appendChild(_sv("line",{x1:x0,y1:y,x2:box.width,y2:y,stroke:col,"stroke-width":1.1,"stroke-dasharray":"6 4","stroke-opacity":live?0.9:0.16}));
+    const tx=_sv("text",{x:x0+5,y:(y-4).toFixed(1),fill:col,"font-size":10,"font-family":"ui-monospace,monospace","fill-opacity":live?0.9:0.3});tx.textContent=lab;nowsvg.appendChild(tx);};
+  rest(tr.coil_hi,"#2ebd85","buy-stop ↑ "+tr.coil_hi, preEntry|| up);   // after entry, only the triggered side stays bright
+  rest(tr.coil_lo,"#e66767","sell-stop ↓ "+tr.coil_lo, preEntry|| !up);
+}
+function drawTrail(tr,box){      // the LIVE trailing stop as a stepped staircase, up to "now"
+  if(!tr.path||!tr.path.length)return;
+  const now=RP.bars[RP.k][0], pts=[];
+  for(const p of tr.path){if(p[0]>now)break;const x=chart.timeScale().timeToCoordinate(p[0]),y=candle.priceToCoordinate(p[1]);if(x!=null&&y!=null)pts.push([x,y]);}
+  if(!pts.length)return;
+  let d="M "+pts[0][0].toFixed(1)+" "+pts[0][1].toFixed(1);
+  for(let i=1;i<pts.length;i++)d+=" L "+pts[i][0].toFixed(1)+" "+pts[i-1][1].toFixed(1)+" L "+pts[i][0].toFixed(1)+" "+pts[i][1].toFixed(1);
+  nowsvg.appendChild(_sv("path",{d,fill:"none",stroke:"#e66767","stroke-width":1.7,"stroke-opacity":0.95}));
+  const last=pts[pts.length-1], st=pathStopAt(tr,now);
+  nowsvg.appendChild(_sv("line",{x1:last[0],y1:last[1],x2:box.width,y2:last[1],stroke:"#e66767","stroke-width":1,"stroke-dasharray":"2 3","stroke-opacity":0.6}));
+  if(st){const tx=_sv("text",{x:last[0]+4,y:(last[1]-4).toFixed(1),fill:"#e66767","font-size":10,"font-family":"ui-monospace,monospace"});tx.textContent="trail "+st[1];nowsvg.appendChild(tx);}
+}
+function updateState(tr){
+  const sp=document.getElementById("statepanel"), bar=RP.bars[RP.k]; if(!bar||!tr){sp.innerHTML="";return;}
+  const now=bar[0], px=bar[4], risk=tr.risk_pts||1, up=tr.dir==="up";
+  const preEntry=RP.k<RP.e0, atExit=RP.k>=RP.e1;
+  const st=pathStopAt(tr,now), armedTrail=st?!!st[2]:false;
+  const liveStop=(atExit||preEntry)?null:(st?st[1]:tr.stop);
+  const mtm=atExit?tr.R:+(((up?(px-tr.entry):(tr.entry-px))/risk)).toFixed(2);
+  const isTrail=tr.method==="trailing";
+  const stage=preEntry?"RESTING · orders placed":atExit?(tr.outcome.toUpperCase()+" · "+(tr.R>=0?"+":"")+tr.R+"R")
+    :(isTrail?(armedTrail?"IN TRADE · trailing":"IN TRADE · pre-arm"):"IN TRADE");
+  const stageCol=preEntry?"#e0a94a":atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
+  const g=tr.arm||{}, pill=(ok,lab)=>`<span class="gpill" style="color:${ok?'#2ebd85':'#e66767'};border-color:${ok?'#2ebd85':'#e66767'}">${lab}</span>`;
+  let gates=""; if(tr.arm){gates=(('session'in g)?pill(g.session,'session'):'')+pill(g.shape,'shape '+(tr.arm_shape??''))+pill(g.rr,'rr '+(tr.arm_rr??''));}
+  const method=isTrail?`trailing · arm ${CFG.trail_arm_r} / gap ${CFG.trail_gap_r}`:`${tr.method} · ${CFG.target_r}R`;
+  const rToStop=(liveStop!=null)?(((up?(px-liveStop):(liveStop-px))/risk)).toFixed(2):"—";
+  sp.innerHTML=`<div class="stage" style="color:${stageCol}">${stage}</div>`
+    +((tr.armed&&tr.arm)?`<div class="sh">setup_arm</div><div>${gates}</div>`:'')
+    +`<div class="sh">take-profit</div><div class="sr"><span>method</span><b>${method}</b></div>`
+    +`<div class="sh">live</div>`
+    +`<div class="sr"><span>mark-to-mkt</span><b style="color:${mtm>=0?'#2ebd85':'#e66767'}">${mtm>=0?'+':''}${mtm}R</b></div>`
+    +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
+    +`<div class="sr"><span>R to stop</span><b>${rToStop}</b></div>`;
+}
 chart.timeScale().subscribeVisibleLogicalRangeChange(redrawOverlay);
 new ResizeObserver(redrawOverlay).observe(chartEl);
 
@@ -336,8 +392,9 @@ const counts={all:TR.length,target:0,stop:0,time:0};TR.forEach(t=>counts[t.outco
 document.getElementById("filt").innerHTML=["all","target","stop","time"].map(f=>
   `<button data-f="${f}" class="${f==='all'?'on':''}">${f} (${counts[f]})</button>`).join("");
 document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>applyFilter(b.dataset.f));
+const _tp=CFG.tp_method==="trailing"?`trailing arm${CFG.trail_arm_r}/gap${CFG.trail_gap_r}`:`${CFG.tp_method||"ladder"} ${CFG.target_r}R`;
 document.getElementById("cfgNote").textContent=
-  `${TR.length} trades · era≥${CFG.era_start} · target≥${CFG.target_r}R · UNCONDITIONAL (base rate)`;
+  `${TR.length} trades · ${_tp} · ${CFG.setup_on?"setup_arm ON":"unconditional"}`;
 
 selectTrade(filtered.length-1);   // open the most-recent trade
 </script></body></html>"""
