@@ -1,0 +1,270 @@
+<meta charset="utf-8">
+<title>simplicity · visual config</title>
+<style>
+  :root{--bg:#0d0d0d;--card:#161615;--ink:#eceae2;--mut:#8a8880;--ring:rgba(255,255,255,.09);
+        --up:#199e70;--dn:#e66767;--acc:#3987e5;--amber:#e0a94a;--purple:#9a7cff;--red:#e34948;--gold:#f0b000;--green:#2ebd85}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:26px 28px 10px}
+  h1{margin:0;font-size:20px;letter-spacing:.2px}
+  .sub{color:var(--mut);font-size:13px;margin-top:4px;max-width:760px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:14px 28px 0;font-size:12px;color:var(--mut)}
+  .legend b{color:var(--ink);font-weight:600}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10.5px;font-weight:700;letter-spacing:.3px}
+  .t-toggle{background:#1f3a2a;color:#7fdcaf}.t-dial{background:#1c2c44;color:#7fb2f0}
+  .t-mode{background:#3a2f18;color:#e8c078}.t-fact{background:#2a2a28;color:#b8b6ae}.t-tbd{background:#3a1f24;color:#f08a99}
+  main{padding:12px 22px 60px;display:grid;gap:16px;max-width:1120px}
+  .card{background:var(--card);border:1px solid var(--ring);border-radius:12px;overflow:hidden;
+        display:grid;grid-template-columns:1fr 1.15fr;gap:0}
+  @media(max-width:820px){.card{grid-template-columns:1fr}}
+  .card > .txt{padding:18px 20px;border-right:1px solid var(--ring)}
+  @media(max-width:820px){.card > .txt{border-right:0;border-bottom:1px solid var(--ring)}}
+  .kh{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+  .kh h2{margin:0;font-size:15px}
+  .anchor{color:var(--mut);font-size:11px;font-family:ui-monospace,monospace}
+  .txt p{margin:8px 0 12px;color:#c8c6bd;font-size:13px}
+  .keys{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:#0e0e0d;
+        border:1px solid var(--ring);border-radius:8px;padding:10px 12px;color:#c8c6bd;white-space:pre;overflow-x:auto}
+  .keys .k{color:#e8c078}.keys .v{color:#7fb2f0}.keys .c{color:#6f6d66}
+  .viz{padding:14px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+  .chart{width:100%;height:auto;background:#0e0e0d;border-radius:8px;display:block}
+  .cap{color:var(--mut);font-size:11.5px;text-align:center}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  svg text{font-family:ui-monospace,monospace}
+</style>
+
+<header>
+  <h1>simplicity &middot; visual config</h1>
+  <div class="sub">Every config block, next to a mock price chart showing what it actually draws. Data is
+  hand-mocked candlestick structure &mdash; the point is the <i>geometry</i> each knob controls, not real prices.
+  Click any <span class="anchor">#anchor</span> from the YAML to land on its picture.</div>
+  <div class="legend">
+    <span><span class="tag t-toggle">TOGGLE</span> on/off</span>
+    <span><span class="tag t-dial">DIAL</span> a number you tune</span>
+    <span><span class="tag t-mode">MODE</span> pick from a menu (mostly one built)</span>
+    <span><span class="tag t-fact">FACT</span> a definition</span>
+    <span><span class="tag t-tbd">TBD</span> not built yet</span>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+// deterministic pseudo-random so the mocks never shuffle
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}}
+function gen(seed,legs,start){
+  const r=rng(seed);let p=start;const bars=[];
+  for(const lg of legs){for(let i=0;i<lg.n;i++){
+    const o=p, step=(lg.drift||0)+(r()-0.5)*lg.vol*2;
+    let c=o+step;const hi=Math.max(o,c)+r()*lg.vol*0.8, lo=Math.min(o,c)-r()*lg.vol*0.8;
+    bars.push({o,h:hi,l:lo,c});p=c;}}
+  return bars;
+}
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+
+function draw(host,bars,opts={}){
+  const W=opts.W||560,H=opts.H||300,padL=10,padR=opts.padR||100,padT=14,padB=22;
+  let lo=Math.min(...bars.map(b=>b.l)),hi=Math.max(...bars.map(b=>b.h));
+  if(opts.lo!=null)lo=opts.lo;if(opts.hi!=null)hi=opts.hi;
+  const pd=(hi-lo)*0.10;lo-=pd;hi+=pd;
+  const n=bars.length,cw=(W-padL-padR)/n;
+  const X=i=>padL+i*cw+cw/2, Y=p=>padT+(hi-p)/(hi-lo)*(H-padT-padB);
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`});svg.classList.add("chart");
+  const g=el("g",{});svg.appendChild(g);
+  bars.forEach((b,i)=>{const up=b.c>=b.o,col=up?"#199e70":"#e66767";
+    g.appendChild(el("line",{x1:X(i),x2:X(i),y1:Y(b.h),y2:Y(b.l),stroke:col,"stroke-width":1}));
+    const bw=Math.max(2,cw*0.62);
+    g.appendChild(el("rect",{x:X(i)-bw/2,y:Y(Math.max(b.o,b.c)),width:bw,height:Math.max(1,Math.abs(Y(b.o)-Y(b.c))),fill:col}));
+  });
+  host.appendChild(svg);
+  const api={svg,X,Y,cw,W,H,padL,padR,padT,padB,n,lo,hi};
+  api.hline=(p,color,o={})=>{svg.appendChild(el("line",{x1:padL,x2:W-padR,y1:Y(p),y2:Y(p),stroke:color,
+      "stroke-width":o.lw||1.2,"stroke-dasharray":o.dash||"","opacity":o.op||0.95}));
+    if(o.label)api.text(W-padR+4,Y(p)+3.5,o.label,color,"start");};
+  api.box=(i0,i1,p0,p1,color,o={})=>{const x0=X(i0)-cw/2,x1=X(i1)+cw/2,y0=Y(Math.max(p0,p1)),y1=Y(Math.min(p0,p1));
+    svg.appendChild(el("rect",{x:x0,y:y0,width:x1-x0,height:y1-y0,fill:color,opacity:o.op!=null?o.op:0.12,
+      stroke:o.stroke||color,"stroke-width":o.sw||1,"stroke-dasharray":o.dash||""}));
+    if(o.label)api.text(x0+4,y0+13,o.label,o.lc||color,"start");};
+  api.vband=(i0,i1,color,label,lc)=>{const x0=X(i0)-cw/2,x1=X(i1)+cw/2;
+    svg.appendChild(el("rect",{x:x0,y:padT,width:x1-x0,height:H-padT-padB,fill:color,opacity:0.14}));
+    if(label)api.text((x0+x1)/2,padT+12,label,lc||color,"middle");};
+  api.marker=(i,p,color,text,above)=>{const y=Y(p);
+    svg.appendChild(el("circle",{cx:X(i),cy:y,r:3.2,fill:color}));
+    if(text)api.text(X(i),above?y-7:y+13,text,color,"middle");};
+  api.text=(x,y,t,color,anchor)=>{const e=el("text",{x,y,fill:color||"#c8c6bd","font-size":o11(t),"text-anchor":anchor||"start"});e.textContent=t;svg.appendChild(e);};
+  function o11(){return 10.5;}
+  api.hist=(dist,poc,val,vah)=>{ // right-side volume profile from a {price:weight} distribution
+    const x0=W-padR+8, maxw=padR-16, mx=Math.max(...dist.map(d=>d.w));
+    dist.forEach(d=>{const w=d.w/mx*maxw, y=Y(d.p), inVA=d.p>=val&&d.p<=vah;
+      svg.appendChild(el("rect",{x:x0,y:y-2.4,width:w,height:4.8,fill:inVA?"#3f6fae":"#33383f",opacity:0.9}));});
+    api.hline(poc,"#e34948",{label:"POC",lw:1.4});
+    api.hline(vah,"#8a94a6",{dash:"4 3",label:"VAH"});api.hline(val,"#8a94a6",{dash:"4 3",label:"VAL"});
+  };
+  return api;
+}
+// gaussian-ish distribution helper for a profile
+function bell(lo,hi,center,spread,step,skew=0){const out=[];for(let p=lo;p<=hi;p+=step){
+  const z=(p-center)/spread;out.push({p,w:Math.exp(-z*z/2)*(1+skew*z)});}return out;}
+
+// ---- CARDS -----------------------------------------------------------------
+const CARDS=[
+{id:"skeleton",tag:"t-fact",title:"skeleton · sessions",yaml:
+`<span class="k">sessions</span>:            <span class="c"># [FACT] the day cut into 4 ET windows</span>
+  asia:    18:00-03:00
+  london:  03:00-09:30
+  <span class="v">newyork</span>: 09:30-16:00 <span class="c"># ~78% of volume</span>
+  close:   16:00-18:00`,
+ desc:"The chart's <b>sessions / times / anchors / levels</b> indicators are just this partition drawn on the day. No tuning — pure structure.",
+ cap:"one day → 4 shaded session windows; anchors = each window's running hi/lo",
+ build(host){const b=gen(3,[{n:9,drift:2,vol:14},{n:11,drift:-1,vol:18},{n:13,drift:4,vol:22},{n:7,drift:-2,vol:12}],17980);
+   const a=draw(host,b);
+   a.vband(0,8,"#5566aa","ASIA","#93a3e0");a.vband(9,19,"#4a8a5a","LONDON","#8fd6a3");
+   a.vband(20,32,"#aa6a4a","NEW YORK","#f0b090");a.vband(33,39,"#7a6a9a","CLOSE","#c3b0e8");
+   const hi=Math.max(...b.slice(20,33).map(x=>x.h)),lo=Math.min(...b.slice(20,33).map(x=>x.l));
+   a.hline(hi,"#e0a94a",{dash:"3 3",label:"NY hi"});a.hline(lo,"#e0a94a",{dash:"3 3",label:"NY lo"});}},
+
+{id:"profile",tag:"t-dial",title:"profile · row_size / value_area",yaml:
+`<span class="k">profile</span>:
+  <span class="k">row_size</span>: <span class="v">2.0</span>     <span class="c"># [DIAL] price-bin height (pts)</span>
+  <span class="k">value_area</span>: <span class="v">0.70</span>  <span class="c"># [DIAL] 70% of volume</span>
+<span class="c"># → POC · VAL/VAH · histogram</span>`,
+ desc:"The ONE indicator. Bin volume by price → the <b>POC</b> (peak), and the <b>value area</b> (VAL↔VAH) holding 70% of volume. <code>row_size</code> sets how fine the bins are.",
+ cap:"the module card reads POC / VAL / VAH straight off this",
+ build(host){const b=gen(7,[{n:6,drift:-3,vol:10},{n:20,drift:0,vol:11},{n:6,drift:1,vol:9}],18040);
+   const a=draw(host,b,{padR:120});
+   const lo=Math.min(...b.map(x=>x.l)),hi=Math.max(...b.map(x=>x.h)),c=(lo+hi)/2;
+   const dist=bell(lo,hi,c-6,(hi-lo)*0.16,2);
+   a.hist(dist,c-6,c-(hi-lo)*0.20,c+(hi-lo)*0.20);}},
+
+{id:"shape",tag:"t-dial",title:"measure · shape (clean vs foggy)",yaml:
+`<span class="k">shape</span>:            <span class="c"># score 0..100</span>
+  weight_tightness: <span class="v">0.40</span>
+  weight_peakedness: <span class="v">0.30</span>
+  <span class="k">clean_threshold</span>: <span class="v">50</span>`,
+ desc:"A quality score off the profile. Rewards a <b>tight, single, centered</b> peak; punishes scatter. ≥ <code>clean_threshold</code> = \"clean\". This is what a gate would read.",
+ cap:"left: tight coil scores high · right: scattered range scores low",
+ two:true,
+ build(host){const wrap=host;
+   const l=document.createElement("div"),r=document.createElement("div");
+   const c1=gen(11,[{n:26,drift:0,vol:6}],18000);const a1=draw(l,c1,{W:270,H:230,padR:64});
+   const lo1=Math.min(...c1.map(x=>x.l)),hi1=Math.max(...c1.map(x=>x.h));
+   a1.hist(bell(lo1,hi1,(lo1+hi1)/2,(hi1-lo1)*0.14,1.5),(lo1+hi1)/2,lo1+(hi1-lo1)*0.32,hi1-(hi1-lo1)*0.32);
+   a1.text(12,20,"shape 71 · CLEAN","#2ebd85","start");
+   const c2=gen(29,[{n:9,drift:5,vol:9},{n:8,drift:-6,vol:12},{n:9,drift:6,vol:14}],17980);const a2=draw(r,c2,{W:270,H:230,padR:64});
+   const lo2=Math.min(...c2.map(x=>x.l)),hi2=Math.max(...c2.map(x=>x.h));
+   const d2=bell(lo2,hi2,lo2+(hi2-lo2)*0.35,(hi2-lo2)*0.3,2).concat(bell(lo2,hi2,hi2-(hi2-lo2)*0.2,(hi2-lo2)*0.18,2));
+   a2.hist(d2,lo2+(hi2-lo2)*0.35,lo2,hi2);a2.text(12,20,"shape 24 · foggy","#e66767","start");
+   const g=document.createElement("div");g.className="row2";g.appendChild(l);g.appendChild(r);wrap.appendChild(g);}},
+
+{id:"zone",tag:"t-dial",title:"measure · zone (risk & R:R)",yaml:
+`<span class="k">zone</span>:
+  <span class="k">min_rr</span>: <span class="v">2.0</span>   <span class="c"># [DIAL] reject if R:R below</span>
+  entry_tf_by_height: <span class="c"># taller → slower TF</span>
+    0.25→1m · 0.60→5m · rest→15m`,
+ desc:"Given the profile: <b>1R = the value-area edge</b> (invalidation), the room = the target, and R:R = reward÷risk. Zone height also picks the entry timeframe.",
+ cap:"1R risk (red) vs room to target (green) → R:R must clear min_rr",
+ build(host){const b=gen(5,[{n:14,drift:0,vol:7},{n:10,drift:6,vol:9}],18000);
+   const a=draw(host,b);const entry=b[13].c, stop=entry-26, tgt=entry+63;
+   a.box(0,13,entry,stop,"#e66767",{op:0.14,label:"1R risk"});
+   a.box(13,23,entry,tgt,"#2ebd85",{op:0.12,label:"room to target"});
+   a.hline(entry,"#f0b000",{label:"entry"});a.hline(stop,"#e34948",{dash:"4 3",label:"stop 1R"});
+   a.hline(tgt,"#2ebd85",{dash:"4 3",label:"target"});
+   a.text(a.X(4),a.Y(tgt)-8,"R:R 2.4 ✓ (min_rr 2.0)","#2ebd85","start");}},
+
+{id:"fib",tag:"t-fact",title:"measure · fib (context only)",yaml:
+`<span class="k">fib</span>:
+  edges: <span class="v">[0, .382, .5, .618, 1]</span>
+<span class="c"># tested: NO directional edge —</span>
+<span class="c"># kept as a chart reference only</span>`,
+ desc:"Fib retracement off the session hi/lo. Honestly tested (F11) — it predicts nothing on NQ, so it's a <b>visual context</b> layer, never a signal.",
+ cap:"golden zone .382–.618 shaded; close position marked",
+ build(host){const b=gen(9,[{n:10,drift:6,vol:10},{n:16,drift:-1.4,vol:9}],17960);
+   const a=draw(host,b);const hi=Math.max(...b.map(x=>x.h)),lo=Math.min(...b.map(x=>x.l)),R=hi-lo;
+   a.box(0,b.length-1,lo+0.382*R,lo+0.618*R,"#f0b000",{op:0.10,stroke:"none"});
+   [[0,"0"],[.382,".382"],[.5,".5"],[.618,".618"],[1,"1"]].forEach(([f,l])=>
+     a.hline(lo+f*R,f==.5?"#f0b000":"#6f6d66",{dash:f==.5?"":"1 3",label:l,lw:f==.5?1.4:1}));
+   a.marker(b.length-1,b[b.length-1].c,"#3987e5","close",true);}},
+
+{id:"scales",tag:"t-toggle",title:"scales · base ⊂ session ⊂ htf",yaml:
+`<span class="k">scales</span>:
+  - name: session  on: <span class="v">true</span>
+  - name: <span class="k">base</span>     on: <span class="v">false</span> <span class="c"># [TOGGLE] the coil</span>
+  - name: <span class="k">htf</span>      on: <span class="v">false</span> <span class="c"># [TOGGLE] composite</span>`,
+ desc:"Same profile machinery at nested windows. <b>base</b> = the tight coil (stop/1R), <b>session</b> = the zone, <b>htf</b> = the runway/context. Each is a toggle → each becomes a module card.",
+ cap:"stop comes from the smallest scale, runway from the largest",
+ build(host){const b=gen(13,[{n:10,drift:-7,vol:11},{n:16,drift:0,vol:6}],18120);
+   const a=draw(host,b);const seg=b.slice(10),clo=Math.min(...seg.map(x=>x.l)),chi=Math.max(...seg.map(x=>x.h));
+   a.box(10,25,clo,chi,"#e0a94a",{op:0.10,dash:"4 3",label:"base (coil) = 1R stop",lc:"#e0a94a"});
+   a.box(0,25,Math.min(...b.map(x=>x.l)),Math.max(...b.map(x=>x.h)),"#4a9bff",{op:0.05,dash:"2 4",label:"session = zone",lc:"#7fb2f0"});
+   a.hline(a.hi-4,"#9a7cff",{dash:"2 4",label:"htf runway ↑"});}},
+
+{id:"ladder",tag:"t-mode",title:"trade · target ladder",yaml:
+`<span class="k">ladder</span>:
+  <span class="k">stop_from</span>: <span class="v">base</span>     <span class="c"># 1R = coil</span>
+  <span class="k">targets_from</span>: <span class="v">[session, htf]</span>
+  min_rr: <span class="v">0.5</span>`,
+ desc:"Turns the nested scales into geometry: <b>1R = the base coil</b>, and each larger scale's VA / POC / extreme becomes a stacked scale-out <b>target rung</b> with its own R.",
+ cap:"one stop, a ladder of targets that come down into each other",
+ build(host){const b=gen(17,[{n:12,drift:0,vol:6},{n:12,drift:5,vol:8}],18000);
+   const a=draw(host,b);const e=b[11].c,stop=e-22;
+   a.box(0,11,e,stop,"#e66767",{op:0.13,label:"1R"});
+   a.hline(e,"#f0b000",{label:"entry"});a.hline(stop,"#e34948",{dash:"4 3",label:"stop"});
+   [[e+20,"session VAH · 0.9R"],[e+57,"htf POC · 2.6R"],[e+82,"htf high · 3.7R"]].forEach(([p,l])=>
+     a.hline(p,"#2ebd85",{dash:"5 3",label:l}));}},
+
+{id:"when",tag:"t-toggle",title:"when · session filter",yaml:
+`<span class="k">when</span>:
+  session_filter:
+    on: <span class="v">true</span>       <span class="c"># [TOGGLE]</span>
+    allow: <span class="v">[newyork]</span>`,
+ desc:"A <b>time gate</b>, independent of the profile. Only bars inside allowed sessions/hours/vol-regimes are tradeable. Everything else is greyed out.",
+ cap:"a week of days → only the NY windows are live (green)",
+ build(host){const legs=[];for(let d=0;d<5;d++)legs.push({n:5,drift:2,vol:9},{n:6,drift:-1,vol:11},{n:6,drift:3,vol:13},{n:4,drift:-2,vol:8});
+   const b=gen(23,legs,17960);const a=draw(host,b);
+   for(let d=0;d<5;d++){const base=d*21;a.vband(base+11,base+16,"#199e70","NY","#8fd6a3");
+     a.vband(base,base+10,"#333","",null);a.vband(base+17,base+20,"#333","",null);}}},
+
+{id:"entry",tag:"t-mode",title:"trade · entry (breakout_both)",yaml:
+`<span class="k">entry</span>:
+  type: <span class="v">breakout_both</span> <span class="c"># [MODE] both edges, OCO</span>
+  fill_at: <span class="v">coil_edge</span>
+  <span class="k">min_coil_pct</span>: <span class="v">0.05</span>  <span class="c"># skip tiny coils</span>`,
+ desc:"Rest a breakout-stop on <b>both</b> coil edges before the next open. Whichever fills first wins (the other cancels) — direction is decided by the market, not predicted.",
+ cap:"two resting stops (dashed); first touch fills, its twin cancels",
+ build(host){const b=gen(19,[{n:22,drift:0,vol:6}],18000);const a=draw(host,b);
+   const hi=Math.max(...b.map(x=>x.h)),lo=Math.min(...b.map(x=>x.l));
+   a.hline(hi+2,"#2ebd85",{dash:"6 4",label:"buy-stop ↑"});
+   a.hline(lo-2,"#e66767",{dash:"6 4",label:"sell-stop ↓"});
+   a.box(0,21,lo,hi,"#e0a94a",{op:0.06,dash:"3 3",label:"coil",lc:"#e0a94a"});}},
+
+{id:"exit",tag:"t-mode",title:"trade · exit (stop / target / time)",yaml:
+`<span class="k">exit</span>:
+  stop_at: <span class="v">coil_edge</span>
+  target: <span class="v">ladder_rung</span>  target_r: <span class="v">2.0</span>
+  <span class="k">max_hold_bars</span>: <span class="v">156</span> <span class="c"># time-stop</span>
+  same_bar_tie: <span class="v">stop_first</span> <span class="c"># honest</span>`,
+ desc:"Three ways out: hit the <b>stop</b> (−1R), hit the <b>target</b> rung (+R), or run out of time (<code>max_hold_bars</code>). Same-bar tie assumes the stop — pessimistic on purpose.",
+ cap:"stop, target, and the time-stop cutoff drawn on the trade",
+ build(host){const b=gen(21,[{n:6,drift:0,vol:6},{n:10,drift:3,vol:8},{n:8,drift:1,vol:7}],18000);
+   const a=draw(host,b);const e=b[5].c,stop=e-20,tgt=e+40;
+   a.hline(e,"#f0b000",{label:"entry"});a.hline(stop,"#e34948",{dash:"4 3",label:"stop −1R"});
+   a.hline(tgt,"#2ebd85",{dash:"4 3",label:"target +2R"});
+   const xc=a.X(b.length-1)+a.cw/2;
+   a.svg.appendChild(el("line",{x1:xc,x2:xc,y1:a.padT,y2:a.H-a.padB,stroke:"#9a7cff","stroke-width":1.2,"stroke-dasharray":"3 3"}));
+   a.text(xc-4,a.padT+12,"time-stop","#9a7cff","end");}},
+];
+
+const main=document.getElementById("main");
+for(const c of CARDS){
+  const card=document.createElement("section");card.className="card";card.id=c.id;
+  const txt=document.createElement("div");txt.className="txt";
+  txt.innerHTML=`<div class="kh"><h2>${c.title}</h2><span class="tag ${c.tag}">${({"t-toggle":"TOGGLE","t-dial":"DIAL","t-mode":"MODE","t-fact":"FACT","t-tbd":"TBD"})[c.tag]}</span><span class="anchor">#${c.id}</span></div>
+    <p>${c.desc}</p><div class="keys">${c.yaml}</div>`;
+  const viz=document.createElement("div");viz.className="viz";
+  const holder=document.createElement("div");viz.appendChild(holder);
+  const cap=document.createElement("div");cap.className="cap";cap.textContent=c.cap;viz.appendChild(cap);
+  card.appendChild(txt);card.appendChild(viz);main.appendChild(card);
+  try{c.build(holder);}catch(e){holder.textContent="viz error: "+e.message;}
+}
+</script>

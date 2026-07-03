@@ -177,7 +177,7 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
     <div class="runstat" id="runStat"></div><div class="runbar" id="runBar"><i></i></div>
     <h2>Loaded</h2><div id="loaded"></div>
     <h2>Vol-day overlay</h2><div id="cfgSel" class="cfgbtns"></div><div id="cfgLoaded" class="loaded"></div>
-    <h2>Config <span class="cpleg2"><i style="background:#199e70"></i>live <i style="background:#f6465d"></i>off <i style="background:#e0a94a"></i>unwired <i style="background:#9a7cff"></i>no-engine</span></h2>
+    <h2>Config <span class="cpleg2"><i style="background:#199e70"></i>wired <i style="background:#e0a94a"></i>sensor <i style="background:#3987e5"></i>chart <i style="background:#6f6d66"></i>fact <i style="background:#f6465d"></i>unbuilt</span></h2>
     <div id="cpBody"></div>
   </div>
 </div>
@@ -644,17 +644,28 @@ function logConfig(){const cc=M.configs[cfgSel];   // vol-day OVERLAY only (shad
     `${cc.selected_days.length} days · ${cc.selected_runs.length} periods (display shading). Full config: sidebar panel.`);}
 renderCfg(); logConfig();
 // ---- config-status panel + Run backtest (needs serve.py; on file:// the button is disabled) ----
-const CP=M.config_panel||[];
-function _dots(it){let d="";
-  if(it.enabled===false)d+='<span class="sd" style="background:#f6465d" title="not turned on"></span>';
-  if(!it.wired)d+='<span class="sd" style="background:#e0a94a" title="not wired into the backtest"></span>';
-  if(!it.engine)d+='<span class="sd" style="background:#9a7cff" title="no engine module yet"></span>';
-  if(!d)d='<span class="sd" style="background:#199e70" title="live"></span>';return d;}
-document.getElementById("cpBody").innerHTML=CP.map(s=>`<div class="cpsec"><div class="cpst">${s.title}</div>`+
-  s.items.map(it=>`<div class="cprow"><span class="cpn">${_dots(it)}${it.name}</span><span class="cpv">${it.value}</span></div>`).join("")+`</div>`).join("");
+const ST={wired:["#199e70","changes a backtest number today"],
+          sensor:["#e0a94a","measured + drawn, but does NOT gate a trade yet (waits for setup_arm)"],
+          chart:["#3987e5","affects the chart display only"],
+          fact:["#6f6d66","a market constant / definition"],
+          unbuilt:["#f6465d","not built yet"]};
+function _dot(it){const s=ST[it.status]||ST.fact;return `<span class="sd" style="background:${s[0]}" title="${s[1]}"></span>`;}
+function renderCP(CP){document.getElementById("cpBody").innerHTML=(CP||[]).map(s=>`<div class="cpsec"><div class="cpst">${s.title}</div>`+
+  s.items.map(it=>`<div class="cprow"><span class="cpn">${_dot(it)}${it.name}</span><span class="cpv">${it.value}</span></div>`).join("")+`</div>`).join("");}
+renderCP(M.config_panel);   // baked snapshot (works on file://)
+// served over http? re-fetch the LIVE config so editing strategy_config + reloading updates the panel (no rebuild)
+if(location.protocol.startsWith("http"))
+  fetch("/config").then(r=>r.json()).then(d=>{if(d&&d.config_panel)renderCP(d.config_panel);}).catch(()=>{});
 const _served=location.protocol.startsWith("http");
 const runStat=document.getElementById("runStat"), runBtn=document.getElementById("runBtn");
 if(!_served){runBtn.disabled=true;runStat.innerHTML='Static file — start <b>run_chart.bat</b> to enable running.';}
+// default + CONSTRAIN the run window to the DATA range (data ends well before "today" — don't let the picker pick empty future windows)
+(function(){const m5=(M.series||[]).find(s=>s.key==="NQ_5m")||{};
+  const last=(m5.last||"").slice(0,10), first=(m5.first||"").slice(0,10);
+  const bs=document.getElementById("btStart"), be=document.getElementById("btEnd");
+  if(last){be.value=last; be.max=last; be.min=first; bs.value=(C.era_start||2015)+"-01-01"; bs.max=last; bs.min=first;
+    runStat.innerHTML=`data ${first} → ${last}`;}
+})();
 const runBar=document.getElementById("runBar").firstElementChild;
 runBtn.onclick=async()=>{
   const start=document.getElementById("btStart").value, end=document.getElementById("btEnd").value;

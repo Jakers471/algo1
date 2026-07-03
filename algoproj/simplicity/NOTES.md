@@ -671,3 +671,60 @@ before rewriting the SCALES config. Also built this session as the REASONING SUR
 `strategy_map` is now a CONFIG CONTROL PANEL (every dial, LIVE vs NOT-WIRED vs no-engine) + an interactive
 `flow.html` FLOW EDITOR (drag components from a bottom tray, connect them into your execution order, export
 flow.json) — see build_map.py / build_flow.py.
+
+### F38 — config retiered by ALTITUDE + the chart became a LIVE control surface + wiring≠promotion (2026-07-03)
+The config *felt* far heavier than the actual logic. Two reasons, both real: (a) it mixed three kinds of thing
+at ONE altitude — decisions you tune, calibration you set once, and facts you never touch — so the ~8 real
+knobs were buried under ~30 constants; (b) it described the full multi-scale VISION (F19-F26) while the code
+runs the F35 one-dimension skeleton. **The config outran the code.** Fix: retiered `strategy_config.py` into
+**CONTROL PANEL / STRUCTURE / CALIBRATION / FACTS**, each knob STATUS-TAGGED — `[WIRED]` (changes a backtest
+number today) · `[SENSOR]` (measured/drawn but NOT gating until setup_arm) · `[CHART]` (display only) ·
+`[FACT]`. Surfaced the two real gate thresholds (`GATE_SHAPE_OK`, `GATE_RR_MIN`) up into the control panel;
+kept EVERY existing name (verified: 37/37 symbols, values identical) so nothing broke. Pre-shrink file parked
+at `_archive/strategy_config_full_2026-07-02.py`. Two HONESTY fixes baked into the comments: the `FILTER_*`
+gates are `[SENSOR]` (the backtest trades ALL sessions until setup_arm reads them), and `BASE/HTF["on"]` are
+CHART-only toggles (the backtest uses all three profiles regardless).
+Chart side: rewrote the sidebar to render the tiers + honest dots (wired green / sensor amber / chart blue /
+fact grey / unbuilt red); one shared `research/chart/config_panel.py` defines the panel for both the build and
+a NEW `serve.py` `/config` endpoint that **reloads the config live** — edit the config, reload the page, the
+sidebar updates (no rebuild, no restart; the backtest was already a fresh process so Run always read current
+config). THE TWO-AXIS REALIZATION (the thing that kept confusing us): **PROMOTION** state (research→engine,
+the checklist legend) ≠ **WIRING** state (does it change a backtest number). Honest runtime, documented in
+CHECKLIST "Config alignment": the backtest reads the research **profile JSONs + target_ladder**, it does NOT
+import `engine/`; `run_simplicity.py` is a *wiring tracker* (prints WIRED x/13), not the thing that trades — so
+`[E]` = "promoted & importable", not "this is what produces the backtest." Reference sketches built to make the
+config legible: `CONFIG_PROPOSAL.md`, `config_proposal_v2.yaml`, and `viz/config_viz.html` (a mock candlestick
+chart per config block, so you SEE what each knob draws). Format stays Python (no pyyaml dep; system python
+lacks it) — a small Python control panel gives the same edit→rerun workflow YAML would.
+
+### F39 — setup_arm v1 built + FIRST GATED RESULT: win-rate lift, NO expectancy lift yet (2026-07-03)
+Built `research/setup/setup_arm/setup_arm.py` — v1 **arm-once** confluence gate: ARM a coil iff
+`session_filter passes AND shape_ok AND rr_ok` (ANDs the built SENSORS, reads the control-panel thresholds; no
+direction call — the OCO fill decides direction). Wired ONE line into `run_backtest.py`, gated behind
+`SIMP_ARM=1` (env) or `SETUP["on"]` (default OFF → base rate preserved). This is the piece that turns the four
+`[SENSOR]` gates into REAL gates. First head-to-head (era>=2015, target>=2R, 1 contract):
+
+| | base rate | gated (session+shape+rr) |
+|---|---|---|
+| trades | 1,592 | 134  (disarmed 1,893) |
+| win rate | 29.6% | **43.3%** (+13.7pts) |
+| avg R | -0.017 | -0.027 |
+| total R | -27.7 | -3.7 |
+| PF | 0.97 | 0.93 |
+| max DD | 75.3R | 13.9R |
+| outcomes | 295 tgt / 1043 stop / **254 time (16%)** | 3 tgt / 40 stop / **91 time (68%)** |
+
+READ (honest, F13/F28 — take the number as-is): the win-rate lift is REAL (+13.7pts — the gates genuinely
+select coils that get stopped less), **but expectancy did NOT improve** (avg R slightly worse, PF still <1). WHY:
+the outcome mix flipped from 16%→**68% TIME exits**; only **3 of 134** reached the 2R target. The gates prefer
+clean/tight/QUIET coils — which don't get stopped, but also lack the momentum to run to 2R, so they grind and
+time out near breakeven. High win rate (few big losers), tiny payoff (almost no big winners). **The binding
+constraint moved from ENTRY quality to the EXIT.** n=134 with 3 targets = small/noisy → a DIAGNOSTIC, not a
+verdict. Next lever = **exit mechanics** (trailing_stops / closer first target / shorter time-stop), NOT more
+entry gating; also worth trying higher `rr_min`, lower `shape_ok`, or loosening the NY-only session gate (asia
+was the best base-rate session, +0.005R). Both runs logged to the ledger (runs.jsonl).
+Also HARDENED the run harness while testing it end-to-end: the chart date pickers now **default + lock to the
+DATA range** — data ends 2025-01-10, but the picker had defaulted to the 2026 calendar → empty future window →
+"no trades" → serve.py 500. Now `run_backtest` prints a clear empty-window reason (`... matched 0 bars (data
+available 2005-01-11..2025-01-10)`), `serve.py` surfaces it to the chart, and a stray double-bind on port 8765
+was cleared. (NQ data is ~18mo stale vs today — refresh via `data/build_data.py` when wanted.)

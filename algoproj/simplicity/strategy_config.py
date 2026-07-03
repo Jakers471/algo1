@@ -1,150 +1,50 @@
 """
-simplicity — MASTER STRATEGY CONFIG (the single source of truth).
+simplicity — MASTER STRATEGY CONFIG (single source of truth).
 
-Everything that defines the strategy lives HERE: the file/folder/module map, the
-data, the volatility filter/era, the (to-be-built) signal / entry / exit / risk
-rules, and the execution costs. Import this ONE module everywhere. Locking a value
-here locks it project-wide, so the whole setup is replicable from this file alone.
+Reorganised 2026-07-03 by ALTITUDE, not by module. The full pre-shrink version is kept
+verbatim at  _archive/strategy_config_full_2026-07-02.py  for reference.
 
-This is the CONCRETE / REAL config (the strategy + frictions). Run/testing knobs
-(ACTIVE_FILTER, starting balance, dates, sweeps) will live in a separate `research_config`
-that imports this -- see ARCHITECTURE.md (two configs -> one engine -> outputs stored per config).
+    TIER 1  CONTROL PANEL   -- the handful of DECISIONS you actually tune. Edit these.
+    TIER 2  STRUCTURE       -- profile/scale params that feed the backtest (rebuild JSON after a change).
+    TIER 3  CALIBRATION     -- sensor internals you tuned once and rarely touch again.
+    TIER 4  FACTS           -- market constants + data paths. You basically never touch these.
 
-Named `strategy_config` (not `config`) on purpose -- `algoproj/config.py` already
-exists on the path; this avoids the name clash.
+STATUS TAGS (the thing you kept asking about — what's actually connected):
+    [WIRED]   changes a backtest number today.
+    [SENSOR]  measured + drawn on the chart, but does NOT gate a trade yet (waits for setup_arm).
+    [CHART]   only affects the chart display, not the backtest.
+    [FACT]    a definition/constant, not a decision.
 
-Status legend:  LOCKED = decided & in use.   TBD = slot reserved, strategy not built.
+Run/testing knobs (ACTIVE_FILTER, STARTING_BALANCE, backtest dates) live in research_config.py —
+one setting, one home. Import THIS module everywhere; locking a value here locks it project-wide.
 """
 import os
 
-# ==================================================================================
-# WORKFLOW + PROJECT MAP  (the replication manifest)                        [LOCKED]
-# ==================================================================================
-# WORKFLOW: every idea is built & tested in research/ FIRST. Only after the user
-# confirms it does it get solidified and PROMOTED into engine/ (the clean, fast,
-# live-ready pieces). Nothing enters engine/ unconfirmed. research = discover;
-# engine = execute.
-#
-# simplicity/
-#   strategy_config.py       <- THIS FILE (single source of truth)
-#   NOTES.md / RANTS.md      <- concept + raw idea log + findings
-#   VISION.md                <- the full 15-step target system
-#   research/                <- ALL exploration/analysis lives here first (mirrors engine LAYERS)
-#       structure/               volume_profile, session_anchors  (market structure)
-#       gates/                   volatility_filter, profile_shape_filter, zone_calibration, fib_bias
-#       setup/  execution/       future arm/entry/risk/trailing studies
-#       studies/                 pure discovery: volume_buckets, volatility_ranking, session_break_stats
-#       chart/                   the cross-cutting viewer
-#   engine/                  <- confirmed, solidified, live-ready pieces (promotion target; same LAYERS)
-PROJECT = {
-    "research_buckets": "research/studies/volume_buckets/",
-    "research_ranking": "research/studies/volatility_ranking/",
-    "research_vol_filter": "research/gates/volatility_filter/",
-    "dashboard": "research/studies/volume_buckets/output/volume_dashboard.html",
-    "engine": "engine/  (layers: feed/state/structure/gates/setup/execution)",
-}
+# ##################################################################################
+# ##  TIER 1 — CONTROL PANEL   (the decisions you actually make; edit here)        ##
+# ##################################################################################
 
-# ==================================================================================
-# DATA                                                                      [LOCKED]
-# ==================================================================================
-ROOT = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(ROOT, "data")            # simplicity's OWN clean parquets (self-contained)
-BUCKETS_OUT = os.path.join(ROOT, "research", "studies", "volume_buckets", "output")  # shared research artifact
-# Raw source for the clean data (TradeStation export; volume = Up + Down). build_data.py reads this.
-SOURCE_TXT_DIR = r"C:/Users/jakers/Documents/TradeStation 10.0/Data"
-INSTRUMENT = "NQ"                 # Nasdaq-100 e-mini futures (back-adjusted continuous)
-TF_SOURCES = {                    # timeframe -> clean parquet under DATA_DIR/NQ/ (volume = real Up+Down)
-    "1d": "NQ/NQ_1d.parquet",
-    "60m": "NQ/NQ_60m.parquet",
-    "15m": "NQ/NQ_15m.parquet",
-    "5m": "NQ/NQ_5m.parquet",
-    "1m": "NQ/NQ_1m.parquet",
-}
-ES_SOURCES = {                    # S&P 500 e-mini (DATA_DIR/ES/) -- future cross-instrument breadth / OOS
-    "60m": "ES/ES_60m.parquet", "15m": "ES/ES_15m.parquet",
-    "5m": "ES/ES_5m.parquet", "1m": "ES/ES_1m.parquet",
-}
-CLOCK = "America/New_York"        # everything bucketed / gated on ET
-SPAN = (2005, 2024)              # full even 20 calendar years available in the data
-SESSIONS = {                     # ET session partition (no gaps, covers 24h)
-    "asia":    ("18:00", "03:00"),
-    "london":  ("03:00", "09:30"),
-    "newyork": ("09:30", "16:00"),  # US RTH cash session (~89% of volume)
-    "close":   ("16:00", "18:00"),  # post-close + 17:00 maintenance break
-}
+ERA_START_YEAR = 2015            # [WIRED] drop the calm 2005-2014 decade (recent HV ~2x). 2005 = use all.
 
-# ==================================================================================
-# ERA + VOLATILITY FILTER  (the gate; vol_filter.py + rank_volatility.py)   [LOCKED]
-# ==================================================================================
-# The first decade (2005-2014) is ~2x calmer than 2015-2024 (recent HV 15.5% vs 7.7%);
-# it skews vol-based selection, so we cut it. Set 2005 to use all 20yr.
-ERA_START_YEAR = 2015
+# --- WHEN to trade ------------------------------------------------------------------
+# [SENSOR] these are computed + drawn, but the backtest currently trades ALL sessions —
+# they only start gating once setup_arm reads them. Each toggles independently (ANDed).
+FILTER_SESSION = {"on": True,  "allow": ["newyork"]}                  # ET sessions (keys of SESSIONS)
+FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]}  # ET hours-of-day
+FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                  # daily vol-regime gate (optional)
 
-# Which config this is (the identity). research_config overrides to "research". Runs are SAVED
-# separated by source (reports/<source>/…). strategy = the main/real truth a good strategy graduates to.
-CONFIG_SOURCE = "strategy"
+# --- the two GATE THRESHOLDS setup_arm will arm on ----------------------------------
+# [SENSOR] surfaced here so you tune selectivity in one place. They flow into SHAPE/ZONE below.
+GATE_SHAPE_OK = 50               # min "clean" score (0-100) to consider a coil tradeable
+GATE_RR_MIN   = 2.0              # min reward:risk to arm a setup
 
-# --- WHEN-TO-TRADE FILTERS (session/hour primary, day optional) --------------------
-# Each toggles independently. A timestamp is tradeable only if ALL *enabled* filters pass.
-# Session & hour are the core (trade inside high-activity windows, not every day equally);
-# the daily vol-regime gate is optional. Flip "on" to enable/disable each.
-FILTER_SESSION = {"on": True,  "allow": ["newyork"]}                 # ET sessions (keys of SESSIONS)
-FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]} # ET hours-of-day
-FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                 # daily vol-regime gate (optional)
-
-# --- daily vol-regime machinery (only used when FILTER_DAY_VOL["on"]) ---------------
-# Per-day volatility proxy: 'avg_range'=(High-Low)/Close*100 | 'mean_vol'=|ln(C/prevC)|*100
-VOL_METRIC = "avg_range"
-TRAIL_WINDOW = 20                # trading days; CAUSAL (prior-window mean, no look-ahead)
-REGIME_PCTILES = (33.0, 66.0)    # low / medium / high split (percentiles within the era)
-MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None = off
-# NOTE: ACTIVE_FILTER / STARTING_BALANCE / backtest dates live in research_config.py
-# (run/testing knobs, not strategy settings). One setting, one home -- no duplication.
-# The gate's day-vol regimes are FILTER_DAY_VOL["regimes"] above (there is no TRADEABLE_REGIMES).
-
-# ==================================================================================
-# GATE PARAMS  --  the tunable knobs for the profilers + gates.                [TUNING]
-# ==================================================================================
-# SINGLE SOURCE OF TRUTH for everything we tune. research reads these; a PROMOTED engine
-# module reads the SAME dicts -> identical behavior, clean promotion, nothing breaks. The
-# chart injects them into the manifest so replay/scoring stay in sync. Every run snapshots
-# them to the run ledger (research/runs). Tune HERE, re-run, compare in the ledger.
-PROFILE = {"row_size": 2.0, "va_pct": 0.70}          # volume_profile (the 5m SESSION dimension — always on)
-# --- extra SCALES beyond the 5m session profile. Each loads on the chart only when "on" (opt-in). ---
-# The session volume_profile is the base dimension; base (coil/LTF) + htf (composite) are wired in per config.
-BASE = {"on": False, "band_mult": 5.0, "min_bars": 8}          # the coil (LTF) — enable to add the base scale
-HTF  = {"on": False, "days": 7, "bins": 70, "min_bars": 200}   # trailing composite (HTF); days=14 => 2-week lookback
-SHAPE = {                                            # shape_filter "clean vs foggy" (NOTES F16/F17)
-    "weights": {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10},
-    "tight_peak": 40.0, "tight_hi": 85.0,            # peaked tightness curve on va_pct (F16)
-    "prom_den": 2.0,                                 # (prominence-1)/prom_den; prominence = POC / mean(VA bins) (F17)
-    "single_2": 0.5, "single_else": 0.15,            # single-peak score for 2 / 3+ peaks
-    "shape_ok": 50,                                  # score >= this = "clean" (threshold -- tune next)
-}
-ZONE = {"rr_min": 2.0, "tf_bands": [[0.25, "1m"], [0.60, "5m"], [None, "15m"]]}  # None = inf; height% -> entry TF
-FIB = {"edges": [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0001]}   # fib zones (edge test: no dir edge, F11/F13)
-# multi-scale TARGET LADDER (R:R geometry, NOTES F25): 1R = the base coil; targets = the larger scales'
-# VA edges / POC / extremes, ordered into a scale-out ladder per direction. Geometry only (no backtest).
-LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}
-
-# ==================================================================================
-# SETUP (arm/disarm) / ENTRY / EXIT  --  LIVE state machine (see ARCHITECTURE.md)  [TBD]
-# ==================================================================================
-# The strategy is a live, bar-by-bar range-breakout engine: a session-state spine + gates that
-# ARM/DISARM a setup on stacked confluence, resting orders before the next open, aggressive trail.
-# Not built yet -- slots reserved so the exact rules live here and nowhere else.
-SETUP = {                        # the confluence gates that must align to ARM a setup  [TBD -- next]
-    "gates": None,               # e.g. shape_ok, fib_bias, zone_size vs range, tightness, time_in/until
-    "arm_rule": None,            # how the gates combine to arm
-    "invalidate": None,          # what disarms + pulls the resting orders
-}
-# v1 TRADE RULES (used by backtest/; unconditional -- no setup_arm gating yet, we measure the base rate)
+# --- the TRADE (all [WIRED] — the backtest reads these live) -------------------------
 ENTRY = {
     "type": "breakout_both",     # rest breakout-STOP orders on BOTH coil edges; OCO (first fill wins)
     "entry_tf": "5m",
     "entry_window_bars": 78,     # cancel the resting orders if no breakout within this many bars (~1 session)
-    "fill": "coil_edge",         # a resting STOP order fills at the COIL EDGE (+ slippage; a gap fills at the open)
-    "min_coil_pct": 0.05,        # skip noise: the coil height must be >= this % of price to be tradeable
+    "fill": "coil_edge",         # a resting STOP fills at the COIL EDGE (+ slippage; a gap fills at the open)
+    "min_coil_pct": 0.05,        # skip noise: coil height must be >= this % of price to be tradeable
 }
 EXIT = {
     "stop": "coil_edge",         # 1R = the base coil (the other edge)
@@ -153,23 +53,107 @@ EXIT = {
     "max_hold_bars": 156,        # time-stop: exit at market if neither hit (~2 sessions)
     "same_bar": "stop_first",    # if stop & target hit in one bar, assume STOP (pessimistic / honest)
 }
-
-# ==================================================================================
-# RISK MANAGEMENT                                                              [TBD]
-# ==================================================================================
 RISK = {
     "sizing": "risk_pct",        # fixed fractional: risk a set % of the account to the stop each trade
-    "risk_per_trade_pct": 1.0,   # % risked to the 1R stop per trade -> $ PnL = R x (pct% of start balance)
+    "risk_per_trade_pct": 1.0,   # % risked to the 1R stop -> $ PnL = R x (pct% of start balance)
     "max_contracts": None,
     "max_concurrent": None,
 }
 
-# ==================================================================================
-# EXECUTION / COSTS  (NQ e-mini; matches algokit.costs.FuturesCost)         [LOCKED]
-# ==================================================================================
-POINT_VALUE = 20.0               # $ per index point (NQ = $20/pt)
-TICK = 0.25                      # min price increment (points)
-TICK_VALUE = 5.0                 # $ per tick (0.25 * $20)
-COMMISSION_PER_SIDE = 2.25       # $ per contract per side
-SLIPPAGE_TICKS = 1               # ticks of slippage assumed per fill
-FILL_RULE = "confirming_close"   # honest fills: market orders fill at the confirming bar close (NOTES F1 / renko lesson)
+# Which config this is (identity). research_config overrides to "research". Runs are saved
+# separated by source (reports/<source>/…). strategy = the main/real truth a good strategy graduates to.
+CONFIG_SOURCE = "strategy"
+
+
+# ##################################################################################
+# ##  TIER 2 — STRUCTURE   (feeds the backtest via prebuilt JSON; rebuild after edits) ##
+# ##################################################################################
+# CHANGING THESE requires rebuilding the profile JSONs (run the volume_profile / base_profile /
+# htf_profile scripts) before the backtest sees the change — they're baked in at build time.
+#
+# HONESTY NOTE on the scale toggles: BASE["on"]/HTF["on"] currently only affect the CHART display.
+# The BACKTEST always uses all three profiles (base = the coil/trade universe, session + htf = ladder
+# targets), regardless of these flags. Making the toggles real is part of the setup_arm work.
+PROFILE = {"row_size": 2.0, "va_pct": 0.70}                    # [WIRED] the 5m session profile (base dimension)
+BASE = {"on": False, "band_mult": 5.0, "min_bars": 8}          # [CHART toggle / WIRED params] the coil (LTF)
+HTF  = {"on": False, "days": 7, "bins": 70, "min_bars": 200}   # [CHART toggle / WIRED params] trailing composite
+# multi-scale TARGET LADDER (R:R geometry): 1R = the base coil; targets = the larger scales' VA/POC/extremes.
+LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}   # [WIRED]
+
+# The confluence ARM/DISARM engine (setup_arm, v1 built 2026-07-03). Reads the gates above.
+# [WIRED when "on"] — flip "on" True to gate the backtest; False = unconditional base rate.
+SETUP = {
+    "on": False,                          # master switch: apply setup_arm gating (False = base rate)
+    "gates": ["session", "shape_ok", "rr_min"],   # v1 confluence stack (ANDed) — the enabled sensors
+    "arm_rule": "all",                    # ARM when ALL enabled gates pass (arm-once)
+    "invalidate": None,                   # what DISARMS + pulls the resting orders mid-window (v2)
+}
+
+
+# ##################################################################################
+# ##  TIER 3 — CALIBRATION   (sensor internals; tuned once, rarely touched)        ##
+# ##################################################################################
+# These are the guts of the SENSORS. They shape HOW a score is computed, not WHETHER you trade.
+# You touched SHAPE during the F16/F17 tuning; leave it unless you're deliberately re-tuning.
+SHAPE = {                                            # shape_filter "clean vs foggy" (NOTES F16/F17)
+    "weights": {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10},
+    "tight_peak": 40.0, "tight_hi": 85.0,            # peaked tightness curve on va_pct (F16)
+    "prom_den": 2.0,                                 # prominence = POC / mean(VA bins) (F17)
+    "single_2": 0.5, "single_else": 0.15,            # single-peak score for 2 / 3+ peaks
+    "shape_ok": GATE_SHAPE_OK,                       # <- the DECISION lives up in the control panel
+}
+ZONE = {"rr_min": GATE_RR_MIN,                       # <- the DECISION lives up in the control panel
+        "tf_bands": [[0.25, "1m"], [0.60, "5m"], [None, "15m"]]}   # None = inf; height% -> entry TF
+FIB = {"edges": [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0001]}   # fib zones ([SENSOR] no dir edge, F11/F13)
+
+# daily vol-regime machinery (only used when FILTER_DAY_VOL["on"])
+VOL_METRIC = "avg_range"         # per-day proxy: 'avg_range'=(H-L)/C*100 | 'mean_vol'=|ln(C/prevC)|*100
+TRAIL_WINDOW = 20                # trading days; CAUSAL (prior-window mean, no look-ahead)
+REGIME_PCTILES = (33.0, 66.0)    # low / medium / high split (percentiles within the era)
+MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None = off
+
+
+# ##################################################################################
+# ##  TIER 4 — FACTS   (market constants + data paths; you never tune these)       ##
+# ##################################################################################
+# --- execution / costs (NQ e-mini; matches algokit.costs.FuturesCost) ---------------
+POINT_VALUE = 20.0               # [FACT] $ per index point (NQ = $20/pt)
+TICK = 0.25                      # [FACT] min price increment (points)
+TICK_VALUE = 5.0                 # [FACT] $ per tick (0.25 * $20)
+COMMISSION_PER_SIDE = 2.25       # [FACT] $ per contract per side
+SLIPPAGE_TICKS = 1               # [FACT] ticks of slippage assumed per fill
+FILL_RULE = "confirming_close"   # [FACT] honest fills: market orders fill at the confirming bar close
+
+# --- clock + sessions ---------------------------------------------------------------
+INSTRUMENT = "NQ"                # Nasdaq-100 e-mini futures (back-adjusted continuous)
+CLOCK = "America/New_York"       # everything bucketed / gated on ET
+SPAN = (2005, 2024)             # full even 20 calendar years available in the data
+SESSIONS = {                     # [FACT] ET session partition (no gaps, covers 24h)
+    "asia":    ("18:00", "03:00"),
+    "london":  ("03:00", "09:30"),
+    "newyork": ("09:30", "16:00"),  # US RTH cash session (~78% of volume)
+    "close":   ("16:00", "18:00"),  # post-close + 17:00 maintenance break
+}
+
+# --- data paths ---------------------------------------------------------------------
+ROOT = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(ROOT, "data")            # simplicity's OWN clean parquets (self-contained)
+BUCKETS_OUT = os.path.join(ROOT, "research", "studies", "volume_buckets", "output")
+SOURCE_TXT_DIR = r"C:/Users/jakers/Documents/TradeStation 10.0/Data"   # raw TradeStation export (Up+Down vol)
+TF_SOURCES = {                   # timeframe -> clean parquet under DATA_DIR/NQ/ (volume = real Up+Down)
+    "1d": "NQ/NQ_1d.parquet", "60m": "NQ/NQ_60m.parquet", "15m": "NQ/NQ_15m.parquet",
+    "5m": "NQ/NQ_5m.parquet", "1m": "NQ/NQ_1m.parquet",
+}
+ES_SOURCES = {                   # S&P 500 e-mini -- future cross-instrument breadth / OOS
+    "60m": "ES/ES_60m.parquet", "15m": "ES/ES_15m.parquet",
+    "5m": "ES/ES_5m.parquet", "1m": "ES/ES_1m.parquet",
+}
+
+# --- project map (the replication manifest) -----------------------------------------
+PROJECT = {
+    "research_buckets": "research/studies/volume_buckets/",
+    "research_ranking": "research/studies/volatility_ranking/",
+    "research_vol_filter": "research/gates/volatility_filter/",
+    "dashboard": "research/studies/volume_buckets/output/volume_dashboard.html",
+    "engine": "engine/  (layers: feed/state/structure/gates/setup/execution)",
+}

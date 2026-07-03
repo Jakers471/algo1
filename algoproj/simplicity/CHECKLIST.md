@@ -1,7 +1,8 @@
 # simplicity — Build Checklist
 
 Scratch off as we go. Mirrors `VISION.md` (the full 15-step system) in build order.
-Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md`.
+Companion: `strategy_config.py` (single source of truth — now tiered + status-tagged), `NOTES.md` /
+`RANTS.md`. See **Config alignment** just below for how these items map to the config's wiring tags.
 
 ## Status legend
 - `[ ]` not started
@@ -12,6 +13,47 @@ Companion: `strategy_config.py` (single source of truth), `NOTES.md` / `RANTS.md
 
 **Promotion rule:** nothing moves `research/` → `engine/` without your explicit OK.
 **You say when.** Claude never promotes on its own.
+
+## Config alignment — PROMOTION state vs WIRING state (added 2026-07-03, nothing removed)
+Two DIFFERENT axes, easy to conflate (this caused real confusion):
+- **This checklist's legend** (`[ ]`/`[~]`/`[R]`/`[C]`/`[E]`) = **PROMOTION** state (research → engine).
+- **The config's status tags** (`strategy_config.py`, now organised in TIERS: control-panel / structure /
+  calibration / facts) = **WIRING** state — does the knob actually change a backtest number *today*?
+  `[WIRED]` yes · `[SENSOR]` measured/drawn but **not gating yet** (waits for `setup_arm`) ·
+  `[CHART]` display only · `[FACT]` constant.
+
+**They are not the same axis.** A piece can be promoted (`[E]`) yet be a `[SENSOR]` that gates nothing
+(vol_filter), or still `[~]` in research yet already feed the backtest (base_profile).
+
+**Honest runtime note:** backtest numbers come from `backtest/run_backtest.py`, which reads the research
+**profile JSONs** + `target_ladder` — it does **not** import `engine/`. `engine/run_simplicity.py` is a
+*wiring tracker* (prints WIRED x/13), not the thing that trades. So `[E]` means "promoted & importable",
+not "this is what produces the backtest."
+
+**Reconciliation — what each component really is:**
+
+| component | promotion | config tier · wiring tag | affects a backtest today? |
+|---|---|---|---|
+| data_feed | `[E]` | facts · **WIRED** | ✅ data in |
+| volume_profile (5m session) | `[E]` | structure · **WIRED** | ✅ via JSON (rebuild to apply) |
+| base_profile (coil) | `[~]` | structure · **WIRED** | ✅ the trade universe (the `on` toggle is CHART-only) |
+| htf_profile (composite) | `[~]` | structure · **WIRED** | ✅ ladder targets (the `on` toggle is CHART-only) |
+| target_ladder | `[~]` | structure · **WIRED** | ✅ builds the trade geometry |
+| entry / exit / risk | `[ ]` slots | control-panel · **WIRED** | ✅ inline in run_backtest |
+| costs / era | `[E]`/`[R]` | facts · **WIRED/FACT** | ✅ |
+| vol_filter (session/hour/day) | `[E]` | control-panel · **SENSOR** | ❌ backtest trades ALL sessions |
+| shape_filter | `[~]` | gate `GATE_SHAPE_OK` · **SENSOR** | ❌ not gating yet |
+| zone_calibration | `[~]` | gate `GATE_RR_MIN` · **SENSOR** | ❌ not gating yet |
+| fib_bias | `[R]` (no edge) | calibration · **SENSOR** | ❌ chart geometry only |
+| session_anchors | `[E]` | — · **CHART** | ❌ chart levels only |
+| session_state | `[E]` | — (engine scaffold) | ❌ backtest doesn't use engine/ |
+| **setup_arm** | `[ ]` | structure `SETUP` · **UNBUILT** | — the unlock: turns every SENSOR above into a real gate |
+| entry_trigger / trailing_stop | `[ ]` | execution (folder empty) · **UNBUILT** | — logic currently inline in run_backtest |
+
+**Bottom line:** the backtest is a straight line (base coil → ladder targets → entry/exit/risk). Every
+`[SENSOR]` becomes a real gate only when `setup_arm` reads it. The pre-shrink config is kept at
+`_archive/strategy_config_full_2026-07-02.py`; the readable mock is `config_proposal_v2.yaml` +
+`viz/config_viz.html`. The chart sidebar renders these same wiring tags live (`serve.py` `/config`).
 
 ---
 
@@ -76,7 +118,11 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[E]` **Session state machine BUILT** (the spine) — per-bar causal state: current + next session, live hi/lo (+ when made), time-in-session, time-until-next — `engine/session_state.py` (WIRED 5/13)
 - `[ ]` Wire the promoted components as **live readers of state** (run on the session's bars-so-far, not batch)
 - `[ ]` **Zone calibration** — zone size %/bars → entry timeframe + stop distance / R:R (gate) — `research/gates/zone_calibration`
-- `[ ]` **setup_arm — the confluence ARM/DISARM engine** — stack gates (shape + fib + zone size/tightness + timing) → ARM (place resting orders) / DISARM (pull them) on validation/invalidation, continuously re-evaluated
+- `[R]` **setup_arm — the confluence ARM/DISARM engine** — stack gates (shape + fib + zone size/tightness + timing) → ARM (place resting orders) / DISARM (pull them) on validation/invalidation, continuously re-evaluated.
+  **v1 BUILT + wired (NOTES F39):** `research/setup/setup_arm/setup_arm.py` = arm-once `session AND shape_ok AND rr_ok`;
+  one-line gate in `run_backtest.py`, toggled by `SIMP_ARM=1` env or `SETUP["on"]` (default off = base rate). First
+  gated run: win 29.6%→**43.3%** but expectancy flat (68% time-outs → the **EXIT** is now the constraint, not entry).
+  TODO v2: continuous DISARM (re-check mid-window) + multi-scale confluence (read session/htf, not just the coil).
 - `[ ]` Causality rule enforced: components only see bars ≤ now (no look-ahead) — same code live + backtest
 
 ## Phase 6 — Entry & exit mechanics (the substance — R:R geometry, not prediction)
@@ -125,6 +171,16 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   (strategy=main/real, research=experimental the backtest runs off); runs saved under `reports/<source>/<run_id>/`;
   index has a Config column; `run_backtest --real` runs off strategy_config. Wired the dead `BACKTEST_START/END`
   + `MAX_REPLAY_TRADES` research_config knobs.
+- `[R]` **Config retiered by ALTITUDE + live control surface** (NOTES F38) — `strategy_config` reorganised into
+  CONTROL PANEL / STRUCTURE / CALIBRATION / FACTS, every knob status-tagged `[WIRED]`/`[SENSOR]`/`[CHART]`/`[FACT]`
+  (37/37 names preserved; pre-shrink copy in `_archive/`). Chart sidebar renders the tiers + honest dots; new
+  `serve.py` `/config` endpoint reloads config LIVE (edit config → reload page → sidebar updates, no rebuild).
+  `config_panel.py` = one shared panel def. Honest fix: `FILTER_*` are SENSORS (backtest trades all sessions),
+  `BASE/HTF.on` are CHART-only. Reference sketches: `CONFIG_PROPOSAL.md`, `config_proposal_v2.yaml`,
+  `viz/config_viz.html` (a mock candlestick chart per config block). See also "Config alignment" up top (two axes).
+- `[R]` **Run harness hardened** (NOTES F39) — chart date pickers default + LOCK to the data range (data ends
+  2025-01-10; picker had defaulted to the 2026 calendar → empty window → "no trades" → 500). `run_backtest` +
+  `serve.py` now report a clear empty-window reason instead of a mystery 500.
 - `[R]` **Chart = the control surface** (NOTES F36) — sidebar config-STATUS panel (every knob + sub-param, dots:
   live/off/not-wired/no-engine) + a **Run backtest** button (dates + source + countdown) that opens the report +
   replay on done. Needs the local server: **`run_chart.bat` / `serve.py`** (file:// can't run Python).

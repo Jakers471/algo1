@@ -1,0 +1,196 @@
+# =============================================================================
+#  simplicity — CONFIG PROPOSAL v2   (nothing wired; a readability sketch)
+#
+#  Read it top-to-bottom = the order a trade is actually made:
+#     skeleton  ->  profile(s)  ->  measurements  ->  when  ->  arm  ->  trade
+#
+#  👁  VISUAL VERSION: every block below has a  "see:"  link to a mock price
+#      chart showing what it draws.  Open  ./viz/config_viz.html  and click the
+#      #anchors (or ctrl/cmd-click the links inline in your editor).
+#
+#  Every value is TAGGED in its comment so you know what kind of knob it is:
+#     [toggle]  on / off
+#     [dial]    a number you tune freely
+#     [list]    a set of choices
+#     [mode]    pick ONE from a menu -- built options are shown; note that most
+#               menus have only ONE option coded today (the rest are future)
+#     [fact]    a definition / market constant, not really "tuned"
+#     [TBD]     not built yet -- shown so you can see where it will plug in
+# =============================================================================
+
+
+# =============================================================================
+#  LAYER 1 - THE SKELETON
+#  The facts the chart draws with no tuning: sessions, times, anchors, levels.
+#  see: ./viz/config_viz.html#skeleton
+# =============================================================================
+skeleton:
+
+  clock: America/New_York        # [fact]  every timestamp is US Eastern
+  era_start_year: 2015           # [dial]  ignore data before this (pre-2015 is ~2x calmer)
+
+  sessions:                      # [fact]  the day is cut into 4 ET windows, no gaps
+    asia:
+      open:  "18:00"
+      close: "03:00"
+    london:
+      open:  "03:00"
+      close: "09:30"
+    newyork:                     #         US cash session -- ~78% of all volume
+      open:  "09:30"
+      close: "16:00"
+    close:
+      open:  "16:00"
+      close: "18:00"
+  # The chart's anchors / levels / times indicators are drawn straight from the
+  # session hi/lo as price forms them. They have no knobs of their own.
+
+
+# =============================================================================
+#  LAYER 2 - THE PROFILE, run at one or more SCALES
+#
+#  There is really only ONE indicator: the volume profile. A "scale" is:
+#     1. pick a WINDOW of price
+#     2. build a volume PROFILE on it   (-> POC, value area, histogram)
+#     3. take MEASUREMENTS off that profile
+#
+#  The module card on the chart == this layer. The SAME measurement code runs on
+#  every scale, so extra scales only say how their window is chosen and reuse
+#  ('inherit') the session's profile + measurement settings.
+#  see: ./viz/config_viz.html#scales
+# =============================================================================
+scales:
+
+  # --- SCALE 1: the session ---------------------------------- (base dimension)
+  - name: session
+    on: true                     # [toggle]  the session scale is always on
+
+    window:                      # -- HOW this scale slices price --
+      kind: session              # [mode]  one profile per ET session   (built: session | coil | composite)
+      timeframe: "5m"            # [dial]  bar size used to build the profile
+
+    profile:                     # -- HOW the volume profile is built --
+      # see: ./viz/config_viz.html#profile
+      row_size: 2.0              # [dial]  price-bin height in points (smaller = finer)
+      value_area: 0.70           # [dial]  fraction of volume inside the value area (0.70 = 70%)
+      # produces:  POC (peak-volume price) . VAL/VAH (value-area low/high) . the histogram
+
+    measure:                     # -- WHAT we read off the finished profile (module-card numbers) --
+
+      shape:                     # "clean coil or foggy mess?"  -> a 0..100 quality score
+        # see: ./viz/config_viz.html#shape
+        weight_tightness:  0.40  # [dial]  reward a tight value area
+        weight_peakedness: 0.30  # [dial]  reward one dominant volume peak
+        weight_singleness: 0.20  # [dial]  reward having ONE peak, not several
+        weight_centered:   0.10  # [dial]  reward a centered POC
+        tight_peak_at: 40.0      # [dial]  value-area % where 'tightness' scores best
+        tight_zero_at: 85.0      # [dial]  value-area % where 'tightness' hits 0
+        prominence_denom: 2.0    # [dial]  scales the peakedness term
+        clean_threshold: 50      # [dial]  score >= this  =>  called "clean"
+
+      zone:                      # "what trade geometry does this profile imply?"
+        # see: ./viz/config_viz.html#zone
+        min_rr: 2.0              # [dial]  reject the setup if reward:risk is below this
+        entry_tf_by_height:      # [dial]  taller zone -> slower entry timeframe
+          - up_to_pct: 0.25
+            use_tf: "1m"
+          - up_to_pct: 0.60
+            use_tf: "5m"
+          - up_to_pct: null      #         null = anything larger
+            use_tf: "15m"
+
+      fib:                       # fib retracement of the close within the session range
+        # see: ./viz/config_viz.html#fib
+        # CONTEXT ONLY -- tested, carries NO directional edge; kept as a chart reference
+        edges: [0.0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0]
+
+  # --- SCALE 2: the base coil --------------------------- (tighter stop, opt-in)
+  - name: base
+    on: false                    # [toggle]  add the base scale when true
+    window:
+      kind: coil                 # [mode]  auto-detect the tight base inside the session
+      band_mult: 5.0             # [dial]  how tight 'tight' means (x median bar range)
+      min_bars: 8                # [dial]  a coil must span at least this many bars
+    profile: inherit             #          reuse the session's row_size / value_area
+    measure: inherit             #          reuse the session's shape / zone settings
+
+  # --- SCALE 3: the HTF composite ----------------- (runway + context, opt-in)
+  - name: htf
+    on: false                    # [toggle]
+    window:
+      kind: composite            # [mode]  stitch several days into one profile
+      days: 7                    # [dial]  lookback length (7 = one week, 14 = two)
+      bins: 70                   # [dial]  number of price bins in the composite
+      min_bars: 200              # [dial]  need at least this much data to build it
+    profile: inherit
+    measure: inherit
+
+
+# =============================================================================
+#  LAYER 3 - THE TRADE   (consumes the measurements from Layer 2)
+# =============================================================================
+
+# --- 3a. TARGET LADDER -- turn the scales into a stop + a stack of targets ----
+#     see: ./viz/config_viz.html#ladder
+ladder:
+  stop_from: base                # [mode]  1R = the smallest scale's edge     (built: base)
+  targets_from:                  # [list]  larger scales whose VA / POC / extremes become targets
+    - session
+    - htf
+  min_rr: 0.5                    # [dial]  drop ladder rungs below this reward:risk
+
+# --- 3b. WHEN to trade -- a time gate, independent of the profile -------------
+#     see: ./viz/config_viz.html#when
+when:
+  session_filter:
+    on: true                     # [toggle]  only trade inside chosen sessions
+    allow:                       # [list]
+      - newyork
+  hour_filter:
+    on: false                    # [toggle]  only trade inside chosen ET hours
+    allow: [9, 10, 11, 12, 13, 14, 15]
+  day_vol_filter:
+    on: false                    # [toggle]  only trade on high / med / low volatility days
+    regimes:
+      - high
+  news_filter:
+    on: false                    # [toggle]  block bars near red-folder news   [TBD -- not built]
+
+# --- 3c. SETUP ARM -- which measurements must AGREE to place resting orders ---
+#     [TBD] this is the next big piece; shown so you can see what it will read.
+arm:
+  require:                       # [list]  the confluence stack (measurements referenced by path)
+    - session.shape.clean        #          the session profile is clean
+    - session.zone.rr_ok         #          its geometry clears min_rr
+  invalidate: null               # [mode]  what pulls the resting orders        [TBD]
+
+# --- 3d. ENTRY -- how the order is placed ------------------------------------
+#     see: ./viz/config_viz.html#entry
+entry:
+  type: breakout_both            # [mode]  rest a stop on BOTH coil edges        (built: breakout_both)
+  timeframe: "5m"                # [dial]  entry bar size
+  cancel_after_bars: 78          # [dial]  pull unfilled orders after ~1 session
+  fill_at: coil_edge             # [mode]  price a filled order at the coil edge  (built: coil_edge)
+  min_coil_pct: 0.05             # [dial]  skip coils smaller than this % of price (noise)
+
+# --- 3e. EXIT -- how the trade is closed -------------------------------------
+#     see: ./viz/config_viz.html#exit
+exit:
+  stop_at: coil_edge             # [mode]  1R stop = the opposite coil edge       (built: coil_edge)
+  target: ladder_rung            # [mode]  TP = first ladder rung >= target_r      (built: ladder_rung)
+  target_r: 2.0                  # [dial]  reward:risk required to take profit
+  max_hold_bars: 156             # [dial]  time-stop: exit at market after ~2 sessions
+  same_bar_tie: stop_first       # [mode]  if stop & target both hit in one bar, assume stop (honest)
+
+# --- 3f. RISK -- position sizing ---------------------------------------------
+risk:
+  sizing: risk_pct               # [mode]  size by % of account risked            (built: risk_pct)
+  risk_per_trade_pct: 1.0        # [dial]  % of the account risked to the 1R stop
+  max_contracts: null            # [dial]  hard cap on size (null = none)
+
+# --- 3g. COSTS -- market frictions (fixed for NQ) ----------------------------
+costs:
+  point_value: 20.0              # [fact]  $ per index point (NQ = $20)
+  tick: 0.25                     # [fact]  minimum price increment
+  commission_per_side: 2.25      # [fact]  $ per contract per side
+  slippage_ticks: 1              # [dial]  assumed slippage per fill

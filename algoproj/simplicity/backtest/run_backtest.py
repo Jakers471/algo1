@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 _SIM = os.path.dirname(HERE)
 sys.path.insert(0, _SIM)
 sys.path.insert(0, os.path.join(_SIM, "research", "setup", "target_ladder"))
+sys.path.insert(0, os.path.join(_SIM, "research", "setup", "setup_arm"))
 sys.path.insert(0, os.path.join(_SIM, "research", "runs"))
 # default: run off research_config (the experimental truth). `--real` runs off strategy_config (the graduated one).
 if "--real" in sys.argv:
@@ -33,7 +34,12 @@ if "--real" in sys.argv:
 else:
     import research_config as cfg    # re-exports strategy_config + STARTING_BALANCE / dates
 import target_ladder as tl
+import setup_arm
 import runlog
+
+# setup_arm gating: ON if env SIMP_ARM=1 (chart/CLI override) or cfg.SETUP["on"]. OFF = unconditional base rate.
+ARM_ON = os.environ.get("SIMP_ARM") == "1" or bool(getattr(cfg, "SETUP", {}).get("on"))
+ARM_GATES = getattr(cfg, "SETUP", {}).get("gates", [])
 
 STARTING_BALANCE = getattr(cfg, "STARTING_BALANCE", 100_000)   # research-only knob; default when running --real
 
@@ -64,6 +70,7 @@ def main():
 
     df = pd.read_parquet(os.path.join(cfg.DATA_DIR, cfg.TF_SOURCES["5m"]))
     df.index = pd.DatetimeIndex(df.index)
+    _data_first, _data_last = str(df.index[0])[:10], str(df.index[-1])[:10]   # raw range, for a clear empty-window message
     yr = df.index.tz_convert(cfg.CLOCK).year
     df = df[yr >= cfg.ERA_START_YEAR]
     # date window: env override (from the chart Run button via serve.py) > research_config knob > full era
@@ -78,6 +85,7 @@ def main():
     n = len(t)
 
     trades = []
+    n_disarmed = 0
     for b in sorted(B.values(), key=lambda x: x["session_end"]):
         sid = b["sid"]
         lad = tl.ladder({"base": b, "session": S.get(sid), "htf": H.get(sid)})
@@ -92,6 +100,12 @@ def main():
         i0 = int(np.searchsorted(t, b["session_end"], "right"))
         if i0 <= 0 or i0 >= n:   # profile's session lies outside the era-filtered bars — not tradeable here
             continue             # (pre-era profiles else map to bar 0 = coil vs a different price regime, ~2500pt fake risk)
+        # --- setup_arm gate: ARM this coil only if the confluence stack passes (else the base rate) ---
+        if ARM_ON:
+            armed, _why = setup_arm.decide(b, S.get(sid), H.get(sid), cfg=cfg)
+            if not armed:
+                n_disarmed += 1
+                continue
         # --- entry phase: first coil breakout within the window (OCO). Stop order fills at the coil edge. ---
         edir = entry = stop = tgt = risk = None
         ei = -1
@@ -151,7 +165,8 @@ def main():
                        "mae": round(mae, 5), "mfe": round(mfe, 5), "etd": round(etd, 5), "bars": int(exit_i - ei)})
 
     if not trades:
-        print("no trades"); return
+        print(f"no trades -- window {bstart or 'era-start'}..{bend or 'latest'} matched {n} bars "
+              f"(data available {_data_first}..{_data_last}). Pick a window inside the data range."); return
     d = pd.DataFrame(trades).sort_values("t_exit").reset_index(drop=True)
     d.to_csv(os.path.join(OUT, "trades.csv"), index=False)
     # full per-trade geometry -> the chart trade-replay reads THIS (single source of truth = the sim)
@@ -171,7 +186,9 @@ def main():
     n_t, wr = len(d), (d["R"] > 0).mean() * 100
     oc = d["outcome"].value_counts().to_dict()
 
-    print(f"BACKTEST -- target_ladder trades, UNCONDITIONAL (no gating), era>={cfg.ERA_START_YEAR}, "
+    _cond = ("setup_arm ON [" + "+".join(ARM_GATES) + f"] — disarmed {n_disarmed} coils") if ARM_ON \
+        else "UNCONDITIONAL (no gating — base rate)"
+    print(f"BACKTEST -- target_ladder trades, {_cond}, era>={cfg.ERA_START_YEAR}, "
           f"target>={TRR}R, 1 contract")
     print(f"  trades      {n_t:,}   ({oc.get('target',0)} target / {oc.get('stop',0)} stop / {oc.get('time',0)} time)")
     print(f"  win rate    {wr:.1f}%")
@@ -186,7 +203,8 @@ def main():
     source = getattr(cfg, "CONFIG_SOURCE", "research")   # which config produced this run -> runs saved separated by it
     rec = runlog.record("backtest",
                   {"target_r": TRR, "entry_window": EWIN, "max_hold": HOLD, "entry": cfg.ENTRY["type"],
-                   "stop": cfg.EXIT["stop"], "target": cfg.EXIT["target"], "conditional": "none (base rate)"},
+                   "stop": cfg.EXIT["stop"], "target": cfg.EXIT["target"],
+                   "conditional": ("+".join(ARM_GATES) if ARM_ON else "none (base rate)")},
                   {"trades": n_t, "win_pct": round(float(wr), 1), "avg_R": round(float(d["R"].mean()), 3),
                    "total_R": round(float(d["R"].sum()), 1), "total_pnl": round(float(d["pnl"].sum()), 0),
                    "max_dd_R": round(float(dd_r), 1), "target_pct": round(oc.get("target", 0) / n_t * 100, 1),

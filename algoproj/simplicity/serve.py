@@ -54,7 +54,28 @@ class H(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/favicon.ico":       # no favicon -> answer 204 so the console stays clean
             self.send_response(204); self.end_headers(); return
+        if self.path.rstrip("/") == "/config":  # LIVE config panel: reload strategy_config -> reflect edits on reload
+            return self._serve_config()
         super().do_GET()
+
+    def _serve_config(self):
+        try:
+            import importlib
+            import strategy_config as sc
+            importlib.reload(sc)              # pick up edits without restarting the server
+            sys.path.insert(0, os.path.join(HERE, "research", "chart"))
+            import config_panel as cp
+            importlib.reload(cp)
+            out = {"ok": True, "source": sc.CONFIG_SOURCE, "config_panel": cp.panel(sc)}
+            code = 200
+        except Exception as e:
+            out = {"ok": False, "error": str(e)}; code = 500
+        b = json.dumps(out).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(b)))
+        self.end_headers()
+        self.wfile.write(b)
 
     def do_POST(self):
         if self.path.rstrip("/") != "/run":
@@ -76,7 +97,11 @@ class H(SimpleHTTPRequestHandler):
                    "replay": "/research/chart/trade_replay.html"}
             print(f"[serve]   -> {src}/{run_id}")
         else:
-            out = {"ok": False, "error": "backtest produced no result", "log": log[-1500:]}
+            reason = "backtest produced no result"
+            for ln in reversed((log or "").splitlines()):   # surface the real reason (e.g. "no trades -- window ...")
+                if ln.strip().startswith("no trades"):
+                    reason = ln.strip(); break
+            out = {"ok": False, "error": reason, "log": log[-1500:]}
             print("[serve]   -> FAILED\n" + (log[-1500:] if log else ""))
         b = json.dumps(out).encode()
         self.send_response(200 if run_id else 500)

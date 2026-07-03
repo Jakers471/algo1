@@ -31,50 +31,11 @@ import zone_calibration as zc
 import base_profile as bpm
 import htf_profile as htfm
 import target_ladder as tlm
+import config_panel as cpanel
 
 DATA = os.path.join(HERE, "data")
 os.makedirs(DATA, exist_ok=True)
 MAX_BARS = 6000  # ~3x for more visible examples
-
-
-def _it(name, value, enabled, wired, engine):
-    # enabled: True/False toggle, or None = always-on. wired = applied by the backtest. engine = has an engine/ module.
-    return {"name": name, "value": str(value), "enabled": enabled, "wired": wired, "engine": engine}
-
-
-def _config_panel():
-    """Every config knob + its status flags, for the chart's config-status panel (red=off, orange=not wired, purple=no engine)."""
-    fs = cfg.FILTER_SESSION; fh = cfg.FILTER_HOUR; fd = cfg.FILTER_DAY_VOL
-    return [
-        {"title": "Data & era", "items": [
-            _it("instrument", cfg.INSTRUMENT, None, True, True),
-            _it("era start", cfg.ERA_START_YEAR, None, True, True),
-            _it("sessions", "4 (ET)", None, True, True)]},
-        {"title": "When-to-trade filters", "items": [
-            _it("session filter", ("on: " + ",".join(fs["allow"])) if fs["on"] else "off", fs["on"], False, True),
-            _it("hour filter", "on" if fh["on"] else "off", fh["on"], False, True),
-            _it("day-vol filter", (",".join(fd["regimes"])) if fd["on"] else "off", fd["on"], False, True),
-            _it("news filter", "unbuilt", False, False, False)]},
-        {"title": "Structure — scales", "items": [
-            _it("volume_profile · 5m", f"row {cfg.PROFILE['row_size']} · va {cfg.PROFILE['va_pct']}", None, True, True),
-            _it("base_profile", ("on · " if cfg.BASE["on"] else "off · ") + f"band {cfg.BASE['band_mult']} · min {cfg.BASE['min_bars']}", cfg.BASE["on"], True, False),
-            _it("htf_profile", ("on · " if cfg.HTF["on"] else "off · ") + f"days {cfg.HTF['days']} · bins {cfg.HTF['bins']}", cfg.HTF["on"], True, False)]},
-        {"title": "Quality gates", "items": [
-            _it("shape_filter", f"shape_ok {cfg.SHAPE['shape_ok']}", None, False, False),
-            _it("zone_calibration", f"rr_min {cfg.ZONE['rr_min']}", None, False, False),
-            _it("fib_bias", f"{len(cfg.FIB['edges'])-1} zones", None, False, False),
-            _it("target_ladder", f"min_rr {cfg.LADDER['min_rr']}", None, True, False),
-            _it("setup_arm", "unbuilt", None, False, False)]},
-        {"title": "The trade", "items": [
-            _it("entry", f"{cfg.ENTRY['type']} · tf {cfg.ENTRY['entry_tf']}", None, True, False),
-            _it("stop", f"{cfg.EXIT['stop']} = 1R", None, True, False),
-            _it("target", f"{cfg.EXIT['target']} · r {cfg.EXIT['target_r']}", None, True, False),
-            _it("time stop", f"{cfg.EXIT['max_hold_bars']} bars", None, True, False),
-            _it("min coil %", cfg.ENTRY["min_coil_pct"], None, True, False)]},
-        {"title": "Risk & execution", "items": [
-            _it("risk %/trade", f"{cfg.RISK['risk_per_trade_pct']}%", None, True, False),
-            _it("costs", f"${cfg.COMMISSION_PER_SIDE}/side · {cfg.SLIPPAGE_TICKS} tick", None, True, True)]},
-    ]
 
 
 def _series(df):
@@ -219,7 +180,7 @@ def main():
         print(f"  scales: session (5m) always · base {'ON ('+str(n_base)+')' if cfg.BASE.get('on') else 'off'}"
               f" · htf {'ON ('+str(n_htf)+')' if cfg.HTF.get('on') else 'off'}")
     manifest["profiles"] = profiles
-    manifest["config_panel"] = _config_panel()
+    manifest["config_panel"] = cpanel.panel(cfg)
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")
