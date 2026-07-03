@@ -292,6 +292,7 @@ function drawTrade(tr){
 function lockView(tr){
   const b=tr.scales.base||tr.scales.session;
   const from=(b?b.start:tr.t_entry)-6*300, to=tr.t_exit+8*300;   // a few bars of coil context .. a few past exit
+  RP.viewFrom=from; RP.viewTo=to;
   try{chart.timeScale().setVisibleRange({from,to});}catch(e){chart.timeScale().fitContent();}
 }
 // ---- select a trade ----
@@ -320,6 +321,11 @@ function selectTrade(pos){
 function renderNow(){
   const sc=document.getElementById("rpScrub"); sc.value=RP.k;
   const tr=RP.tr, bar=RP.bars[RP.k]; if(!bar){document.getElementById("rpInfo").textContent="–";return;}
+  // REVEAL the candles bar-by-bar: show only bars up to "now" (at exit, show the full slice incl. the post-exit pad)
+  const upto=RP.k>=RP.exitK?RP.bars.length-1:RP.k, shown=RP.bars.slice(0,upto+1);
+  candle.setData(shown.map(B));
+  vol.setData(shown.map(a=>({time:a[0],value:a[5],color:a[4]>=a[1]?"rgba(25,158,112,.4)":"rgba(230,103,103,.4)"})));
+  try{chart.timeScale().setVisibleRange({from:RP.viewFrom,to:RP.bars[upto][0]+8*300});}catch(e){}
   renderStack(tr, bar[0]);    // recompute the module cards on bars-so-far (the "numbers changing in the module screen")
   redrawOverlay();
   const px=bar[4], risk=tr.risk_pts||1;
