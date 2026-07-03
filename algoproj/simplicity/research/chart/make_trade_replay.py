@@ -137,7 +137,7 @@ chart.priceScale("vol").applyOptions({scaleMargins:{top:0.85,bottom:0}});
 
 // ---- state ----
 let filtered=TR.map((_,i)=>i), fpos=0, priceLines=[], outcomeFilter="all", CUR=null;
-const RP={bars:[],k:0,e0:0,e1:0,entryK:0,exitK:0,playing:false,timer:null,speed:1};
+const RP={bars:[],k:0,e0:0,e1:0,entryK:0,exitK:0,armK:0,playing:false,timer:null,speed:1};
 
 // ---- price lines (entry/stop/target/coil), redrawn per trade ----
 function clearLines(){priceLines.forEach(pl=>candle.removePriceLine(pl));priceLines=[];}
@@ -273,19 +273,22 @@ function renderStat(tr){
 
 // ---- entry/stop/target axis lines + R-ladder bands (option 03) + entry/exit markers ----
 function fmtR(r){return Math.abs(r-Math.round(r))<0.05?Math.round(r):r.toFixed(1);}
-function drawTrade(tr){
-  CUR=tr; clearLines();
-  const Rr=Math.abs(tr.target-tr.entry)/(tr.risk_pts||1);
-  line(tr.entry,"#f0b000",0,"entry "+tr.entry);
-  line(tr.stop,"#e66767",2,"stop −1R");
-  if(tr.method==="trailing") line(tr.target,"#2ebd85",2,"trail exit "+tr.target);   // trailing has no fixed target
-  else line(tr.target,"#199e70",2,"target +"+fmtR(Rr)+"R");
-  const up=tr.dir==="up";
+function drawTrade(tr){    // markers only (entry/exit arrows); the price LINES are drawn phase-aware in renderNow
+  CUR=tr; const up=tr.dir==="up";
   candle.setMarkers([
     {time:tr.t_entry,position:up?"belowBar":"aboveBar",color:"#f0b000",shape:up?"arrowUp":"arrowDown",text:"ENTRY"},
     {time:tr.t_exit,position:up?"aboveBar":"belowBar",
      color:tr.outcome==="target"?"#199e70":tr.outcome==="stop"?"#e66767":"#8a94a6",
      shape:"circle",text:tr.outcome.toUpperCase()+" "+(tr.R>=0?"+":"")+tr.R+"R"}]);
+}
+function drawTradeLines(tr){    // entry/stop/target appear ONLY after the fill — before that the trade hasn't triggered
+  clearLines();
+  if(RP.k<RP.entryK)return;
+  const Rr=Math.abs(tr.target-tr.entry)/(tr.risk_pts||1);
+  line(tr.entry,"#f0b000",0,"entry "+tr.entry);
+  line(tr.stop,"#e66767",2,"stop -1R (initial)");
+  if(tr.method==="trailing") line(tr.target,"#2ebd85",2,"exit "+tr.target);
+  else line(tr.target,"#199e70",2,"target +"+fmtR(Rr)+"R");
 }
 
 // ---- auto-lock the view onto the setup (coil -> exit), not the whole slice ----
@@ -312,6 +315,8 @@ function selectTrade(pos){
   RP.exitK=tr.bars.findIndex(a=>a[0]===tr.t_exit); if(RP.exitK<0)RP.exitK=tr.bars.length-1;
   let s0=tr.bars.findIndex(a=>a[0]>=tr.scales.session.start); if(s0<0)s0=0;
   RP.e0=s0; RP.e1=RP.exitK;
+  // ARM moment = session close (that's when setup_arm evaluated the coil + placed the resting orders in the sim)
+  let ak=tr.bars.findIndex(a=>a[0]>tr.scales.session.end); if(ak<0)ak=RP.entryK; RP.armK=Math.max(RP.e0,Math.min(ak,RP.entryK));
   RP.k=RP.exitK;   // open laid-out at the outcome; press |< (or play) to replay from the forming phase
   replayPause(); document.getElementById("rpScrub").min=RP.e0;
   document.getElementById("rpScrub").max=RP.e1; renderNow();
@@ -327,6 +332,7 @@ function renderNow(){
   vol.setData(shown.map(a=>({time:a[0],value:a[5],color:a[4]>=a[1]?"rgba(25,158,112,.4)":"rgba(230,103,103,.4)"})));
   try{chart.timeScale().setVisibleRange({from:RP.viewFrom,to:RP.bars[upto][0]+8*300});}catch(e){}
   renderStack(tr, bar[0]);    // recompute the module cards on bars-so-far (the "numbers changing in the module screen")
+  drawTradeLines(tr);         // entry/stop/target only after the fill
   redrawOverlay();
   const px=bar[4], risk=tr.risk_pts||1;
   const preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK, forming=bar[0]<tr.scales.session.end;
@@ -372,7 +378,8 @@ function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
 
 // ---- LIVE: resting orders (pre-entry) + the trailing-stop staircase + the state panel (all from the sim) ----
 function pathStopAt(tr,t){if(!tr.path)return null;let s=null;for(const p of tr.path){if(p[0]<=t)s=p;else break;}return s;}
-function drawResting(tr,box){    // the two resting breakout-STOP orders at the coil edges (OCO) — bright pre-entry
+function drawResting(tr,box){    // the two resting breakout-STOP orders — placed at the ARM moment (session close), not during forming
+  if(RP.k<RP.armK)return;
   const preEntry=RP.k<RP.entryK, up=tr.dir==="up";
   const b=tr.scales.base||tr.scales.session; let x0=chart.timeScale().timeToCoordinate(b?b.start:tr.t_entry); if(x0==null||x0<0)x0=0;
   const rest=(price,col,lab,live)=>{const y=candle.priceToCoordinate(price);if(y==null)return;
@@ -396,28 +403,38 @@ function drawTrail(tr,box){      // the LIVE trailing stop as a stepped staircas
 function updateState(tr){
   const sp=document.getElementById("statepanel"), bar=RP.bars[RP.k]; if(!bar||!tr){sp.innerHTML="";return;}
   const now=bar[0], px=bar[4], risk=tr.risk_pts||1, up=tr.dir==="up";
-  const preEntry=RP.k<RP.entryK, atExit=RP.k>=RP.exitK, inTrade=!preEntry&&!atExit;
-  const forming=now<tr.scales.session.end;
+  // phases keyed to the sim: FORMING (coil building) -> ARMED/RESTING (session close: gates checked, orders placed) -> IN TRADE -> EXIT
+  const forming=RP.k<RP.armK, resting=RP.k>=RP.armK&&RP.k<RP.entryK, atExit=RP.k>=RP.exitK, inTrade=!forming&&!resting&&!atExit;
   const st=pathStopAt(tr,now), armedTrail=st?!!st[2]:false;
   const liveStop=inTrade?(st?st[1]:tr.stop):null;
   const mtm=atExit?tr.R:+(((up?(px-tr.entry):(tr.entry-px))/risk)).toFixed(2);
   const isTrail=tr.method==="trailing";
-  const stage=preEntry?(forming?"FORMING · setup building":"RESTING · orders placed")
+  const stage=forming?"FORMING · coil building"
+    :resting?"ARMED · orders resting"
     :atExit?(tr.outcome.toUpperCase()+" · "+(tr.R>=0?"+":"")+tr.R+"R")
     :(isTrail?(armedTrail?"IN TRADE · trailing":"IN TRADE · pre-arm"):"IN TRADE");
-  const stageCol=preEntry?(forming?"#4a9bff":"#e0a94a"):atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
+  const stageCol=forming?"#4a9bff":resting?"#e0a94a":atExit?(tr.R>=0?"#2ebd85":"#e66767"):"#f0b000";
   const g=tr.arm||{}, pill=(ok,lab)=>`<span class="gpill" style="color:${ok?'#2ebd85':'#e66767'};border-color:${ok?'#2ebd85':'#e66767'}">${lab}</span>`;
   let gates=""; if(tr.arm){gates=(('session'in g)?pill(g.session,'session'):'')+pill(g.shape,'shape '+(tr.arm_shape??''))+pill(g.rr,'rr '+(tr.arm_rr??''));}
   const method=isTrail?`trailing · arm ${CFG.trail_arm_r} / gap ${CFG.trail_gap_r}`:`${tr.method} · ${CFG.target_r}R`;
-  const rToStop=(liveStop!=null)?(((up?(px-liveStop):(liveStop-px))/risk)).toFixed(2):"—";
-  sp.innerHTML=`<div class="stage" style="color:${stageCol}">${stage}</div>`
-    +((tr.armed&&tr.arm)?`<div class="sh">setup_arm ${preEntry?'(evaluating)':'✓ armed'}</div><div>${gates}</div>`:'')
-    +`<div class="sh">take-profit</div><div class="sr"><span>method</span><b>${method}</b></div>`
-    +(preEntry
-      ?`<div class="sh">orders</div><div class="sr"><span>buy-stop</span><b style="color:#2ebd85">${tr.coil_hi}</b></div><div class="sr"><span>sell-stop</span><b style="color:#e66767">${tr.coil_lo}</b></div>`
-      :`<div class="sh">live</div><div class="sr"><span>mark-to-mkt</span><b style="color:${mtm>=0?'#2ebd85':'#e66767'}">${mtm>=0?'+':''}${mtm}R</b></div>`
-        +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
-        +`<div class="sr"><span>R to stop</span><b>${rToStop}</b></div>`);
+  let body;
+  if(forming){
+    body=`<div class="sh">what's happening</div><div class="sr"><span>the coil is</span><b>still forming</b></div>`
+      +`<div class="sr"><span>bars so far</span><b>${RP.k-RP.e0+1}</b></div>`
+      +`<div class="sr"><span>waiting for</span><b>session close → arm</b></div>`;
+  } else if(resting){                       // THE CAUSE: the gates that armed it, + the resting orders now live
+    body=(tr.arm?`<div class="sh">why it ARMED (setup_arm)</div><div>${gates}</div>`
+                :`<div class="sh">unconditional (no gate)</div>`)
+      +`<div class="sh">resting orders (OCO)</div>`
+      +`<div class="sr"><span>buy-stop ↑</span><b style="color:#2ebd85">${tr.coil_hi}</b></div>`
+      +`<div class="sr"><span>sell-stop ↓</span><b style="color:#e66767">${tr.coil_lo}</b></div>`;
+  } else {                                  // in trade / exit
+    body=`<div class="sh">take-profit</div><div class="sr"><span>method</span><b>${method}</b></div>`
+      +`<div class="sh">live</div><div class="sr"><span>mark-to-mkt</span><b style="color:${mtm>=0?'#2ebd85':'#e66767'}">${mtm>=0?'+':''}${mtm}R</b></div>`
+      +`<div class="sr"><span>live stop</span><b>${liveStop!=null?liveStop:'—'}</b></div>`
+      +`<div class="sr"><span>R to stop</span><b>${(liveStop!=null)?(((up?(px-liveStop):(liveStop-px))/risk)).toFixed(2):'—'}</b></div>`;
+  }
+  sp.innerHTML=`<div class="stage" style="color:${stageCol}">${stage}</div>`+body;
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redrawOverlay);
 new ResizeObserver(redrawOverlay).observe(chartEl);

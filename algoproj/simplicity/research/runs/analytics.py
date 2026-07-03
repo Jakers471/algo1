@@ -76,6 +76,12 @@ def _group(trades, ctx, cal, years, ppy):
     # exposure
     tot_bars = sum(t.get("bars", 0) for t in trades)
     exposure = tot_bars / ctx["n_bars"] if ctx["n_bars"] else 0.0
+    # day-level ACTIVITY: which calendar days had >=1 trade -> % traded + longest traded / flat (dry) streaks
+    _tdays = set(pd.Timestamp(t["t_exit"], unit="s", tz="UTC").tz_convert("America/New_York").normalize() for t in trades)
+    _traded = np.array([d in _tdays for d in cal]) if len(cal) else np.array([], dtype=bool)
+    days_total = int(len(cal)); days_traded = int(_traded.sum()); days_flat = days_total - days_traded
+    longest_traded = streak(_traded) if days_total else 0
+    longest_untraded = streak(~_traded) if days_total else 0
     # monte-carlo risk of ruin on the R path (additive), ruin = drawdown in R exceeding X% of start (in R units)
     R_per_pct = (starting / 100.0) / risk_d           # how many R = 1% of starting balance
     mc = _mc_ruin_R(R, R_per_pct)
@@ -108,6 +114,10 @@ def _group(trades, ctx, cal, years, ppy):
             "time_in_market": exposure, "avg_bars_in_trade": float(np.mean([t.get("bars", 0) for t in trades])),
             "profit_per_month": float(pnl.sum()) / (years * 12) if years > 0 else 0.0,
             "max_time_to_recover_days": rec, "longest_flat_days": flat,
+            # day-level activity (calendar days with >=1 trade vs none)
+            "days_total": days_total, "days_traded": days_traded, "days_not_traded": days_flat,
+            "pct_days_traded": (days_traded / days_total * 100) if days_total else 0.0,
+            "longest_traded_streak_days": longest_traded, "longest_untraded_streak_days": longest_untraded,
         },
     }
 

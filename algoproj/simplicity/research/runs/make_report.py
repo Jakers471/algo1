@@ -120,7 +120,12 @@ SECTIONS = [
         ("Avg bars in trade", "avg_bars_in_trade", lambda v: num(v, 1), None),
         ("Profit per month", "profit_per_month", money, "sign"),
         ("Max time to recover", "max_time_to_recover_days", lambda v: num(v) + "d", None),
-        ("Longest flat period", "longest_flat_days", lambda v: num(v) + "d", None),
+        ("Longest flat equity period", "longest_flat_days", lambda v: num(v) + "d", None),
+        ("Days traded", "days_traded", lambda v: num(v), None),
+        ("Days NOT traded", "days_not_traded", lambda v: num(v), None),
+        ("% of days traded", "pct_days_traded", lambda v: num(v, 1) + "%", None),
+        ("Longest traded streak", "longest_traded_streak_days", lambda v: num(v) + "d", None),
+        ("Longest dry streak (no trade)", "longest_untraded_streak_days", lambda v: num(v) + "d", None),
     ]),
 ]
 
