@@ -659,12 +659,14 @@ if(location.protocol.startsWith("http"))
 const _served=location.protocol.startsWith("http");
 const runStat=document.getElementById("runStat"), runBtn=document.getElementById("runBtn");
 if(!_served){runBtn.disabled=true;runStat.innerHTML='Static file — start <b>run_chart.bat</b> to enable running.';}
-// default + CONSTRAIN the run window to the DATA range (data ends well before "today" — don't let the picker pick empty future windows)
+// default + CONSTRAIN the run window to the BACKTEST range (era start .. data end). NOTE: m5.first is only the
+// CHART's loaded window (~last 6000 bars), NOT the data start — so the floor is the era, not m5.first.
 (function(){const m5=(M.series||[]).find(s=>s.key==="NQ_5m")||{};
-  const last=(m5.last||"").slice(0,10), first=(m5.first||"").slice(0,10);
+  const last=(m5.last||"").slice(0,10), era=(C.era_start||2015)+"-01-01";
   const bs=document.getElementById("btStart"), be=document.getElementById("btEnd");
-  if(last){be.value=last; be.max=last; be.min=first; bs.value=(C.era_start||2015)+"-01-01"; bs.max=last; bs.min=first;
-    runStat.innerHTML=`data ${first} → ${last}`;}
+  if(last){bs.min=be.min=era; bs.max=be.max=last;        // pickable range = era start .. data end
+    bs.value=era; be.value=last;
+    runStat.innerHTML=`backtest range ${era} → ${last}`;}
 })();
 const runBar=document.getElementById("runBar").firstElementChild;
 runBtn.onclick=async()=>{
@@ -672,6 +674,9 @@ runBtn.onclick=async()=>{
   const source=document.getElementById("btSource").value;
   // open the two result windows NOW (in the click gesture) so popup-blockers don't kill them; fill on done
   const wRep=window.open("about:blank","_blank"), wRep2=window.open("about:blank","_blank");
+  // paint a themed "running…" placeholder so they're not blank white while the backtest runs (~15s)
+  const _wait=(w,label)=>{try{if(w)w.document.write('<title>running… '+label+'</title><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0d;color:#8a8880;font:15px system-ui,sans-serif">running backtest… <b style="color:#c3c2b7;margin-left:7px">'+label+'</b>&nbsp;will load here</body>');}catch(e){}};
+  _wait(wRep,"report"); _wait(wRep2,"replay");
   runBtn.disabled=true;
   const t0=Date.now(), est=Math.max(6000,+(localStorage.getItem("simp_run_ms")||18000));
   const tick=setInterval(()=>{const el=Date.now()-t0, rem=Math.ceil((est-el)/1000);
