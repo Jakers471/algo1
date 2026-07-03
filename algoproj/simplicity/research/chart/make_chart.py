@@ -639,17 +639,9 @@ function renderCfg(){document.getElementById("cfgSel").innerHTML=Object.keys(M.c
   `<button data-c="${k}" class="${k==cfgSel?'on':''}">${k}</button>`).join("");
   document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cfgSel=b.dataset.c;renderCfg();updateShade();logConfig();});
   document.getElementById("cfgLoaded").innerHTML=`<span class="dot"></span>${cfgSel} vol-days loaded`;}
-function logConfig(){const cc=M.configs[cfgSel];
-  console.log(`%c[simplicity] CONFIG LOADED -> ${cfgSel}`,"color:#199e70;font-weight:bold;font-size:13px");
-  console.table({
-    source:cc.label, note:cc.note,
-    "vol-day overlay (days)":cc.selected_days.length, "vol-day overlay (periods)":cc.selected_runs.length,
-    "session filter":C.filter_session.on?C.filter_session.allow.join(","):"off",
-    "hour filter":C.filter_hour.on?C.filter_hour.allow.join(","):"off",
-    "day_vol filter":C.filter_day_vol.on?C.filter_day_vol.regimes.join(","):"off",
-    era_start:C.era_start, vol_metric:C.vol_metric, trail_window:C.trail_window+"d",
-    instrument:inst, timeframe:tf});
-  console.log("  first selected days:",cc.selected_days.slice(0,8),`... (${cc.selected_days.length} total)`);}
+function logConfig(){const cc=M.configs[cfgSel];   // vol-day OVERLAY only (shading) — NOT the backtest run config
+  console.log(`%c[simplicity] vol-day overlay → ${cfgSel}`,"color:#199e70;font-weight:bold",
+    `${cc.selected_days.length} days · ${cc.selected_runs.length} periods (display shading). Full config: sidebar panel.`);}
 renderCfg(); logConfig();
 // ---- config-status panel + Run backtest (needs serve.py; on file:// the button is disabled) ----
 const CP=M.config_panel||[];

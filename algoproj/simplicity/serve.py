@@ -51,6 +51,11 @@ class H(SimpleHTTPRequestHandler):
     def log_message(self, *a):
         pass  # quiet
 
+    def do_GET(self):
+        if self.path == "/favicon.ico":       # no favicon -> answer 204 so the console stays clean
+            self.send_response(204); self.end_headers(); return
+        super().do_GET()
+
     def do_POST(self):
         if self.path.rstrip("/") != "/run":
             self.send_error(404); return
