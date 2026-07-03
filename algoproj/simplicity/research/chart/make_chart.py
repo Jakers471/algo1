@@ -163,6 +163,7 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
         <div class="ind-row"><span class="ind-lab">times</span><button id="timesBtn">off</button><span id="timesSess"></span></div>
         <div class="ind-row"><span class="ind-lab">profile</span><button id="vpBtn">off</button><span id="vpSess"></span></div>
         <div class="ind-row"><span class="ind-lab">fib</span><button id="fibBtn">off</button><span id="fibSess"></span></div>
+        <div class="ind-row"><span class="ind-lab">the hunt</span><button id="huntBtn">off</button><span class="ind-note" id="huntNote">every coil: <b style="color:#2ebd85">armed</b> vs <b style="color:#e66767">rejected</b></span></div>
         <div class="ind-row"><span class="ind-lab">modules</span><button id="modBtn">off</button><span class="ind-note">click a session &rarr; card</span></div>
         <div class="ind-note">solid = hit &middot; dashed = ongoing &middot; labels: NY/Lo/As + H/L</div>
       </div>
@@ -252,7 +253,7 @@ document.getElementById("shVol").onclick=function(){shVol=!shVol;this.classList.
 
 // ---- session anchors (minimizable Indicators module) ----
 const SC=M.session_colors||{}, SESSN=Object.keys(SC), CODE={asia:"As",london:"Lo",newyork:"NY"};
-let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, timesSess={}, vpOn=false, vpSess={}, fibOn=false, fibSess={};
+let ancOn=false, ancLvl={high:true,low:true}, ancSess={}, ancLines=[], timesOn=false, timesSess={}, vpOn=false, vpSess={}, fibOn=false, fibSess={}, huntOn=false;
 SESSN.forEach(s=>{ancSess[s]=true; vpSess[s]=true; timesSess[s]=true; fibSess[s]=true;});
 function clearAnchors(){ancLines.forEach(s=>chart.removeSeries(s));ancLines=[];}
 function updateAnchors(){
@@ -317,6 +318,21 @@ function redraw(){
       vpsvg.appendChild(_ln(x0,y,x1,y,c,mid?1.4:1,mid?0.9:0.5,mid?null:"1 3"));  // 0.5 solid bright, others dotted faint
     }
   }
+  if(huntOn) for(const e of (M.hunt||[])){        // THE HUNT: every coil the strategy evaluated — armed=green box, rejected=red dashed
+    const x0=ts.timeToCoordinate(e.start), x1=ts.timeToCoordinate(e.end);
+    if(x0==null||x1==null)continue;
+    const yH=candle.priceToCoordinate(e.hi), yL=candle.priceToCoordinate(e.lo);
+    if(yH==null||yL==null)continue;
+    const col=e.armed?"#2ebd85":"#e66767", w=Math.max(2,x1-x0), r=document.createElementNS(NSV,"rect");
+    r.setAttribute("x",x0);r.setAttribute("y",Math.min(yH,yL));r.setAttribute("width",w);r.setAttribute("height",Math.max(1,Math.abs(yL-yH)));
+    r.setAttribute("fill",col);r.setAttribute("fill-opacity",e.armed?0.16:0.05);
+    r.setAttribute("stroke",col);r.setAttribute("stroke-width",e.armed?1.2:0.7);r.setAttribute("stroke-opacity",e.armed?0.85:0.35);
+    if(!e.armed)r.setAttribute("stroke-dasharray","3 3");
+    vpsvg.appendChild(r);
+    if(e.armed){const t=document.createElementNS(NSV,"text");t.setAttribute("x",x0+2);t.setAttribute("y",Math.min(yH,yL)-2);
+      t.setAttribute("fill",col);t.setAttribute("font-size","8.5");t.setAttribute("font-family","ui-monospace,monospace");
+      t.textContent="▶ "+(""+e.trade_open).toUpperCase();vpsvg.appendChild(t);}
+  }
   if(selScales){drawScaleBoxes(selScales);drawLadder(selScales);}   // boxes + trade ladder
   if(typeof drawNow==="function")drawNow();   // replay "now" line survives overlay redraws
 }
@@ -337,6 +353,10 @@ document.getElementById("vpSess").innerHTML=SESSN.map(s=>
   `<button data-vs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=function(){vpSess[this.dataset.vs]=!vpSess[this.dataset.vs];this.classList.toggle("on",vpSess[this.dataset.vs]);redraw();});
 document.getElementById("fibBtn").onclick=function(){fibOn=!fibOn;this.classList.toggle("on",fibOn);this.textContent=fibOn?"on":"off";redraw();};
+document.getElementById("huntBtn").onclick=function(){huntOn=!huntOn;this.classList.toggle("on",huntOn);this.textContent=huntOn?"on":"off";
+  const h=M.hunt||[], a=h.filter(e=>e.armed).length;
+  document.getElementById("huntNote").innerHTML=huntOn?`${a} <b style="color:#2ebd85">armed</b> / ${h.length-a} <b style="color:#e66767">rejected</b> in view`:'every coil: <b style="color:#2ebd85">armed</b> vs <b style="color:#e66767">rejected</b>';
+  redraw();};
 document.getElementById("fibSess").innerHTML=SESSN.map(s=>
   `<button data-fs="${s}" class="on" style="border-color:${SC[s]}"><span class="sw" style="background:${SC[s]}"></span>${s}</button>`).join("");
 document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[this.dataset.fs]=!fibSess[this.dataset.fs];this.classList.toggle("on",fibSess[this.dataset.fs]);redraw();});

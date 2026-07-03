@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 sys.path.insert(0, os.path.join(SIM, "research", "structure", "base_profile"))
 sys.path.insert(0, os.path.join(SIM, "research", "structure", "htf_profile"))
 sys.path.insert(0, os.path.join(SIM, "research", "setup", "target_ladder"))
+sys.path.insert(0, os.path.join(SIM, "research", "setup", "setup_arm"))
 import strategy_config as cfg
 import research_config as rcfg
 import vol_filter as vf
@@ -31,6 +32,7 @@ import zone_calibration as zc
 import base_profile as bpm
 import htf_profile as htfm
 import target_ladder as tlm
+import setup_arm as sarm
 import config_panel as cpanel
 
 DATA = os.path.join(HERE, "data")
@@ -185,6 +187,25 @@ def main():
     manifest["profiles"] = profiles
     manifest["config_panel"] = cpanel.panel(cfg)
     manifest["data_range"] = data_range          # true full data range (for the run-window picker floor)
+
+    # THE HUNT: every coil the strategy evaluated in the loaded window + its setup_arm verdict (armed vs rejected)
+    hunt = []
+    bp_path = os.path.join(HERE, "..", "structure", "base_profile", "output", "base_profile.json")
+    if os.path.exists(bp_path):
+        m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
+        hcut = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
+        for b in json.load(open(bp_path))["profiles"]:
+            if int(b.get("start", 0)) < hcut:
+                continue
+            armed, why = sarm.decide(b, cfg=cfg)
+            shp = sf.score(b) or {}
+            zn = zc.calibrate(b) or {}
+            hunt.append({"session": b["session"], "date": b["date"], "sid": b["sid"],
+                         "start": int(b["start"]), "end": int(b["end"]),
+                         "hi": round(b["high"], 2), "lo": round(b["low"], 2),
+                         "shape": shp.get("shape_score"), "rr": zn.get("rr"),
+                         "armed": bool(armed), "trade_open": why.get("trade_open"), "gates": why.get("gates")})
+    manifest["hunt"] = hunt
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))
     print(f"wrote {len(series_meta)} series + manifest to {DATA}")
