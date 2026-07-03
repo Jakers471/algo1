@@ -51,17 +51,25 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 | `py research/studies/volatility_ranking/rank_volatility.py` | most-vs-least volatile ranking + era comparison |
 | `py research/studies/session_break_stats/session_break_stats.py` | session-break base rates / lift / follow-through (no edge) |
 | **meta / builders** | |
-| `py research/strategy_map/build_map.py` | the decision-tree / neural-net map of the whole strategy |
+| `py research/strategy_map/build_map.py` | **CONFIG CONTROL PANEL** — every dial (LIVE / not-wired / no-engine) → `strategy_map.html` |
+| `py research/strategy_map/build_flow.py` | **interactive FLOW EDITOR** — drag/connect components into your execution order → `flow.html` |
 | `py research/runs/analyze_runs.py [kind]` | RUN LEDGER: compare every logged run's params + metrics |
-| `py research/chart/build_chart_data.py` | cache ≤6000 bars/TF (NQ+ES) + bake profiles / base / scores for the chart |
-| `py research/chart/make_chart.py` | build the self-contained `chart.html` |
+| `py research/chart/build_chart_data.py` | cache ≤6000 bars/TF (NQ+ES) + bake profiles + the config-status panel for the chart |
+| `py research/chart/make_chart.py` | build the self-contained `chart.html` (5m single dimension; base/htf opt-in via config) |
+
+## chart server (run backtests FROM the chart)
+| command | does |
+|---|---|
+| `run_chart.bat`  (double-click) | start `serve.py` at localhost + open the chart there — the **Run backtest** button works (dates → run → auto-opens report + replay) |
+| `py serve.py` | same as the bat (the stdlib http server; `POST /run` runs the backtest with the chart's dates) |
 
 ## backtest + performance reports
 | command | does |
 |---|---|
-| `py backtest/run_backtest.py` | honest sim of the target_ladder trades → trades.csv/json + ledger row + **a full per-run report** (analysis.json + report.html) under `research/runs/reports/<run_id>/` |
-| open `research/runs/reports/index.html` | the **"< all runs" browser** — every backtest run, newest first, → open its report |
-| open `research/runs/reports/<run_id>/report.html` | pro performance page: ECharts equity/drawdown + headline cards + ALL/LONG/SHORT tables |
+| `py backtest/run_backtest.py` | honest sim → trades.csv/json + ledger row + a full per-run report under `research/runs/reports/research/<run_id>/` |
+| `py backtest/run_backtest.py --real` | run off `strategy_config` (the graduated truth) → saved under `reports/strategy/<run_id>/` |
+| open `research/runs/reports/index.html` | the **"< all runs" browser** — every run, newest first, with a Config column (research/strategy) |
+| open `research/runs/reports/<source>/<run_id>/report.html` | pro performance page: ECharts equity/drawdown + cards + ALL/LONG/SHORT tables |
 | `py research/runs/make_report.py` | rebuild just `reports/index.html` from the ledger |
 
 ## trade replay  (step through each backtest trade + its outcome, with the 3 module cards)
@@ -80,8 +88,9 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 ## view
 | command | does |
 |---|---|
-| open `research/chart/chart.html` | multi-TF chart + module cards (+ BASE companion) + replay + chat log |
-| open `research/strategy_map/strategy_map.html` | the strategy decision-tree map |
+| open `research/chart/chart.html` | the chart (5m) + config/run sidebar + module cards + replay + chat log (double-click = view only; use `run_chart.bat` to run) |
+| open `research/strategy_map/strategy_map.html` | the config CONTROL PANEL (every dial + status) |
+| open `research/strategy_map/flow.html` | the interactive FLOW EDITOR (arrange the execution order yourself) |
 | open `research/structure/base_profile/output/compare.html` | base vs whole-session, side by side (same gates) |
 | open `research/gates/profile_shape_filter/output/examples.html` | shape + zone scorecards on real sessions |
 | open `research/gates/fib_bias/output/fib_examples.html` | what the fib edge test sees on real candles |

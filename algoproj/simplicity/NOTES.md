@@ -622,3 +622,52 @@ free API; export or scrape the weekly calendar, store as CSV/parquet in ET), (2)
 timeline, (3) a config knob (BLOCK_MINUTES, which impact levels). In-context test (F13): does blocking news
 windows improve the WIRED setup's R? Deferred until setup_arm exists. Connects to volatility_filter (both
 are WHEN gates).
+
+### F34 — two CONFIG SOURCES OF TRUTH; runs saved separated by source (2026-07-03)
+Locked the config model (user). `strategy_config` = the MAIN/real truth a good strategy graduates to;
+`research_config` = the experimental one, and **the backtest runs off it by default** (it re-exports
+strategy_config + run knobs). Each is tagged `CONFIG_SOURCE` ("strategy" / "research"). Every backtest run
+is now SAVED SEPARATED by source: `research/runs/reports/<source>/<run_id>/` (same format: analysis.json +
+report.html); the runs index gained a Config column + colored tag. `run_backtest --real` runs off
+strategy_config (getattr fallbacks for research-only knobs). Also wired the previously-DEAD research_config
+knobs: `BACKTEST_START/END` (date window, honored by the backtest) + `MAX_REPLAY_TRADES` (trade-replay
+export size, moved out of a local build_trades constant). Rule reaffirmed: a value lives in strategy_config
+(strategy) or research_config (run) — one setting, one home; everything done connects to one of the two.
+
+### F35 — back to ONE dimension (5m); extra scales are OPT-IN via config (2026-07-03)
+Strategic reset (user): the multi-scale stack (base ⊂ session ⊂ HTF) was getting ahead of the edge. Collapse
+to the SINGLE base dimension — the 5m session volume_profile — lock the minimal backtestable skeleton, then
+add gates/scales one at a time from config. Implemented: `BASE`/`HTF` got an `"on"` flag (default False);
+`build_chart_data` only computes/attaches the base + htf scales (and the ladder, which needs base) when
+enabled; the chart defaults to 5m and gates the live replay base-recompute on `BASE.on`. So the chart now
+shows only the 5m session profile until you enable a scale (e.g. HTF days=14 -> 2-week lookback). This is the
+"minimal skeleton + toggle layers" plan: green LIVE dials run today; the gates/filters are configured but
+NOT wired until setup_arm applies them (see the control panel, F37).
+
+### F36 — the CHART became the control surface: config-status panel + Run backtest (via a local server) (2026-07-03)
+The chart sidebar now IS the config panel + run console. (1) Config-status panel: every knob + sub-parameter
+from both configs, each with STATUS DOTS — green live / red off / orange not-wired / purple no-engine — read
+from `manifest.config_panel` (built in build_chart_data). So you can see exactly what's connected; the amber
+NOT-WIRED dials are the setup_arm to-do list. (2) Run backtest: date pickers + a research|strategy source
+select + a Run button with a live countdown/progress bar; on done it opens that run's report + the trade
+replay in separate windows (opened in the click gesture so popup-blockers don't kill them). CONSTRAINT +
+FIX: a file:// page can't launch Python, so `serve.py` (stdlib http server) + `run_chart.bat` serve the
+chart at localhost and expose `POST /run {start,end,source}` -> runs run_backtest (dates via env override) +
+build_trades -> returns run_id + report/replay URLs. On file:// the Run button disables itself and says to
+launch run_chart.bat. Consolidated to ONE config view (removed a duplicate drawer, per user).
+
+### F37 — SCALES = the geometric-timeframe ladder = the module cards (config must speak DIMENSIONS) (2026-07-03)
+User caught a real misalignment: the config names the scales by IMPLEMENTATION MODULE — `PROFILE`
+(volume_profile 5m), `BASE` (base_profile = a coil DETECTOR), `HTF` (htf_profile = a day/week composite) —
+three different mechanisms. But F19/F22/F23 frame them as ONE profile machine run at N nested SCALES, each a
+DIMENSION defined by a LOOKBACK (geometric ladder: 20->60->180->540->1620->4860 bars, constant ratio). And
+each ACTIVE scale is exactly one of the MODULE CARDS that pop up on the chart — so SCALES (the geometric
+ladder) and the module stack are ONE system: enable N dimensions -> N module cards. ALIGNMENT: replace
+PROFILE/BASE/HTF with a `SCALES = [{name, on, lookback}]` ladder (F23), ordered smallest->largest, 5m base
+always on, rest opt-in; names = dimensions/roles, not modules. OPEN FORK (undecided): (A) PURE lookback
+ladder (F22) — drop the coil detector; the "coil" is just the tightest/cleanest scale; tiny params; OR (B)
+keep base_profile's adaptive coil DETECTION as a special smallest scale + fixed lookbacks above. Decide
+before rewriting the SCALES config. Also built this session as the REASONING SURFACE for all this: the
+`strategy_map` is now a CONFIG CONTROL PANEL (every dial, LIVE vs NOT-WIRED vs no-engine) + an interactive
+`flow.html` FLOW EDITOR (drag components from a bottom tray, connect them into your execution order, export
+flow.json) — see build_map.py / build_flow.py.

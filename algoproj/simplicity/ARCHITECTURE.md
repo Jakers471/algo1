@@ -46,8 +46,9 @@ Strategy (filters, entry/exit, sizing *rule*, frictions) → `strategy_config`. 
   session_anchors → volume_profile → shape_filter → zone_calibration → fib_bias → setup_arm →
   entry → risk → execution → trailing_stop`. Wired so far: **data_feed, session_state, vol_filter,
   session_anchors, volume_profile** (5/13). The rest promote in as confirmed.
-- You **SELECT the config** (research | real) and run it through the same engine. Both the chart
-  and the (future) backtest take a config selection — swap the inputs, not the engine.
+- You **SELECT the config** (research | strategy) and run it through the same engine. Both the chart
+  and the backtest take a config selection — swap the inputs, not the engine. `run_backtest` reads
+  `CONFIG_SOURCE`; the chart's Run button passes it. (NOTES F34)
 
 ## Runtime model — LIVE session state machine **[design; not built yet]**
 The strategy is a **live, event-driven, bar-by-bar range-breakout engine.** One **session-state
@@ -92,29 +93,29 @@ that flipped it. You watch *why* it armed, placed resting orders, entered, trail
 causal engine** as backtest + live, so the replay IS the backtest unfolding step-by-step, with trades
 marked on the chart (cf. Prior art: `algoproj/webui` chart + BUY/SELL markers + equity).
 
-## Outputs — separated by config **[planned]**
-Runs store artifacts (equity-curve PNGs, backtest results) in **different places per track**, so
-research and real never mix:
-- research runs → `backtest/output/research/`
-- real runs    → `backtest/output/real/`
+## Outputs — separated by config **[built — NOTES F34]**
+Each config is tagged `CONFIG_SOURCE` ("strategy" / "research"). Every backtest run stores its full
+per-run breakdown in **different places per track**, so research and real never mix:
+- research runs → `research/runs/reports/research/<run_id>/`
+- strategy runs → `research/runs/reports/strategy/<run_id>/`   (`run_backtest --real`)
 
-**What promotes a research output to "real" (decided now, same discipline as engine promotion):**
-the output's track is determined **automatically by which config ran it** — a run driven by
-`research_config` writes to `research/`, a run driven by `strategy_config` writes to `real/`.
-**Nothing is manually copied between them.** "Promoting to real" is not a file move — it's the
-**human graduating the tested values into `strategy_config`** (the concrete config); after that,
-runs under it land in `real/` on their own. So promotion happens at the CONFIG level (a human
-decision), and output routing is just a mechanical consequence — never a hand-copied PNG.
+Each `<run_id>/` holds `analysis.json` (machine-readable, durable, git-tracked) + `report.html` (the view).
+`reports/index.html` lists all runs with a **Config** column.
 
-**No-duplication rule:** a setting lives in exactly ONE config. When `research_config` is built,
-run/testing knobs (`ACTIVE_FILTER`, `STARTING_BALANCE`, dates, sweeps) move there and are **deleted
-from `strategy_config`** — never kept in both.
+**What promotes a research output to "real":** the track is determined **automatically by which config
+ran it** — `run_backtest` reads `cfg.CONFIG_SOURCE`. **Nothing is manually copied.** "Promoting to real"
+is the **human graduating the tested values into `strategy_config`**; after that, `--real` runs land in
+`strategy/` on their own. Output routing is a mechanical consequence of the config source.
 
-## Backtest / equity-curve engine **[planned — separate top-level folder]**
-`backtest/` (its own folder, not under research) wires a **chosen config** into the engine and
-produces equity curves → PNGs stored per-config (above). It is the thing that *connects* the two
-configs to the engine. **Not built** — and there's nothing to measure yet (no risk management, no
-returns; current focus is visualization only).
+**No-duplication rule:** a setting lives in exactly ONE config — run/testing knobs (`ACTIVE_FILTER`,
+`STARTING_BALANCE`, `BACKTEST_START/END`, `MAX_REPLAY_TRADES`) in `research_config`; the strategy in
+`strategy_config`. Everything done connects to one of the two.
+
+## Backtest + reports engine **[built — NOTES F29/F32]**
+`backtest/run_backtest.py` (its own top-level folder) is the honest simulator; it emits trades and calls
+`research/runs/{analytics, make_report}` to write the per-run breakdown (above) + log the ledger scorecard.
+The chart's **Run backtest** button drives it live via `serve.py` (`run_chart.bat`), since a file:// page
+can't launch Python (NOTES F36).
 
 ## Multi-scale profilers — base < session < HTF **[base+session built; HTF future; NOTES F19]**
 The **profile dict** is a seam: any profiler that emits `{bins, POC, VAL/VAH, high, low, va_pct, …}` is

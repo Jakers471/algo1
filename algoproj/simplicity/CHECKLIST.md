@@ -121,15 +121,29 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
 - `[~]` **Fresh TradingView lightweight chart** (`research/chart`) — rewired to simplicity data; multi-timeframe (NQ+ES); OHLC cached to JSON, load max ~2000 bars/TF for speed; side menu showing which instrument/TF/config is loaded (clean format); overlay the filter-selected periods. No old flag-strategy baggage.
 - `[R]` Config filter selector `ACTIVE_FILTER` (pick which variant tv/backtest uses) — `strategy_config`
 - `[R]` Config split DONE — `research_config.py` (run/testing: `ACTIVE_FILTER`, `STARTING_BALANCE`, dates) re-exports `strategy_config`; removed `ACTIVE_FILTER` + dead `TRADEABLE_REGIMES` from `strategy_config` (no duplication)
-- `[R]` Chart config selector (real | research) — top-bar toggle switches vol-day overlay + sidebar to that config
+- `[R]` **Two config SOURCES OF TRUTH + runs separated by source** (NOTES F34) — `CONFIG_SOURCE` tags each
+  (strategy=main/real, research=experimental the backtest runs off); runs saved under `reports/<source>/<run_id>/`;
+  index has a Config column; `run_backtest --real` runs off strategy_config. Wired the dead `BACKTEST_START/END`
+  + `MAX_REPLAY_TRADES` research_config knobs.
+- `[R]` **Chart = the control surface** (NOTES F36) — sidebar config-STATUS panel (every knob + sub-param, dots:
+  live/off/not-wired/no-engine) + a **Run backtest** button (dates + source + countdown) that opens the report +
+  replay on done. Needs the local server: **`run_chart.bat` / `serve.py`** (file:// can't run Python).
+- `[R]` **Single dimension by default (5m)** (NOTES F35) — chart shows only the 5m session profile; `BASE`/`HTF`
+  scales are opt-in via `strategy_config` `"on"` flags (load only when enabled). Minimal skeleton first, add layers.
+- `[ ]` **`SCALES` config = the geometric ladder = the module cards** (NOTES F37) — replace PROFILE/BASE/HTF
+  (module names) with `SCALES=[{name,on,lookback}]` (dimensions by lookback, F22/F23). OPEN FORK: pure lookback
+  ladder vs keep the base coil detector. Each active scale = one chart module card.
 - `[R]` **Run ledger** (`research/runs/`) — every research run logs a scorecard (params + config snapshot +
   metrics + note) to append-only `runs.jsonl`; `analyze_runs.py` compares across runs. Tune measured, not
   blind. Wired: shape_filter, zone_calibration, fib_bias. Complements future session_archive (NOTES F9/F12).
 - `[R]` **fib_bias gallery** (`research/gates/fib_bias/make_examples.py`) — shows on real candles what the
   edge test sees: session + fib lines + close→fpos→zone, then the next session's direction. (NOTES F11)
-- `[R]` **Strategy map** (`research/strategy_map`) — decision-tree / neural-net view of the whole pipeline
-  (context → spine → structure → gates → setup_arm → execution), colored by build status; generated from the pipeline. (NOTES F14)
-- `[ ]` `backtest/` folder (separate top-level, FUTURE): run engine with a chosen config → equity-curve PNGs stored per-config (`output/research/` vs `output/real/`). Blocked: no risk mgmt / returns yet — visualization only for now.
+- `[R]` **Strategy map → CONFIG CONTROL PANEL + FLOW EDITOR** (`research/strategy_map`, NOTES F37) —
+  `build_map.py`→`strategy_map.html` = every config dial with LIVE / not-wired / no-engine status (reads the live
+  config); `build_flow.py`→`flow.html` = an interactive board (drag components from a bottom tray, connect them into
+  your execution order, export `flow.json`). Replaced the old static decision-tree.
+- `[R]` **Per-config run storage DONE** — runs are stored per config source under `research/runs/reports/<source>/`
+  (research vs strategy), never mixed (NOTES F34). (This is the item once planned as a separate `backtest/output/` split.)
 - `[R]` **Research reorganized to mirror the engine LAYERS** (2026-07-02) — `research/{structure,gates,setup,
   execution}/` for stage-mapped components + `research/studies/` for pure discovery + `research/chart/`.
   Promotion is now a 1:1 layer move (see ARCHITECTURE "Promotion path"). Map: structure={volume_profile,
