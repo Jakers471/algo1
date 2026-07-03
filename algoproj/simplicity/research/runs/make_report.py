@@ -175,6 +175,29 @@ def _cards(A):
     return out
 
 
+def _config_section(A):
+    """Render the FULL config snapshot that produced this run (from analysis.json.config_snapshot)."""
+    cs = A.get("config_snapshot") or {}
+    if not cs:
+        return ""
+
+    def fmt(v):
+        if isinstance(v, dict):
+            return " · ".join(f"{k} {fmt(x)}" for k, x in v.items())
+        if isinstance(v, (list, tuple)):
+            return ", ".join(str(x) for x in v)
+        return str(v)
+
+    order = ["config_source", "era_start", "filter_session", "filter_hour", "filter_day_vol",
+             "setup", "entry", "exit", "risk", "ladder", "profile", "base", "htf", "shape", "zone",
+             "fib", "costs", "vol_metric", "trail_window", "active_filter"]
+    keys = [k for k in order if k in cs] + [k for k in cs if k not in order]
+    rows = "".join(f'<tr><td class="k">{k}</td>'
+                   f'<td class="v" style="text-align:left;font-size:11px">{fmt(cs[k])}</td></tr>' for k in keys)
+    return (f'<div class="chartwrap"><h2>Config used &mdash; snapshot</h2>'
+            f'<div class="sec"><table><tbody>{rows}</tbody></table></div></div>')
+
+
 def _html(A):
     run = A.get("run", {}); p = A["period"]; cfg = A.get("config", {})
     eq = A["equity"]
@@ -195,6 +218,7 @@ def _html(A):
     rid = run.get("run_id", "run")
     return TEMPLATE.replace("__META__", meta).replace("__CARDS__", _cards(A)) \
                    .replace("__PERIOD__", period).replace("__TABLES__", _tables(A)) \
+                   .replace("__CONFIG__", _config_section(A)) \
                    .replace("__CHART__", chart_data) \
                    .replace("__TITLERUN__", rid).replace("__TITLE__", rid + " — performance")
 
@@ -280,6 +304,7 @@ TEMPLATE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <div class="cards">__CARDS__</div>
 <div class="chartwrap"><h2>Equity &amp; drawdown</h2><div id="eq"></div></div>
 <div class="cols">__TABLES__ __PERIOD__</div>
+__CONFIG__
 <div class="foot">Machine-readable source: <span class="mono">analysis.json</span> (same folder). $ = fixed-fractional
 on the starting balance (matches the sim). LONG = up-breakouts, SHORT = down-breakouts.</div>
 <script>
