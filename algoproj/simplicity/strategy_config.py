@@ -30,7 +30,7 @@ ERA_START_YEAR = 2015            # [WIRED] drop the calm 2005-2014 decade (recen
 # FILTER_SESSION["allow"] = the session OPENS we trade. We SCAN a session's coil and trade the breakout at
 # the NEXT session's open, so setup_arm arms a coil only if its NEXT session is in `allow`
 # (asia->london open, london->newyork open). Default = the two liquid opens. [WIRED via setup_arm]
-FILTER_SESSION = {"on": True,  "allow": ["london", "newyork"]}        # OPENS we trade (coil's NEXT session)
+FILTER_SESSION = {"on": True,  "allow": ["newyork"]}                 # OPENS we trade: NY open only (scan london) — the edge (F42)
 FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]}  # ET hours-of-day [SENSOR — not wired]
 FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                  # daily vol-regime gate [SENSOR — not wired]
 
