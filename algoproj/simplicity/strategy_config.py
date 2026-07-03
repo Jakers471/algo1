@@ -96,6 +96,9 @@ LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}   
 SETUP = {
     "on": True,                           # master switch: apply setup_arm gating (False = base rate). ON: it adds lift (F40)
     "gates": ["session", "shape_ok", "rr_min"],   # v1 confluence stack (ANDed) — the enabled sensors
+    # MULTI-SCALE CONFLUENCE (F19): require the larger scales to ALSO be clean (shape_ok) — the coil nested in a
+    # clean bigger structure, not a chaotic one. Each toggles independently; ANDed into the arm decision.
+    "confluence": {"session_clean": False, "htf_clean": False},   # session_clean tested WORSE (F45) — off by default
     "arm_rule": "all",                    # ARM when ALL enabled gates pass (arm-once)
     "invalidate": None,                   # what DISARMS + pulls the resting orders mid-window (v2)
 }

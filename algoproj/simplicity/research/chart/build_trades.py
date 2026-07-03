@@ -137,7 +137,7 @@ def main():
             b2 = B.get(P2["sid"])
             ev = {"session": P2["session"], "date": P2["date"], "start": int(P2["start"]), "end": int(P2["end"])}
             if b2:
-                a, why = arm.decide(b2, cfg=cfg)
+                a, why = arm.decide(b2, P2, H.get(P2["sid"]), cfg=cfg)   # pass session+htf so confluence matches the backtest
                 sh = sf.score(b2) or {}
                 zn = zc.calibrate(b2) or {}
                 ev.update({"coil_hi": round(b2["high"], 2), "coil_lo": round(b2["low"], 2),

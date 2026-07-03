@@ -856,3 +856,18 @@ we commit. RESULT vs placing AT the open (era≥2015, NY-open-only, trailing, ga
 +0.046R, PF 1.08 — slightly lower expectancy but **max DD 48R→31R** (smoother equity), and it's the honest
 live-realistic model (orders resting before the open, not filled at the instant of it). base_profile.json rebuilt.
 GAPS DONE: #2 (next-open) + #1 (15-min lead) + #3 (per-session replay). Remaining: #4 pyramiding.
+
+### F45 — multi-scale CONFLUENCE wired into setup_arm; "session also clean" tested = WORSE (2026-07-03)
+The 3 profilers (base⊂session⊂htf) + gates were built (F19) and the session/htf profiles were already PASSED into
+`setup_arm.decide` by the backtest — but decide only scored the coil; session/htf were ignored. Wired the
+confluence: `SETUP["confluence"] = {"session_clean", "htf_clean"}` — require the larger scale to ALSO be
+shape_ok (coil nested in a clean structure). Config-toggleable; ANDed into the arm decision; build_trades +
+build_chart_data pass session/htf too so the hunt/replay verdicts match the backtest.
+MEASURED session_clean=True (era≥2015, NY-open-only, 15-min lead, trailing): **622 trades, 36.2% win, -0.002R,
+PF 1.00, DD 42R** — vs coil-only 900 / +0.046R / PF 1.08 / DD 31R. **WORSE.** It removed ~280 trades but the
+survivors were no better → net breakeven. WHY (matches F6/F18): a clean coil inside a MESSY/trending session is
+often the BEST setup (a tight base after an impulse — shape +29..+34, risk 3-4x tighter). Requiring the whole
+session to also be clean throws exactly those away. So "nested clean" is the wrong confluence for a coil-breakout
+strategy. Reverted to session_clean=False (the +0.046R config); the feature + toggle stay for A/B. The more
+promising confluence to try next is POSITION, not cleanliness: coil sitting at a session/HTF value-area EDGE
+(runway in the larger structure) — the F19 "at value / room to run" idea. Honest measurement > guessing (ledger).

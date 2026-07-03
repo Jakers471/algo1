@@ -194,10 +194,13 @@ def main():
     if os.path.exists(bp_path):
         m5 = next((s for s in series_meta if s["key"] == "NQ_5m"), None)
         hcut = int(pd.Timestamp(m5["first"]).timestamp()) if m5 else 0
+        sess_map = {P["sid"]: P for P in profiles}   # session + htf profiles so confluence gates match the backtest
+        htf_path = os.path.join(HERE, "..", "structure", "htf_profile", "output", "htf_profile.json")
+        htf_map = {h["sid"]: h for h in json.load(open(htf_path))["profiles"]} if os.path.exists(htf_path) else {}
         for b in json.load(open(bp_path))["profiles"]:
             if int(b.get("start", 0)) < hcut:
                 continue
-            armed, why = sarm.decide(b, cfg=cfg)
+            armed, why = sarm.decide(b, sess_map.get(b["sid"]), htf_map.get(b["sid"]), cfg=cfg)
             shp = sf.score(b) or {}
             zn = zc.calibrate(b) or {}
             hunt.append({"session": b["session"], "date": b["date"], "sid": b["sid"],

@@ -52,6 +52,12 @@ def decide(base, session=None, htf=None, cfg=_cfg):
     g["shape"] = bool(sh.get("shape_ok"))          # shape_score >= SHAPE.shape_ok (GATE_SHAPE_OK)
     zn = zc.calibrate(base) or {}
     g["rr"] = bool(zn.get("rr_ok"))                # rr >= ZONE.rr_min (GATE_RR_MIN)
+    # MULTI-SCALE CONFLUENCE (F19): the larger scales must ALSO be clean — coil nested in a clean structure
+    conf = getattr(cfg, "SETUP", {}).get("confluence", {})
+    if conf.get("session_clean"):
+        g["session_clean"] = bool(session and (sf.score(session) or {}).get("shape_ok"))
+    if conf.get("htf_clean"):
+        g["htf_clean"] = bool(htf and (sf.score(htf) or {}).get("shape_ok"))
     armed = all(g.values())
     return armed, {"gates": g, "shape_score": sh.get("shape_score"), "rr": zn.get("rr"), "trade_open": nxt}
 

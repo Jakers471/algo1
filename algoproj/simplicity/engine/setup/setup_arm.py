@@ -47,6 +47,11 @@ def decide(base, session=None, htf=None, cfg=cfg):
     g["shape"] = bool(sh.get("shape_ok"))
     zn = zc.calibrate(base) or {}
     g["rr"] = bool(zn.get("rr_ok"))
+    conf = getattr(cfg, "SETUP", {}).get("confluence", {})   # multi-scale confluence: larger scales also clean (F19)
+    if conf.get("session_clean"):
+        g["session_clean"] = bool(session and (sf.score(session) or {}).get("shape_ok"))
+    if conf.get("htf_clean"):
+        g["htf_clean"] = bool(htf and (sf.score(htf) or {}).get("shape_ok"))
     return all(g.values()), {"gates": g, "shape_score": sh.get("shape_score"), "rr": zn.get("rr"), "trade_open": nxt}
 
 
