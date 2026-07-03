@@ -393,28 +393,29 @@ function redrawOverlay(){
   if(CUR){drawResting(CUR,box); if(RP.k>=RP.entryK){drawBands(CUR,box); drawTrail(CUR,box);}}
   drawNowLine(box);
 }
-// vertical lines at each session open/close, color-coded + labeled; the SETUP session's open/close are emphasized
+// THE HUNT: per-session verdict + coil box for every session in the slice (from build_trades' sim eval)
 function drawSessions(box){
-  if(!RP.bars.length)return;
-  const last=RP.k>=RP.exitK?RP.bars.length-1:RP.k, ts=chart.timeScale();
-  const sStart=RP.tr&&RP.tr.scales.session.start, sEnd=RP.tr&&RP.tr.scales.session.end;
-  let prev=null;
-  for(let i=0;i<=last;i++){
-    const t=RP.bars[i][0], s=sessionOf(t);
-    if(s!==prev){
-      if(i>0){                                   // a boundary: prev session CLOSED, s OPENED
-        const x=ts.timeToCoordinate(t);
-        if(x!=null){const col=SC[s]||"#888", setup=(sStart!=null&&Math.abs(t-sStart)<300);
-          nowsvg.appendChild(_sv("line",{x1:x,y1:0,x2:x,y2:box.height,stroke:col,"stroke-width":setup?1.4:1,"stroke-dasharray":setup?"":"3 4","stroke-opacity":setup?0.85:0.4}));
-          const tx=_sv("text",{x:x+3,y:11,fill:col,"font-size":9,"font-family":"ui-monospace,monospace","fill-opacity":0.95});
-          tx.textContent=s.toUpperCase()+(setup?" OPEN ▶ setup":" open");nowsvg.appendChild(tx);}
-      }
-      prev=s;
+  const tr=CUR; if(!tr||!tr.sessions)return;
+  const now=RP.bars[RP.k]?RP.bars[RP.k][0]:0, ts=chart.timeScale(), sStart=tr.scales.session.start;
+  for(const e of tr.sessions){
+    if(e.start>now)continue;                        // reveal sessions only up to "now"
+    const col=SC[e.session]||"#888", setup=(Math.abs(e.start-sStart)<300), closed=(e.end<=now), x=ts.timeToCoordinate(e.start);
+    if(x!=null){                                     // session-open line + verdict label
+      nowsvg.appendChild(_sv("line",{x1:x,y1:0,x2:x,y2:box.height,stroke:col,"stroke-width":setup?1.4:1,"stroke-dasharray":setup?"":"3 4","stroke-opacity":setup?0.85:0.4}));
+      let vt,vc; if(e.no_coil){vt="no coil";vc="#8a8880";}
+        else if(e.armed){vt="✓ ARMED ▶ "+(""+e.trade_open).toUpperCase();vc="#2ebd85";}
+        else{vt="✗ rejected";vc="#e66767";}
+      const tx=_sv("text",{x:x+3,y:11,fill:closed?vc:col,"font-size":9,"font-family":"ui-monospace,monospace","fill-opacity":0.95});
+      tx.textContent=e.session.toUpperCase()+"  "+(closed?vt:"forming…");nowsvg.appendChild(tx);
+      if(closed&&!e.no_coil){const t2=_sv("text",{x:x+3,y:21,fill:"#8a8880","font-size":8.5,"font-family":"ui-monospace,monospace"});
+        t2.textContent="shape "+e.shape+" · rr "+e.rr;nowsvg.appendChild(t2);}
+    }
+    if(e.coil_hi!=null&&e.coil_end<=now){           // the coil RANGE box (green=armed, grey=rejected)
+      const cx0=ts.timeToCoordinate(e.coil_start),cx1=ts.timeToCoordinate(e.coil_end),cyH=candle.priceToCoordinate(e.coil_hi),cyL=candle.priceToCoordinate(e.coil_lo);
+      if(cx0!=null&&cx1!=null&&cyH!=null&&cyL!=null){const bc=e.armed?"#2ebd85":"#8a94a6";
+        nowsvg.appendChild(_sv("rect",{x:cx0,y:cyH,width:Math.max(1,cx1-cx0),height:Math.max(1,cyL-cyH),fill:bc,"fill-opacity":e.armed?0.10:0.04,stroke:bc,"stroke-width":e.armed?1:0.6,"stroke-dasharray":"3 3","stroke-opacity":e.armed?0.7:0.3}));}
     }
   }
-  if(sEnd!=null){const xe=ts.timeToCoordinate(sEnd);   // the setup session CLOSE (emphasized)
-    if(xe!=null){nowsvg.appendChild(_sv("line",{x1:xe,y1:0,x2:xe,y2:box.height,stroke:"#c3c2b7","stroke-width":1.2,"stroke-dasharray":"5 3","stroke-opacity":0.6}));
-      const tx=_sv("text",{x:xe+3,y:22,fill:"#c3c2b7","font-size":9,"font-family":"ui-monospace,monospace"});tx.textContent="setup CLOSE ▶ arm";nowsvg.appendChild(tx);}}
 }
 // option 03 — R-multiple ladder: green reward bands (opacity grows per R) + a red 1R risk band. both directions.
 function drawBands(tr,box){
@@ -441,6 +442,7 @@ function drawNowLine(box){const bar=RP.bars[RP.k];if(!bar)return;
 
 // ---- LIVE: resting orders (pre-entry) + the trailing-stop staircase + the state panel (all from the sim) ----
 function pathStopAt(tr,t){if(!tr.path)return null;let s=null;for(const p of tr.path){if(p[0]<=t)s=p;else break;}return s;}
+function curEval(tr,now){if(!tr.sessions)return null;return tr.sessions.find(e=>now>=e.start&&now<=e.end)||null;}  // the session the now-bar is in
 function drawResting(tr,box){    // the two resting breakout-STOP orders — placed at the ARM moment (session close), not during forming
   if(RP.k<RP.armK)return;
   const preEntry=RP.k<RP.entryK, up=tr.dir==="up";
@@ -485,10 +487,17 @@ function updateState(tr){
   let gates=""; if(tr.arm){gates=(('session'in g)?pill(g.session,'session'):'')+pill(g.shape,'shape '+(tr.arm_shape??''))+pill(g.rr,'rr '+(tr.arm_rr??''));}
   const method=isTrail?`trailing · arm ${CFG.trail_arm_r} / gap ${CFG.trail_gap_r}`:`${tr.method} · ${CFG.target_r}R`;
   let body;
-  if(preSession){
-    body=`<div class="sh">strategy is</div><div class="sr"><span>doing</span><b>watching prior sessions</b></div>`
-      +`<div class="sr"><span>setup session</span><b>${tr.session}</b></div>`
-      +`<div class="sr"><span>opens</span><b>${_t12(tr.scales.session.start)}</b></div>`;
+  if(preSession){                           // SCANNING a prior session — show its live hunt (coil? clean? room? tradeable open?)
+    const e=curEval(tr,now);
+    if(e){
+      const closed=e.end<=now, verdict=e.no_coil?"no coil":(e.armed?"✓ ARMED ▶ "+(""+e.trade_open).toUpperCase():"✗ rejected"), vc=e.no_coil?"#8a8880":(e.armed?"#2ebd85":"#e66767");
+      body=`<div class="sh">scanning ${e.session.toUpperCase()} session</div>`
+        +(e.no_coil?`<div class="sr"><span>coil</span><b>none formed</b></div>`
+          :`<div class="sr"><span>shape (clean?)</span><b style="color:${okc(e.shape_ok)}">${e.shape} ≥ ${sok} ${mk(e.shape_ok)}</b></div>`
+           +`<div class="sr"><span>R:R (room?)</span><b style="color:${okc(e.rr_ok)}">${e.rr} ≥ ${rmin} ${mk(e.rr_ok)}</b></div>`
+           +`<div class="sr"><span>trades the</span><b style="color:${(e.gates&&e.gates.session)?'#2ebd85':'#e66767'}">${(""+e.trade_open).toUpperCase()} open ${(e.gates&&e.gates.session)?'✓':'✗'}</b></div>`)
+        +`<div class="sh" style="color:${vc}">${closed?"verdict · "+verdict:"still forming…"}</div>`;
+    } else body=`<div class="sh">strategy is</div><div class="sr"><span>doing</span><b>watching the market</b></div>`;
   } else if(forming){                       // LIVE: what the strategy computes on bars-so-far vs its gate thresholds
     const lp=RP.liveProf||{}, shp=(lp.shape&&lp.shape.shape_score!=null)?lp.shape.shape_score:null, rr=(lp.zone&&lp.zone.rr!=null)?lp.zone.rr:null;
     const shOk=shp!=null&&sok!=null&&shp>=sok, rrOk=rr!=null&&rmin!=null&&rr>=rmin;

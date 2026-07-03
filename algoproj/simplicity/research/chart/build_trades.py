@@ -24,11 +24,13 @@ sys.path.insert(0, SIM)
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "profile_shape_filter"))
 sys.path.insert(0, os.path.join(SIM, "research", "gates", "zone_calibration"))
 sys.path.insert(0, os.path.join(SIM, "research", "setup", "target_ladder"))
+sys.path.insert(0, os.path.join(SIM, "research", "setup", "setup_arm"))
 import strategy_config as cfg
 import research_config as rcfg
 import shape_filter as sf
 import zone_calibration as zc
 import target_ladder as tlm
+import setup_arm as arm
 
 DATA = os.path.join(HERE, "data"); os.makedirs(DATA, exist_ok=True)
 RES = os.path.join(SIM, "research")
@@ -100,6 +102,7 @@ def main():
 
     out = []
     skipped = 0
+    sess_sorted = sorted(S.values(), key=lambda P: P["start"])   # for the per-session HUNT view
     for tr in trades:
         sid = tr["sid"]
         P = S.get(sid)
@@ -126,6 +129,26 @@ def main():
         rec["scales"] = {"session": P, "base": base, "htf": htf, "ladder": lad}
         rec["bars"] = bars
         rec["htf_bars"] = htf_bars
+        # the strategy's HUNT across the day: evaluate EVERY session overlapping the slice (coil? clean? armed?)
+        evals = []
+        for P2 in sess_sorted:
+            if P2["end"] < t0 or P2["start"] > t1:
+                continue
+            b2 = B.get(P2["sid"])
+            ev = {"session": P2["session"], "date": P2["date"], "start": int(P2["start"]), "end": int(P2["end"])}
+            if b2:
+                a, why = arm.decide(b2, cfg=cfg)
+                sh = sf.score(b2) or {}
+                zn = zc.calibrate(b2) or {}
+                ev.update({"coil_hi": round(b2["high"], 2), "coil_lo": round(b2["low"], 2),
+                           "coil_start": int(b2["start"]), "coil_end": int(b2["end"]),
+                           "shape": sh.get("shape_score"), "shape_ok": bool(sh.get("shape_ok")),
+                           "rr": zn.get("rr"), "rr_ok": bool(zn.get("rr_ok")),
+                           "armed": bool(a), "trade_open": why.get("trade_open"), "gates": why.get("gates")})
+            else:
+                ev.update({"coil_hi": None, "armed": False, "no_coil": True})
+            evals.append(ev)
+        rec["sessions"] = evals
         out.append(rec)
 
     payload = {"config": bt["config"], "trades": out}

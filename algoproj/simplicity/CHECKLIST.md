@@ -137,7 +137,10 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
     `FILTER_SESSION.allow` = the OPENS we trade (`["london","newyork"]`). Fixed the old NY-coil→close-open mistake.
     Result: 1,817 trades, 35.3% win, +0.013R, PF 1.02, time-outs 639→64; london→NY +0.056R, asia→london −0.045R.
   - `[ ]` **#1 arm 15 min BEFORE the open** — finalize the coil that early (base_profile lead) + place then (causal).
-  - `[ ]` **#3 per-session-search replay** — show every session's coil detect + qualify/reject across the day.
+  - `[R]` **#3 per-session-search replay** — `build_trades` evaluates EVERY session in the slice (coil + shape/rr +
+    setup_arm verdict + the open it'd trade); the replay draws each session's open line, verdict label
+    (✓ARMED▶NY / ✗rejected / no coil) + coil range box (green=armed, grey=rejected), and the state panel shows
+    the live scan of the current session. You watch it hunt asia→london→ny across the day, not just the winner.
   - `[ ]` **#4 pyramiding** — same-direction add-on when a new coil forms mid-trade (multi-entry backtest).
 - `[ ]` Causality rule enforced: components only see bars ≤ now (no look-ahead) — same code live + backtest
 
