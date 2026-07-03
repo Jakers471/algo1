@@ -110,7 +110,8 @@ def main():
         else:                                    # fixed_rr / trailing: target derived at fill; both sides tradeable
             up_tgt = dn_tgt = None
             up_ok = dn_ok = True
-        i0 = int(np.searchsorted(t, b["session_end"], "right"))
+        # place the resting orders at place_ts (~place_lead_min BEFORE the next open); fall back to session_end
+        i0 = int(np.searchsorted(t, b.get("place_ts", b["session_end"]), "right"))
         if i0 <= 0 or i0 >= n:   # profile's session lies outside the era-filtered bars — not tradeable here
             continue             # (pre-era profiles else map to bar 0 = coil vs a different price regime, ~2500pt fake risk)
         # --- setup_arm gate: ARM this coil only if the confluence stack passes (else the base rate) ---

@@ -136,7 +136,10 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   - `[R]` **#2 trade the NEXT session's open** — `setup_arm` now gates on the coil's next session (`_next_session`);
     `FILTER_SESSION.allow` = the OPENS we trade (`["london","newyork"]`). Fixed the old NY-coil→close-open mistake.
     Result: 1,817 trades, 35.3% win, +0.013R, PF 1.02, time-outs 639→64; london→NY +0.056R, asia→london −0.045R.
-  - `[ ]` **#1 arm 15 min BEFORE the open** — finalize the coil that early (base_profile lead) + place then (causal).
+  - `[R]` **#1 arm 15 min BEFORE the open** — `ENTRY["place_lead_min"]=15`; base_profile finalizes the coil that
+    early (excludes the last 15 min of the session → CAUSAL) + emits `place_ts`; run_backtest places the resting
+    orders at `place_ts`. Result vs at-open: 900 trades, 36.2% win, +0.046R, PF 1.08, **max DD 48R→31R** (smoother,
+    and the honest live model — orders resting before the NY open, the original design).
   - `[R]` **#3 per-session-search replay** — `build_trades` evaluates EVERY session in the slice (coil + shape/rr +
     setup_arm verdict + the open it'd trade); the replay draws each session's open line, verdict label
     (✓ARMED▶NY / ✗rejected / no coil) + coil range box (green=armed, grey=rejected), and the state panel shows

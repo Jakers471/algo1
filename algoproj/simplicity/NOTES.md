@@ -846,3 +846,13 @@ consolidation). Two engine variants (config `ENTRY["confirm"] = "touch" | "close
 Needs: load `volume` in run_backtest, compute coil_baseline from the coil dict, the config knob, swap the entry
 check. DISTINCT from the RANGE volume-accumulation gate (arm only if the COIL itself accumulated enough volume —
 a gate on the coil, not the breakout bar). Both are cheap, both deferred as entry-refinement experiments.
+
+### F44 — fix #1: place the resting orders 15 min BEFORE the open (the original design, causal) (2026-07-03)
+The original idea: find the london range, and ~15 min before the NY open rest OCO stops around it. Built it
+CAUSALLY: `ENTRY["place_lead_min"]=15`; `base_profile` finalizes the coil on the session EXCLUDING its last
+`place_lead_min` (so the range is known before we place) and emits `place_ts` = the placement time; `run_backtest`
+starts the entry window at `place_ts` (fallback session_end). No look-ahead — the coil never sees the 15 min after
+we commit. RESULT vs placing AT the open (era≥2015, NY-open-only, trailing, gated): 900 trades, 36.2% win,
++0.046R, PF 1.08 — slightly lower expectancy but **max DD 48R→31R** (smoother equity), and it's the honest
+live-realistic model (orders resting before the open, not filled at the instant of it). base_profile.json rebuilt.
+GAPS DONE: #2 (next-open) + #1 (15-min lead) + #3 (per-session replay). Remaining: #4 pyramiding.

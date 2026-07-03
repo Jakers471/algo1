@@ -43,6 +43,9 @@ GATE_RR_MIN   = 2.0              # min reward:risk to arm a setup
 ENTRY = {
     "type": "breakout_both",     # rest breakout-STOP orders on BOTH coil edges; OCO (first fill wins)
     "entry_tf": "5m",
+    "place_lead_min": 15,        # [WIRED] finalize the coil + PLACE the resting orders this many min BEFORE the
+    #                              next session opens (the original design: find the london range, rest orders
+    #                              15 min before the NY open). CAUSAL: the coil excludes the last place_lead_min.
     "entry_window_bars": 78,     # cancel the resting orders if no breakout within this many bars (~1 session)
     "fill": "coil_edge",         # a resting STOP fills at the COIL EDGE (+ slippage; a gap fills at the open)
     "min_coil_pct": 0.05,        # skip noise: coil height must be >= this % of price to be tradeable

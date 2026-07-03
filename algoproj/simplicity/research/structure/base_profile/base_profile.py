@@ -36,9 +36,12 @@ import runlog
 
 OUT = os.path.join(HERE, "output"); os.makedirs(OUT, exist_ok=True)
 
-# --- tunable PARAMS: sourced from strategy_config.BASE (single source of truth; tune THERE) ---
+# --- tunable PARAMS: sourced from strategy_config (single source of truth; tune THERE) ---
 BAND_MULT = cfg.BASE["band_mult"]   # base window range <= BAND_MULT x the session's median bar-range
 MIN_BARS = cfg.BASE["min_bars"]     # need >= this many bars to call it a base
+# finalize the coil this many 5m bars BEFORE the session ends, so orders can be placed that early (causal) — the
+# original design: find the london range, rest orders ~15 min before the NY open. 0 = coil through the session end.
+LEAD_BARS = int(cfg.ENTRY.get("place_lead_min", 0) // 5)
 
 
 def detect(hi, lo):
@@ -100,17 +103,20 @@ def compute(tail=None):
     out, n_sessions = [], 0
     for (date, s), g in f.groupby(["date", "session"], sort=False):
         n_sessions += 1
-        det = detect(g["high"].to_numpy(), g["low"].to_numpy())
+        # CAUSAL: detect the coil on the session EXCLUDING its last LEAD_BARS, so orders can be placed that early
+        gc = g.iloc[:len(g) - LEAD_BARS] if (LEAD_BARS and len(g) > LEAD_BARS) else g
+        det = detect(gc["high"].to_numpy(), gc["low"].to_numpy())
         if not det:
             continue
         st, en = det
-        gb = g.iloc[st:en + 1]
+        gb = gc.iloc[st:en + 1]
         pr = _profile(gb)
         if pr is None:
             continue
         pr.update(date=date, session=s, sid=f"{date} {s}",
                   start=int(gb["ts"].min()), end=int(gb["ts"].max()),
                   session_start=int(g["ts"].min()), session_end=int(g["ts"].max()),
+                  place_ts=int(gc["ts"].max()),   # when we PLACE the resting orders (~place_lead_min before the next open)
                   bars=int(en - st + 1), session_bars=int(len(g)))
         out.append(pr)
     return out, n_sessions

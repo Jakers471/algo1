@@ -28,7 +28,7 @@ def panel(cfg):
             _it("day-vol filter", (",".join(fd["regimes"])) if fd["on"] else "off", "sensor"),
             _it("gate · shape_ok", cfg.GATE_SHAPE_OK, "sensor"),
             _it("gate · rr_min", cfg.GATE_RR_MIN, "sensor"),
-            _it("entry", f"{cfg.ENTRY['type']} · tf {cfg.ENTRY['entry_tf']} · win {cfg.ENTRY['entry_window_bars']}", "wired"),
+            _it("entry", f"{cfg.ENTRY['type']} · place {cfg.ENTRY.get('place_lead_min', 0)}min before open · win {cfg.ENTRY['entry_window_bars']}", "wired"),
             _it("min coil %", cfg.ENTRY["min_coil_pct"], "wired"),
             _it("stop", f"{cfg.EXIT['stop']} = 1R", "wired"),
             _it("take-profit", (f"trailing · arm {cfg.EXIT['trail_arm_r']} / gap {cfg.EXIT['trail_gap_r']}"
