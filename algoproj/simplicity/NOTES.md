@@ -514,3 +514,17 @@ bottom of the module stack -- 2025-01-10 NY: 1R=194.5pt, up rungs htf POC 0.86R 
 3.7R (rungs come down into each other). The concrete trade DEFINITION (entry/stop/TP geometry) that
 setup_arm arms + a backtest later measures. Logged to ledger (kind=target_ladder). Study: median 2
 rungs/session; upside often one-sided (coil sits near an extreme) -- honest geometry.
+
+### F27 — R:R asymmetry is trade-SELECTION, not direction (the key distinction) (2026-07-02)
+User asked: doesn't the ladder's R:R (big room up vs small down) naturally serve a DIRECTION bias? Answer:
+NO -- and this is the pillar that keeps the whole approach honest. Room != probability; the two are
+independent and can even OPPOSE. Demo case: coil near the session TOP -> big R:R up (weekly levels far),
+small R:R down (session low near). But at a range top the mean-revert odds arguably favor DOWN while the
+room favors UP -> geometry and probability point opposite ways. So R:R asymmetry is NOT "which way price
+goes"; it's "which side's breakout is worth resting an order on." DIRECTION is decided by the FILL (which
+resting order triggers), not by us. R:R decides whether the trade was worth resting. This is exactly the
+project thesis (hunt asymmetry not direction, F13): right = big, wrong = 1R. Edge math: risk 1R to make
+2-3R is positive expectancy well under 50% hit rate -> no direction edge needed (good, we don't have one
+on NQ). TRAP to never make: turning "big room up" into "price will go up." Whether to rest one side or
+both, and which R:R qualifies, is a setup_arm/entry decision (deferred) -- the ladder only surfaces the
+asymmetry.
