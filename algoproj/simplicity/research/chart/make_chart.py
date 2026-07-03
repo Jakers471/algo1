@@ -298,7 +298,7 @@ function redraw(){
       vpsvg.appendChild(_ln(x0,y,x1,y,c,mid?1.4:1,mid?0.9:0.5,mid?null:"1 3"));  // 0.5 solid bright, others dotted faint
     }
   }
-  if(selP&&typeof drawScaleBoxes==="function")drawScaleBoxes(selP);   // scale value-area boxes
+  if(selScales){drawScaleBoxes(selScales);drawLadder(selScales);}   // boxes + trade ladder
   if(typeof drawNow==="function")drawNow();   // replay "now" line survives overlay redraws
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
@@ -323,24 +323,33 @@ document.getElementById("fibSess").innerHTML=SESSN.map(s=>
 document.querySelectorAll("[data-fs]").forEach(b=>b.onclick=function(){fibSess[this.dataset.fs]=!fibSess[this.dataset.fs];this.classList.toggle("on",fibSess[this.dataset.fs]);redraw();});
 
 // ---- per-session MODULE cards (click a session -> crisp profile + timing + scores) ----
-let modOn=false, modPt={x:400,y:70}, selP=null;
+let modOn=false, modPt={x:400,y:70}, selScales=null;
 const smodStack=document.getElementById("smodStack"), stackBody=document.getElementById("stackBody");
+function closeStack(){smodStack.style.display="none";replayStop();selScales=null;redraw();}
 document.getElementById("modBtn").onclick=function(){modOn=!modOn;this.classList.toggle("on",modOn);
-  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn){smodStack.style.display="none";selP=null;redraw();}};
-document.getElementById("stackX").onclick=()=>{smodStack.style.display="none";replayStop();selP=null;redraw();};
-// draw each scale's value-area BOX on the chart (color-coded) when a session is selected
-function drawScaleBoxes(P){const ts=chart.timeScale();
-  const scales=[["#9a7cff",P.htf],["#4a9bff",{start:P.start,end:P.end,val:P.val,vah:P.vah,poc:P.poc}],["#e0a94a",P.base]];
-  for(const [c,s] of scales){if(!s)continue;
+  this.textContent=modOn?"on":"off";chartEl.style.cursor=modOn?"help":"";if(!modOn)closeStack();};
+document.getElementById("stackX").onclick=closeStack;
+// scale value-area BOXES (per scale, faint) + the trade LADDER (entry/stop/targets) on the chart
+function drawScaleBoxes(sc){const ts=chart.timeScale();
+  for(const [c,s] of [["#9a7cff",sc.htf],["#4a9bff",sc.session],["#e0a94a",sc.base]]){if(!s||s.start==null||s.vah==null)continue;
     const x0=ts.timeToCoordinate(s.start),x1=ts.timeToCoordinate(s.end),yv=candle.priceToCoordinate(s.vah),yl=candle.priceToCoordinate(s.val);
     if(x0==null||x1==null||yv==null||yl==null)continue;
     const r=document.createElementNS(NSV,"rect");
     r.setAttribute("x",Math.min(x0,x1));r.setAttribute("y",Math.min(yv,yl));
     r.setAttribute("width",Math.max(1,Math.abs(x1-x0)));r.setAttribute("height",Math.max(1,Math.abs(yl-yv)));
-    r.setAttribute("fill",c);r.setAttribute("fill-opacity","0.05");r.setAttribute("stroke",c);
-    r.setAttribute("stroke-width","1.2");r.setAttribute("stroke-opacity","0.85");vpsvg.appendChild(r);
-    const yp=candle.priceToCoordinate(s.poc);if(yp!=null)vpsvg.appendChild(_ln(Math.min(x0,x1),yp,Math.max(x0,x1),yp,c,1,0.75));}
+    r.setAttribute("fill",c);r.setAttribute("fill-opacity","0.04");r.setAttribute("stroke",c);
+    r.setAttribute("stroke-width","1");r.setAttribute("stroke-opacity","0.55");vpsvg.appendChild(r);}
 }
+function drawLadder(sc){const lad=sc.ladder, base=sc.base;if(!lad||!base||base.high==null)return;
+  const box=chartEl.getBoundingClientRect();
+  const line=(price,col,dash,lab)=>{const y=candle.priceToCoordinate(price);if(y==null)return;
+    vpsvg.appendChild(_ln(2,y,box.width,y,col,1.1,0.9,dash));
+    const t=document.createElementNS(NSV,"text");t.setAttribute("x",6);t.setAttribute("y",y-2.5);
+    t.setAttribute("fill",col);t.setAttribute("font-size","9.5");t.textContent=lab;vpsvg.appendChild(t);};
+  line(base.high,"#f0b000","5 3","entry-up / stop-dn  "+base.high.toFixed(0));   // coil bracket
+  line(base.low,"#f0b000","5 3","entry-dn / stop-up  "+base.low.toFixed(0));
+  for(const t of lad.up.targets)line(t.level,"#2ebd85","","TP up  "+t.src+"  "+t.rr+"R");
+  for(const t of lad.down.targets)line(t.level,"#f6465d","","TP dn  "+t.src+"  "+t.rr+"R");}
 function _profAt(t){return (M.profiles||[]).find(P=>t>=P.start&&t<=P.end&&P.bins&&P.bins.length);}
 function fmtET(t){return _t12(t)+" "+new Date(t*1000).toLocaleDateString("en-US",{..._TZ,month:"short",day:"numeric"});}
 function fmtDur(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m`;}
@@ -407,14 +416,20 @@ function renderStack(P,rp){
   if(rp){const bw=computeBase(scs); if(bw&&bw.length>=3){bp=computeProfile(bw); if(bp){bcs=bw;bm=_meta(P,bw);}}}
   else if(P.base){bp=P.base;bcs=sess.filter(c=>c.time>=P.base.start&&c.time<=P.base.end);bm=_meta(P,bcs);}
   if(bp&&bcs&&bcs.length)html+=cardHTML(bm,bp,bcs,"base",{});
-  if(!rp&&P.ladder)html+=ladderCard(P);          // multi-scale R:R geometry (static; skipped in replay)
+  const lad=bp?computeLadder({base:bp,session:sp,htf:P.htf}):null;   // recomputes live in replay
+  if(lad)html+=ladderCard(lad);
+  selScales={htf:P.htf,
+    session:{val:sp.val,vah:sp.vah,poc:sp.poc,start:scs[0].time,end:scs[scs.length-1].time},
+    base:bp?{val:bp.val,vah:bp.vah,poc:bp.poc,high:bp.high,low:bp.low,
+      start:(bcs&&bcs.length?bcs[0].time:P.start),end:(bcs&&bcs.length?bcs[bcs.length-1].time:P.end)}:null,
+    ladder:lad};
   stackBody.innerHTML=html;
   const cb=stackBody.querySelector('[data-act="chat"]');if(cb)cb.onclick=()=>addToChat(P);
   const rb=stackBody.querySelector('[data-act="replay"]');if(rb)rb.onclick=()=>replayStart(P);
   document.getElementById("stackSid").innerHTML=`${P.session} &middot; ${P.date}`;
   smodStack.style.display="flex";
 }
-function ladderCard(P){const L=P.ladder;
+function ladderCard(L){
   const rung=t=>`<div class="lr"><span>${t.src}</span><b>${t.level}</b><b class="rr">${t.rr}R</b></div>`;
   const side=(d,col,lab)=>`<div class="lcol"><div class="lttl" style="color:${col}">${lab} &middot; stop ${d.stop}</div>`
     +(d.targets.length?d.targets.map(rung).join(""):'<div class="lr"><span>no rung</span><b></b></div>')+'</div>';
@@ -423,7 +438,7 @@ function ladderCard(P){const L=P.ladder;
       <b>1R = ${L.risk_pts} pt</b><span class="mut">base = stop &middot; larger scales = targets</span></div>
     <div class="lgrid">${side(L.up,"#2ebd85","UP break")}${side(L.down,"#f6465d","DOWN break")}</div></div>`;
 }
-function openModule(P){replayStop();selP=P;renderStack(P,null);redraw();}
+function openModule(P){replayStop();renderStack(P,null);redraw();}
 // ---- causal recompute (JS port of volume_profile / shape_filter / zone_calibration) ----
 function computeProfile(bars){
   if(bars.length<2)return null;
@@ -451,6 +466,16 @@ function computeProfile(bars){
 const GT=(C.gates&&C.gates.SHAPE)||{weights:{tight:.4,peak:.3,single:.2,central:.1},tight_peak:40,tight_hi:85,prom_den:2,single_2:.5,single_else:.15,shape_ok:50};
 const GZ=(C.gates&&C.gates.ZONE)||{rr_min:2,tf_bands:[[0.25,"1m"],[0.60,"5m"],[null,"15m"]]};
 const GB=(C.gates&&C.gates.BASE)||{band_mult:5,min_bars:8};
+const GL=(C.gates&&C.gates.LADDER)||{stop:"base_range",min_rr:0.5,sources:["session","htf"]};
+// multi-scale R:R geometry (JS port of target_ladder.ladder) -- recomputes live in replay
+function computeLadder(sc){const base=sc.base;if(!base||base.high==null)return null;
+  const R=base.high-base.low;if(R<=0)return null;const LV=[["VAH","vah"],["VAL","val"],["POC","poc"],["high","high"],["low","low"]];
+  const cand=[];for(const nm of (GL.sources||["session","htf"])){const p=sc[nm];if(!p)continue;
+    for(const [lab,k] of LV)if(p[k]!=null)cand.push([nm+" "+lab,p[k]]);}
+  const side=(entry,stop,keep)=>{const tg=[];for(const [lab,lv] of cand){if(keep(lv)){const rr=Math.round(Math.abs(lv-entry)/R*100)/100;
+    if(rr>=(GL.min_rr||0.5))tg.push({src:lab,level:Math.round(lv*100)/100,rr});}}tg.sort((a,b)=>a.rr-b.rr);
+    return{entry:Math.round(entry*100)/100,stop:Math.round(stop*100)/100,targets:tg};};
+  return{risk_pts:Math.round(R*10)/10,up:side(base.high,base.low,lv=>lv>base.high),down:side(base.low,base.high,lv=>lv<base.low)};}
 function computeShape(p){const bins=p.bins;if(bins.length<3)return{};
   const v=bins.map(b=>b.v),total=v.reduce((a,b)=>a+b,0),pocv=Math.max(...v),meanv=total/v.length;
   const vav=bins.filter(b=>b.va).map(b=>b.v),vam=vav.length?vav.reduce((a,b)=>a+b,0)/vav.length:meanv;
@@ -494,7 +519,7 @@ function replayRender(){const bb=RP.bars[RP.k-1],tlab=bb?_t12(bb.time):"";
   const pl=document.getElementById("rpPlay");if(pl)pl.onclick=replayToggle;
   const sc=document.getElementById("rpScrub");if(sc)sc.oninput=()=>{RP.k=+sc.value;replayRender();};
   const sp=document.getElementById("rpSpeed");if(sp){sp.value=RP.speed;sp.onchange=()=>{RP.speed=+sp.value;if(RP.playing){replayPause();replayPlay();}};}
-  drawNow();}
+  redraw();}   // redraw so the boxes + trade ladder recompute live with the bar
 function replayGo(cmd){if(cmd==="start")RP.k=Math.min(RP.N,5);else if(cmd==="back")RP.k=Math.max(3,RP.k-1);
   else if(cmd==="fwd")RP.k=Math.min(RP.N,RP.k+1);else if(cmd==="end")RP.k=RP.N;replayRender();}
 function replayToggle(){RP.playing?replayPause():replayPlay();}

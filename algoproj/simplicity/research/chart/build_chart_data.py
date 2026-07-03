@@ -100,7 +100,8 @@ def main():
             "point_value": cfg.POINT_VALUE, "tick": cfg.TICK,
             "commission_per_side": cfg.COMMISSION_PER_SIDE, "slippage_ticks": cfg.SLIPPAGE_TICKS,
             # gate params injected so the chart's JS recompute (replay/scoring) stays in sync with config
-            "gates": {"SHAPE": cfg.SHAPE, "ZONE": cfg.ZONE, "BASE": cfg.BASE, "HTF": cfg.HTF, "PROFILE": cfg.PROFILE},
+            "gates": {"SHAPE": cfg.SHAPE, "ZONE": cfg.ZONE, "BASE": cfg.BASE, "HTF": cfg.HTF,
+                      "PROFILE": cfg.PROFILE, "LADDER": cfg.LADDER},
         },
         # per-config: what its vol-day overlay selects + its distinguishing knobs
         "configs": {
