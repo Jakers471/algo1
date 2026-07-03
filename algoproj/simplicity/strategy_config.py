@@ -27,11 +27,12 @@ import os
 ERA_START_YEAR = 2015            # [WIRED] drop the calm 2005-2014 decade (recent HV ~2x). 2005 = use all.
 
 # --- WHEN to trade ------------------------------------------------------------------
-# [SENSOR] these are computed + drawn, but the backtest currently trades ALL sessions —
-# they only start gating once setup_arm reads them. Each toggles independently (ANDed).
-FILTER_SESSION = {"on": True,  "allow": ["newyork"]}                  # ET sessions (keys of SESSIONS)
-FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]}  # ET hours-of-day
-FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                  # daily vol-regime gate (optional)
+# FILTER_SESSION["allow"] = the session OPENS we trade. We SCAN a session's coil and trade the breakout at
+# the NEXT session's open, so setup_arm arms a coil only if its NEXT session is in `allow`
+# (asia->london open, london->newyork open). Default = the two liquid opens. [WIRED via setup_arm]
+FILTER_SESSION = {"on": True,  "allow": ["london", "newyork"]}        # OPENS we trade (coil's NEXT session)
+FILTER_HOUR    = {"on": False, "allow": [9, 10, 11, 12, 13, 14, 15]}  # ET hours-of-day [SENSOR — not wired]
+FILTER_DAY_VOL = {"on": False, "regimes": ["high"]}                  # daily vol-regime gate [SENSOR — not wired]
 
 # --- the two GATE THRESHOLDS setup_arm will arm on ----------------------------------
 # [SENSOR] surfaced here so you tune selectivity in one place. They flow into SHAPE/ZONE below.

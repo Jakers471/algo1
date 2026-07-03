@@ -29,17 +29,25 @@ import zone_calibration as zc      # engine/gates/zone_calibration (promoted)
 DESCRIBE = "confluence ARM gate: session AND shape_ok AND rr_min (arm-once)"
 
 
+def _next_session(sess, cfg):
+    """The session that OPENS after `sess` (cycle asia->london->newyork->close->asia)."""
+    order = list(getattr(cfg, "SESSIONS", {}).keys())
+    return order[(order.index(sess) + 1) % len(order)] if sess in order else None
+
+
 def decide(base, session=None, htf=None, cfg=cfg):
-    """Return (armed, reasons). ARM only if EVERY enabled gate passes. base = the coil profile dict."""
+    """Return (armed, reasons). ARM only if EVERY enabled gate passes. base = the coil profile dict.
+    We scan a session and trade the NEXT session's OPEN -> the session gate checks the coil's next session."""
     g = {}
+    nxt = _next_session(base.get("session"), cfg)
     fs = getattr(cfg, "FILTER_SESSION", {"on": False})
     if fs.get("on"):
-        g["session"] = base.get("session") in fs.get("allow", [])
+        g["session"] = nxt in fs.get("allow", [])
     sh = sf.score(base) or {}
     g["shape"] = bool(sh.get("shape_ok"))
     zn = zc.calibrate(base) or {}
     g["rr"] = bool(zn.get("rr_ok"))
-    return all(g.values()), {"gates": g, "shape_score": sh.get("shape_score"), "rr": zn.get("rr")}
+    return all(g.values()), {"gates": g, "shape_score": sh.get("shape_score"), "rr": zn.get("rr"), "trade_open": nxt}
 
 
 def check():

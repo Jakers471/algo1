@@ -130,6 +130,15 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   one-line gate in `run_backtest.py`, toggled by `SIMP_ARM=1` env or `SETUP["on"]` (default off = base rate). First
   gated run: win 29.6%→**43.3%** but expectancy flat (68% time-outs → the **EXIT** is now the constraint, not entry).
   TODO v2: continuous DISARM (re-check mid-window) + multi-scale confluence (read session/htf, not just the coil).
+- `[~]` **FULL STRATEGY SPEC + fixes (NOTES F42)** — clarified with the user: scan EVERY session for a coil, rest
+  OCO stops ~15min before the NEXT session opens, trade that open's breakout (asia→london, london→NY), and while
+  IN a trade keep scanning for a new coil to PYRAMID a same-direction add-on. Build order:
+  - `[R]` **#2 trade the NEXT session's open** — `setup_arm` now gates on the coil's next session (`_next_session`);
+    `FILTER_SESSION.allow` = the OPENS we trade (`["london","newyork"]`). Fixed the old NY-coil→close-open mistake.
+    Result: 1,817 trades, 35.3% win, +0.013R, PF 1.02, time-outs 639→64; london→NY +0.056R, asia→london −0.045R.
+  - `[ ]` **#1 arm 15 min BEFORE the open** — finalize the coil that early (base_profile lead) + place then (causal).
+  - `[ ]` **#3 per-session-search replay** — show every session's coil detect + qualify/reject across the day.
+  - `[ ]` **#4 pyramiding** — same-direction add-on when a new coil forms mid-trade (multi-entry backtest).
 - `[ ]` Causality rule enforced: components only see bars ≤ now (no look-ahead) — same code live + backtest
 
 ## Phase 6 — Entry & exit mechanics (the substance — R:R geometry, not prediction)

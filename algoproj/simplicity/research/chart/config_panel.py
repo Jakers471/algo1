@@ -23,7 +23,7 @@ def panel(cfg):
     return [
         {"title": "Control panel — the decisions", "items": [
             _it("era start", cfg.ERA_START_YEAR, "wired"),
-            _it("session filter", ("on: " + ",".join(fs["allow"])) if fs["on"] else "off", "sensor"),
+            _it("trade opens (next-session)", ("on: " + ",".join(fs["allow"])) if fs["on"] else "off", "wired" if fs["on"] else "sensor"),
             _it("hour filter", "on" if fh["on"] else "off", "sensor"),
             _it("day-vol filter", (",".join(fd["regimes"])) if fd["on"] else "off", "sensor"),
             _it("gate · shape_ok", cfg.GATE_SHAPE_OK, "sensor"),

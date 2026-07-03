@@ -795,3 +795,28 @@ gate params in `config.gates`) — so shape/VA%/prominence/peaks/R:R EVOLVE as i
 RESTING (both breakout-stop orders drawn at the coil edges) → the fill fires → trailing manages → EXIT. The
 state panel shows the phase (FORMING/RESTING/IN-TRADE·pre-arm/trailing/EXIT). Press |< or play to replay from
 the forming phase; play restarts from the top. = "watch the setup actually happen", the full-execution replay.
+
+### F42 — the FULL strategy spec (clarified with the user) + fix #1: trade the NEXT session's open (2026-07-03)
+The user spelled out the original design; confirmed it IS what we're building. **THE SPEC:**
+1. In EVERY session, measure coil strength — is there a clean consolidation? (base_profile + shape_filter).
+2. ~15 min BEFORE the next session opens, if the range qualifies, rest STOP orders above AND below it (OCO).
+3. **We scan a session and trade the NEXT session's OPEN** — scan asia → trade the london open; scan london →
+   trade the NY open. Only the liquid opens (london, newyork). Breakout one way at the open + continuation.
+4. While IN a trade, keep scanning the new session for ANOTHER coil (same detection). If one forms + qualifies,
+   add ANOTHER resting stop but ONLY in the direction of the trade we're in (short→sell, long→buy). Manage same.
+This is a continuous, session-by-session BREAKOUT-and-PYRAMID engine.
+
+**Alignment audit (what's built vs missing):** coil detect + score ✅ · qualify (shape+rr) ✅ · rest both sides
+OCO ✅ · breakout+continuation ✅. GAPS: (#1 timing) we armed AT the session boundary, not 15 min before;
+(#2 which open) the session gate checked the COIL's session (NY-only) = trading the illiquid CLOSE open —
+backwards from intent; (#3) no per-session-search view in the replay; (#4) NO pyramiding (one trade per coil).
+
+**FIX #2 shipped (this session):** `setup_arm` now checks the coil's **NEXT** session (via `_next_session`,
+cycle asia→london→newyork→close→asia); `FILTER_SESSION["allow"]` re-meant to = **the OPENS we trade** (default
+`["london","newyork"]`). So we now arm asia coils (→london open) + london coils (→NY open), which is the spec.
+RESULT (era≥2015, trailing, gated): **1,817 trades, 35.3% win, +0.013R, PF 1.02, DD 70R.** The tell: TIME-exits
+collapsed **639 → 64** — trading the LIQUID opens, breakouts resolve (target/stop) instead of timing out at the
+old illiquid close open. Per-open edge: **london→NY open = +0.056R (the edge)**, asia→london open = −0.045R
+(a drag). So `allow:["newyork"]` isolates the good half (scan london, trade the NY open). Honest, and it
+matches the intuition that the NY open is the money window. NEXT (queued, in order): #1 arm 15 min before the
+open (needs base_profile to finalize the coil that early — causal), #3 per-session-search replay, #4 pyramiding.
