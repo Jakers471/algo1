@@ -78,6 +78,11 @@ button:hover:not(:disabled):not(.on){border-color:var(--acc)}
 .statepanel .sr{display:flex;justify-content:space-between;gap:10px;padding:1.5px 0}
 .statepanel .sr span{color:var(--mut)}.statepanel .sr b{font-weight:600}
 .gpill{display:inline-block;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:700;margin:1px 3px 0 0;border:1px solid}
+.armblk{margin-top:11px;padding:9px 11px;background:rgba(46,189,133,.06);border:1px solid rgba(46,189,133,.25);border-radius:9px}
+.armblk.none{background:rgba(255,255,255,.03);border-color:var(--ring)}
+.armh{font-size:11px;font-weight:700;letter-spacing:.3px;margin-bottom:6px}
+.armblk .ar{display:flex;justify-content:space-between;gap:8px;padding:2.5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)}
+.armblk .ar span{color:var(--mut)}.armblk .ar b{font-variant-numeric:tabular-nums}
 </style></head><body>
 <div class="top">
   <h1>simplicity <span>trade replay</span></h1>
@@ -254,6 +259,19 @@ function renderStack(tr,nowT){
 }
 
 // ---- trade stats panel ----
+// the "why this trade was VALID" block — the setup_arm gates that confirmed it (always visible in the sidebar)
+function armBlock(tr){
+  const G=CFG.gates||{}, sok=(G.SHAPE&&G.SHAPE.shape_ok), rmin=(G.ZONE&&G.ZONE.rr_min);
+  if(!tr.armed||!tr.arm) return `<div class="armblk none"><div class="armh">unconditional — no gate (base rate)</div></div>`;
+  const g=tr.arm, col=v=>v?"#2ebd85":"#e66767", mk=v=>v?"✓":"✗";
+  let rows="";
+  if("session"in g)rows+=`<div class="ar"><span>session filter</span><b style="color:${col(g.session)}">${tr.session} ${mk(g.session)}</b></div>`;
+  rows+=`<div class="ar"><span>shape (clean)</span><b style="color:${col(g.shape)}">${tr.arm_shape} ≥ ${sok} ${mk(g.shape)}</b></div>`;
+  rows+=`<div class="ar"><span>R:R (geometry)</span><b style="color:${col(g.rr)}">${tr.arm_rr} ≥ ${rmin} ${mk(g.rr)}</b></div>`;
+  const all=Object.values(g).every(Boolean);
+  return `<div class="armblk"><div class="armh" style="color:${all?"#2ebd85":"#e0a94a"}">`
+    +`${all?"✓ CONFIRMED through setup_arm → order placed":"partial confluence"}</div>${rows}</div>`;
+}
 function renderStat(tr){
   const dirCol=tr.dir==="up"?"var(--up)":"var(--dn)", oc=tr.outcome;
   const ocCol=oc==="target"?"var(--up)":oc==="stop"?"var(--dn)":"var(--mut)";
@@ -268,7 +286,8 @@ function renderStat(tr){
       ${cell("entry",tr.entry,"var(--gold)")}${cell("stop (1R)",tr.stop,"var(--dn)")}
       ${cell("target",tr.target,"var(--up)")}${cell("risk",tr.risk_pts+" pt")}
       ${cell("outcome",oc,ocCol)}${cell("result",(tr.R>=0?"+":"")+tr.R+" R",rCol)}
-      ${cell("net",(tr.net_pts>=0?"+":"")+tr.net_pts+" pt",rCol)}${cell("entry ET",_t12(tr.t_entry))}</div>`;
+      ${cell("net",(tr.net_pts>=0?"+":"")+tr.net_pts+" pt",rCol)}${cell("entry ET",_t12(tr.t_entry))}</div>`
+    + armBlock(tr);
 }
 
 // ---- entry/stop/target axis lines + R-ladder bands (option 03) + entry/exit markers ----
