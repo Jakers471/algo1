@@ -127,31 +127,33 @@ LADDER = {"stop": "base_range", "min_rr": 0.5, "sources": ["session", "htf"]}
 # The strategy is a live, bar-by-bar range-breakout engine: a session-state spine + gates that
 # ARM/DISARM a setup on stacked confluence, resting orders before the next open, aggressive trail.
 # Not built yet -- slots reserved so the exact rules live here and nowhere else.
-SETUP = {                        # the confluence gates that must align to ARM a setup
+SETUP = {                        # the confluence gates that must align to ARM a setup  [TBD -- next]
     "gates": None,               # e.g. shape_ok, fib_bias, zone_size vs range, tightness, time_in/until
     "arm_rule": None,            # how the gates combine to arm
     "invalidate": None,          # what disarms + pulls the resting orders
 }
+# v1 TRADE RULES (used by backtest/; unconditional -- no setup_arm gating yet, we measure the base rate)
 ENTRY = {
-    "type": None,                # "breakout_stop" (beyond range) | "edge_fade" | both
-    "side": None,                # "long" | "short" | "both" (bias-gated by fib)
-    "resting": None,             # place resting orders before the next session opens
-    "entry_tf": None,            # smaller TF than the range's TF
-    "dca": None,                 # DCA into the range? (decide)
+    "type": "breakout_both",     # rest breakout-STOP orders on BOTH coil edges; OCO (first fill wins)
+    "entry_tf": "5m",
+    "entry_window_bars": 78,     # cancel the resting orders if no breakout within this many bars (~1 session)
+    "fill": "coil_edge",         # a resting STOP order fills at the COIL EDGE (+ slippage; a gap fills at the open)
+    "min_coil_pct": 0.05,        # skip noise: the coil height must be >= this % of price to be tradeable
 }
 EXIT = {
-    "stop": None,                # invalidation = range / value-area edge (1R)
-    "breakeven": None,           # move to BE after X
-    "trail": None,               # aggressive volume-based trailing
-    "target": None,              # R multiple / next level, if used
+    "stop": "coil_edge",         # 1R = the base coil (the other edge)
+    "target": "ladder_rung",     # take-profit = first target_ladder rung with R:R >= target_r
+    "target_r": 2.0,
+    "max_hold_bars": 156,        # time-stop: exit at market if neither hit (~2 sessions)
+    "same_bar": "stop_first",    # if stop & target hit in one bar, assume STOP (pessimistic / honest)
 }
 
 # ==================================================================================
 # RISK MANAGEMENT                                                              [TBD]
 # ==================================================================================
 RISK = {
-    "sizing": None,              # 'fixed' | 'risk_pct' (see algokit.sizing)
-    "risk_per_trade_pct": None,  # % of equity risked to the stop
+    "sizing": "risk_pct",        # fixed fractional: risk a set % of the account to the stop each trade
+    "risk_per_trade_pct": 1.0,   # % risked to the 1R stop per trade -> $ PnL = R x (pct% of start balance)
     "max_contracts": None,
     "max_concurrent": None,
 }

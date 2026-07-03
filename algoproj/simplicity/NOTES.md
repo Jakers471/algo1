@@ -528,3 +528,60 @@ project thesis (hunt asymmetry not direction, F13): right = big, wrong = 1R. Edg
 on NQ). TRAP to never make: turning "big room up" into "price will go up." Whether to rest one side or
 both, and which R:R qualifies, is a setup_arm/entry decision (deferred) -- the ladder only surfaces the
 asymmetry.
+
+### F28 — debugging discipline: fix the bug because it's WRONG, not because it looks better (2026-07-02)
+User's rule (hold forever, especially staring at a red equity curve): fix the MECHANICAL error (stop not
+applied, fill price wrong, sign flipped, roll-gap in back-adjusted data, R denominator tiny) because it's
+INCORRECT, then take whatever number falls out. Don't stop debugging the moment it turns positive; don't
+keep debugging past correctness just because you dislike the answer. The bug is done when the CODE IS RIGHT,
+not when the P&L is good -- different stopping conditions, easy to swap without noticing. Applied to the
+first backtest: entry-at-coil-edge (a resting stop fills at its level, not a runaway close) + R = actual
+entry-stop (not the coil proxy) + fixed-fractional $ (variable stops != 1 contract) were CORRECTNESS fixes;
+the min_coil_pct filter was flagged as a TRADING CHOICE (in config, logged), not a fix. Number taken as-is.
+
+### F29 — first backtest: UNCONDITIONAL base rate (SUPERSEDED by F30 — original numbers were a BUG) (2026-07-02)
+backtest/run_backtest.py -- honest sim of target_ladder trades (both-sided coil breakout, stop = coil edge
+= 1R, TP = first ladder rung >= 2R, time-stop 156 bars, honest fills, commission+slippage), era >= 2015,
+UNCONDITIONAL (no gating). **v1 reported 1,897 trades: win 24.9%, avg -0.170R, total -322.5R, PF 0.77, max
+DD 366R -- THESE NUMBERS ARE VOID (see F30).** The equity curve told on it: all the loss was a single CLIFF
+in the first ~250 trades, then flat-to-slightly-up for the remaining ~1,600. An edgeless strategy bleeds
+EVENLY across all trades; this bled once, early, then stopped -> the damage was localized to the start of
+the data = a bug, not the market. Corrected base rate + root cause in F30. NEXT unchanged: setup_arm ->
+re-run conditional -> does gating lift avg R / win% above ~33%?
+
+### F30 — the backtest CLIFF was an era/profile mismatch; corrected base rate ≈ BREAKEVEN (2026-07-03)
+Chased the F29 opening cliff (equity screenshot). Root cause, fully mechanical (F28 discipline -- fixed
+because it's WRONG): the backtest filters the PRICE BARS to era >= 2015 but never filtered the PROFILE set.
+base_profile.json holds all 12,050 sessions 2005-2025; **5,336 are pre-2015**. For each, `i0 =
+searchsorted(t, session_end, "right")` returns **0** (session_end predates the first era bar), so the trade
+enters at BAR 0 (2015-01-01, back-adjusted price ~7246) but with a 2005 coil's levels (high ~4727 / low
+~4713). The breakout check `h[0] >= H_` is then trivially true (instant fake entry), and risk = entry - stop
+= 7246 - 4713 ≈ **2533 points** -- the entire ~2500pt corrupt population. 305 such fake trades = **-294.7R of
+the -322.5R total.** FIX (one line, pure correctness guard): after computing i0, `if i0 <= 0 or i0 >= n:
+continue` -- skip any profile whose session falls outside the era-filtered bars.
+CORRECTED base rate (era >= 2015, unconditional, target >= 2R): **1,592 trades, win 29.6%, avg -0.017R,
+total -27.7R, PF 0.97, max DD 75.3R** (was 366R). Max risk_pts now 304 (was 3265), 99pct 151, zero trades
+> 500pt. Curve is now evenly distributed (trough -72R in Dec-2019, no opening cliff). By session:
+asia +0.005R (n778) / london -0.030R (n550) / ny -0.057R (n264). READ: raw multi-scale geometry, no quality
+gating, after costs = **essentially breakeven** (not the -0.17R disaster) -- exactly what honest ungated
+geometry should look like. The gate for gates is now small: lift 29.6% -> ~33%+ win. Logged to ledger
+(note=fix-era-profile-mismatch, git 2e7e82f6b). Lesson banked (F28): the EQUITY CURVE SHAPE is a debugger --
+front-loaded loss = localized data bug, not edge.
+
+### F31 — TRADE REPLAY page: step through each backtest trade + its outcome, with the 3 module cards (2026-07-03)
+Built a sibling of the main chart (`research/chart/trade_replay.html`) to step through the backtest's trades
+one-by-one on candles. ACCURACY PRINCIPLE (the whole point): the backtest is the SINGLE SOURCE OF TRUTH --
+`run_backtest.py` now exports `trades.json` with each trade's exact geometry (entry/stop/target/exit times +
+prices, coil hi/lo, dir, R, outcome); the page RENDERS that, never re-simulates (no JS drift). Pipeline:
+`run_backtest.py` (trades.json) -> `build_trades.py` (attaches the same 3-scale readings base⊂session⊂HTF +
+ladder, scored by the same gates, + a compact 5m bar slice per trade [setup session .. exit+pad] and a
+downsampled trailing-week HTF slice) -> `data/trades_data.js` -> `make_trade_replay.py` -> the page. On the
+page: browse prev/next/scrub/filter-by-outcome; entry(gold)/stop(red)/target(green)/coil(faint) price lines +
+entry & exit markers drawn from the sim; a gold "now" line you scrub bar-by-bar entry->exit showing
+mark-to-market R (FINAL R/outcome is the sim's, authoritative); and the SAME 3 module cards + target ladder
+the main chart shows (the setup context that armed the trade). SIZE: all ~1600 trades × full 5m lifecycle =
+~43MB (too heavy to inline), so build_trades caps to the most-recent N (default MAX_TRADES=300 -> 6.3MB;
+`0`=all) and stores bars as compact arrays [t,o,h,l,c,v] loaded via `<script src=trades_data.js>` (works on
+file://, unlike fetch). Verified end-to-end on real data (nav / filter / stepping / final-R = sim R). The
+user only wanted a practical recent slice, not the whole history at once. NEXT natural step: once setup_arm
+exists, this same page shows only the ARMED trades + the gate states that armed them.

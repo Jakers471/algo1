@@ -8,6 +8,8 @@ __pycache__/
 # generated chart artifacts (regenerate: build_chart_data.py + make_chart.py; lib/ is kept)
 /research/chart/data/
 /research/chart/chart.html
+# generated trade-replay page (regenerate: build_trades.py + make_trade_replay.py)
+/research/chart/trade_replay.html
 # generated strategy map (regenerate: build_map.py)
 /research/strategy_map/strategy_map.html
 /research/strategy_map/_mapcheck.png
@@ -35,3 +37,6 @@ __pycache__/
 
 # target-ladder output (regenerate: target_ladder.py)
 /research/setup/target_ladder/output/
+
+# backtest output (regenerate: run_backtest.py)
+/backtest/output/

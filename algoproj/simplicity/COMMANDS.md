@@ -56,6 +56,19 @@ Run from `algoproj/simplicity/` (that's what `simp` does). `py` = the 3.11 venv 
 | `py research/chart/build_chart_data.py` | cache ≤6000 bars/TF (NQ+ES) + bake profiles / base / scores for the chart |
 | `py research/chart/make_chart.py` | build the self-contained `chart.html` |
 
+## backtest
+| command | does |
+|---|---|
+| `py backtest/run_backtest.py` | honest sim of the target_ladder trades → equity dashboard + trades.csv + **trades.json (geometry)** + ledger row |
+| open `backtest/output/equity.html` | crisp equity curve + drawdown + R-distribution + by-session/outcome |
+
+## trade replay  (step through each backtest trade + its outcome, with the 3 module cards)
+| command | does |
+|---|---|
+| `py research/chart/build_trades.py [N]` | attach the 3-scale readings + a 5m bar slice to the most-recent **N** trades (default 300; `0`=all) → `data/trades_data.js` |
+| `py research/chart/make_trade_replay.py` | build the self-contained `trade_replay.html` (reads `trades_data.js`) |
+| open `research/chart/trade_replay.html` | browse trades (prev/next, scrubber, filter by outcome) · entry/stop/target/exit on chart · step bar-by-bar (running R) · base⊂session⊂HTF cards + ladder |
+
 ## engine
 | command | does |
 |---|---|

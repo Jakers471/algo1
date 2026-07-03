@@ -95,8 +95,19 @@ bars-so-far; causality is enforced by construction; setups arm/disarm on stacked
   moves; gold "now" line on the chart. **Pending (gates first):** the **modular state panel** on this same
   card — live hi/lo, fib bias, gate strengths, ARM/DISARM + the validation/invalidation that flipped it —
   layers on once `setup_arm` etc. exist. The engine's visual frontend = the backtest unfolding — `research/chart`
-- `[ ]` Trades on the chart — BUY/SELL markers showing exactly where trades were taken
-- `[ ]` Equity curve (+ drawdown)
+- `[R]` **Trades on the chart — TRADE REPLAY page** (`research/chart/trade_replay.html`, built by
+  `build_trades.py` + `make_trade_replay.py`) — step through each backtest trade & its outcome: entry/stop/
+  target/exit drawn from the sim's own geometry (`backtest/output/trades.json` = source of truth), entry &
+  exit markers, bar-by-bar "now" line with running mark-to-market R, and the SAME 3 module cards
+  (base⊂session⊂HTF) + target ladder the main chart shows. Browse prev/next, scrub, filter by outcome.
+  Caps to the most-recent N trades (default 300, config `MAX_TRADES`; `0`=all) to stay light. (NOTES F31)
+- `[R]` **Backtest engine BUILT** (`backtest/run_backtest.py`) — honest sim of the target_ladder trades
+  (coil-edge fills, 1R=coil, TP=ladder rung, time-stop, costs, no look-ahead); crisp HTML equity dashboard
+  (curve+drawdown+R-dist+breakdowns). **UNCONDITIONAL base rate ≈ BREAKEVEN** (1,592 trades, 29.6% win,
+  -0.017R, PF 0.97, max DD 75R) after fixing the era/profile mismatch bug (F30; v1's -0.170R/-322R cliff was
+  305 pre-era profiles entering at bar 0 vs a different price regime). The number `setup_arm` must beat with
+  lift: 29.6% → ~33%+ win. (NOTES F28/F29/F30)
+- `[R]` Equity curve (+ drawdown) — in the backtest HTML dashboard
 - `[ ]` Walk-forward testing with detailed WF labeling (train/test folds, anchored)
 - **Prior art (don't reinvent):** you already built all of this in `algoproj/webui` (Flask+PyWebView+ECharts:
   Analyzer/Runs/Strategies/WFO; `/api/run/chart` = candles+BUY/SELL markers, `/api/run/equity` = equity+DD,
