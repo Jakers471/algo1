@@ -1,0 +1,167 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>simplicity — flow editor</title>
+<style>
+:root{--bg:#0d0d0d;--panel:#161b22;--panel2:#1b2028;--ring:rgba(255,255,255,.12);--ink:#e6edf3;--mut:#8a94a6}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;
+display:flex;flex-direction:column;overflow:hidden}
+.top{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--ring);flex-wrap:wrap;z-index:10}
+.top h1{font-size:15px;margin:0;font-weight:660}.top h1 span{color:var(--mut);font-weight:400}
+.top .hint{color:var(--mut);font-size:11.5px}
+.sp{margin-left:auto;display:flex;gap:6px}
+button{background:var(--panel2);border:1px solid var(--ring);color:var(--ink);font:inherit;font-size:12px;
+padding:5px 11px;border-radius:7px;cursor:pointer}button:hover{border-color:#4a9eff}
+button.warm{border-color:rgba(246,70,93,.5);color:#f6b3bd}
+.legend{display:flex;gap:12px;flex-wrap:wrap;padding:6px 14px;border-bottom:1px solid var(--ring);font-size:11px;color:var(--mut)}
+.lg{display:flex;align-items:center;gap:5px}.lg i{width:10px;height:10px;border-radius:3px}
+.stage{position:relative;flex:1;overflow:auto;background:
+radial-gradient(circle at 1px 1px,rgba(255,255,255,.05) 1px,transparent 0) 0 0/26px 26px}
+.canvas{position:relative;width:2600px;height:1600px}
+svg.edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+svg.edges path.hit{pointer-events:stroke;cursor:pointer}
+.node{position:absolute;width:196px;background:var(--panel);border:1px solid var(--ring);border-left:4px solid #888;
+border-radius:9px;padding:8px 11px 9px;z-index:2;box-shadow:0 3px 12px rgba(0,0,0,.35);user-select:none}
+.node.sel{outline:2px solid #4a9eff;outline-offset:1px}
+.node .nh{font-size:12.5px;font-weight:660;cursor:grab;display:flex;align-items:center;gap:6px}
+.node .nh .gd{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.node .ns{color:var(--mut);font-size:11px;margin:2px 0 5px}
+.node .nk{font:10px ui-monospace,Menlo,monospace;color:#9fb0c2;background:rgba(255,255,255,.04);
+border-radius:4px;padding:2px 5px;word-break:break-word}
+.port{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--panel2);border:2px solid #5a6472;
+top:calc(50% - 6px);cursor:crosshair;z-index:3}
+.port:hover{background:#4a9eff;border-color:#4a9eff}
+.port.in{left:-8px}.port.out{right:-8px}
+.port.out{border-color:#2ebd85}
+#tip{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--ring);
+border-radius:8px;padding:6px 12px;font-size:11.5px;color:var(--mut);z-index:20}
+</style></head><body>
+<div class="top">
+  <h1>simplicity <span>— flow editor</span></h1>
+  <span class="hint">drag a node by its title · drag the green port → another node's grey port to connect · click a line to cut it</span>
+  <div class="sp">
+    <button id="export">⬇ export flow.json</button>
+    <button id="import">⬆ import</button>
+    <button id="tidy">tidy columns</button>
+    <button id="clearEdges" class="warm">clear links</button>
+    <button id="reset" class="warm">reset</button>
+    <input id="file" type="file" accept="application/json" style="display:none">
+  </div>
+</div>
+<div class="legend" id="legend"></div>
+<div class="stage" id="stage"><div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div></div>
+<div id="tip">Tip: your layout auto-saves. Export when you want me to look at it.</div>
+<script>
+const DEF=[{"id": "active_filter", "name": "active filter", "sub": "vol-day variant", "group": "run", "knob": "research_config.ACTIVE_FILTER = high"}, {"id": "starting_balance", "name": "starting balance", "sub": "account size", "group": "run", "knob": "$100,000"}, {"id": "date_window", "name": "date window", "sub": "limit the run", "group": "run", "knob": "BACKTEST_START/END"}, {"id": "replay_size", "name": "replay size", "sub": "trades exported", "group": "run", "knob": "MAX_REPLAY_TRADES = 300"}, {"id": "data_feed", "name": "data_feed", "sub": "clean bars in", "group": "data", "knob": "TF_SOURCES \u00b7 DATA_DIR"}, {"id": "era", "name": "era cutoff", "sub": "drop 2005-2014", "group": "data", "knob": "ERA_START_YEAR = 2015"}, {"id": "sessions", "name": "sessions", "sub": "ET boundaries", "group": "data", "knob": "SESSIONS (4)"}, {"id": "session_filter", "name": "session filter", "sub": "trade chosen sessions", "group": "when", "knob": "FILTER_SESSION (on: newyork)"}, {"id": "hour_filter", "name": "hour filter", "sub": "ET hours-of-day", "group": "when", "knob": "FILTER_HOUR (off)"}, {"id": "dayvol_filter", "name": "day-vol regime", "sub": "high/med/low day", "group": "when", "knob": "FILTER_DAY_VOL (off)"}, {"id": "news_filter", "name": "news filter", "sub": "\u00b130m red-folder news", "group": "when", "knob": "F33 \u2014 unbuilt"}, {"id": "base_profile", "name": "base_profile", "sub": "the coil (LTF)", "group": "structure", "knob": "BASE {band_mult, min_bars}"}, {"id": "volume_profile", "name": "volume_profile", "sub": "session range (MTF)", "group": "structure", "knob": "PROFILE {row_size, va_pct}"}, {"id": "htf_profile", "name": "htf_profile", "sub": "week composite", "group": "structure", "knob": "HTF {days, bins}"}, {"id": "shape_filter", "name": "shape_filter", "sub": "clean vs foggy", "group": "quality", "knob": "SHAPE.shape_ok = 50"}, {"id": "zone_calibration", "name": "zone_calibration", "sub": "range dims \u2192 R:R + entry TF", "group": "quality", "knob": "ZONE.rr_min = 2.0"}, {"id": "fib_bias", "name": "fib_bias", "sub": "directional lean (in-context)", "group": "quality", "knob": "FIB.edges"}, {"id": "confluence", "name": "confluence", "sub": "base \u2282 session \u2282 HTF agree", "group": "quality", "knob": "unbuilt"}, {"id": "target_ladder", "name": "target_ladder", "sub": "multi-scale R:R geometry", "group": "quality", "knob": "LADDER {min_rr=0.5}"}, {"id": "setup_arm", "name": "setup_arm", "sub": "enabled gates \u2192 ARM / skip", "group": "setup", "knob": "SETUP {gates, arm_rule} \u2014 unbuilt"}, {"id": "entry", "name": "entry", "sub": "resting breakout bracket (OCO)", "group": "trade", "knob": "ENTRY.type = breakout_both"}, {"id": "stop", "name": "stop", "sub": "coil edge = 1R", "group": "trade", "knob": "EXIT.stop = coil_edge"}, {"id": "target", "name": "target", "sub": "fixed R | ladder rung", "group": "trade", "knob": "EXIT.target = ladder_rung (r=2.0)"}, {"id": "time_stop", "name": "time stop", "sub": "exit if neither hit", "group": "trade", "knob": "EXIT.max_hold_bars = 156"}, {"id": "risk_sizing", "name": "risk sizing", "sub": "%/trade to the stop", "group": "risk", "knob": "RISK.risk_per_trade_pct = 1.0%"}, {"id": "costs", "name": "costs", "sub": "commission + slippage", "group": "risk", "knob": "$2.25/side \u00b7 1 tick"}, {"id": "backtest", "name": "backtest", "sub": "honest sim \u2192 R per trade", "group": "measure", "knob": "run_backtest.py"}, {"id": "reports", "name": "reports", "sub": "equity + full breakdown", "group": "measure", "knob": "reports/<run_id>/"}, {"id": "ledger", "name": "run ledger", "sub": "every run's scorecard", "group": "measure", "knob": "runs.jsonl"}], GROUPS={"run": {"color": "#2ebd85", "label": "RUN"}, "data": {"color": "#6b8299", "label": "DATA"}, "when": {"color": "#e0a94a", "label": "WHEN \u2014 filters"}, "structure": {"color": "#199e70", "label": "WHERE \u2014 structure"}, "quality": {"color": "#9a7cff", "label": "QUALITY \u2014 gates"}, "setup": {"color": "#f6465d", "label": "setup_arm"}, "trade": {"color": "#f0b000", "label": "THE TRADE"}, "risk": {"color": "#8a94a6", "label": "RISK / EXEC"}, "measure": {"color": "#4a9eff", "label": "MEASURE"}}, KEY="simplicity_flow_v1";
+const canvas=document.getElementById("canvas"), edgesSvg=document.getElementById("edges");
+let state=load();
+
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.pos)return s;}catch(e){}
+  return {pos:tidyPos(), edges:[]};}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function tidyPos(){const cols={};let order=Object.keys(GROUPS);const pos={};
+  DEF.forEach(n=>{const gi=order.indexOf(n.group);cols[n.group]=(cols[n.group]||0);
+    pos[n.id]={x:40+gi*236,y:30+cols[n.group]*104};cols[n.group]++;});return pos;}
+
+document.getElementById("legend").innerHTML=Object.entries(GROUPS).map(([k,g])=>
+  `<span class="lg"><i style="background:${g.color}"></i>${g.label}</span>`).join("");
+
+// ---- render nodes ----
+function renderNodes(){
+  [...canvas.querySelectorAll(".node")].forEach(n=>n.remove());
+  DEF.forEach(n=>{
+    const p=state.pos[n.id]; if(!p)return;
+    const col=GROUPS[n.group].color;
+    const el=document.createElement("div");
+    el.className="node"; el.dataset.id=n.id; el.style.left=p.x+"px"; el.style.top=p.y+"px"; el.style.borderLeftColor=col;
+    el.innerHTML=`<div class="nh"><span class="gd" style="background:${col}"></span>${n.name}</div>
+      <div class="ns">${n.sub}</div><div class="nk">${n.knob}</div>
+      <div class="port in" data-port="in"></div><div class="port out" data-port="out"></div>`;
+    canvas.appendChild(el);
+  });
+}
+function portXY(id,side){const el=canvas.querySelector(`.node[data-id="${id}"]`);if(!el)return null;
+  const x=el.offsetLeft+(side==="out"?el.offsetWidth:0), y=el.offsetTop+el.offsetHeight/2;return {x,y};}
+function renderEdges(temp){
+  let paths="";
+  state.edges.forEach((e,i)=>{const a=portXY(e.from,"out"),b=portXY(e.to,"in");if(!a||!b)return;
+    const d=curve(a,b);
+    paths+=`<path d="${d}" fill="none" stroke="#4a9eff" stroke-width="2" opacity="0.8"/>`
+         + `<path class="hit" d="${d}" fill="none" stroke="transparent" stroke-width="12" data-edge="${i}"/>`;});
+  if(temp)paths+=`<path d="${curve(temp.a,temp.b)}" fill="none" stroke="#2ebd85" stroke-width="2" stroke-dasharray="5 4"/>`;
+  edgesSvg.innerHTML=paths;
+  edgesSvg.querySelectorAll("[data-edge]").forEach(p=>p.onclick=()=>{state.edges.splice(+p.dataset.edge,1);save();renderEdges();});
+}
+function curve(a,b){const dx=Math.max(40,Math.abs(b.x-a.x)*0.5);
+  return `M ${a.x} ${a.y} C ${a.x+dx} ${a.y}, ${b.x-dx} ${b.y}, ${b.x} ${b.y}`;}
+function render(){renderNodes();renderEdges();}
+render();
+
+// ---- interactions: drag node / draw edge / select ----
+let mode=null, dragId=null, dragOff=null, connFrom=null, sel=null;
+const stage=document.getElementById("stage");
+canvas.addEventListener("pointerdown",e=>{
+  const port=e.target.closest(".port"), node=e.target.closest(".node");
+  if(port&&node){
+    if(port.dataset.port==="out"){mode="conn";connFrom=node.dataset.id;e.preventDefault();}
+    return;
+  }
+  if(node&&e.target.closest(".nh")){
+    mode="drag";dragId=node.dataset.id;
+    dragOff={x:e.clientX-node.offsetLeft,y:e.clientY-node.offsetTop};
+    select(node.dataset.id);e.preventDefault();
+  } else if(!node){select(null);}
+});
+window.addEventListener("pointermove",e=>{
+  if(mode==="drag"&&dragId){
+    const x=Math.max(0,e.clientX-dragOff.x), y=Math.max(0,e.clientY-dragOff.y);
+    state.pos[dragId]={x,y};
+    const el=canvas.querySelector(`.node[data-id="${dragId}"]`);el.style.left=x+"px";el.style.top=y+"px";
+    renderEdges();
+  } else if(mode==="conn"&&connFrom){
+    const a=portXY(connFrom,"out");
+    const r=canvas.getBoundingClientRect();
+    renderEdges({a,b:{x:e.clientX-r.left,y:e.clientY-r.top}});
+  }
+});
+window.addEventListener("pointerup",e=>{
+  if(mode==="conn"&&connFrom){
+    const node=e.target.closest(".node");
+    if(node&&node.dataset.id!==connFrom){
+      const to=node.dataset.id;
+      if(!state.edges.some(x=>x.from===connFrom&&x.to===to)){state.edges.push({from:connFrom,to});}
+    }
+    connFrom=null;save();renderEdges();
+  }
+  if(mode==="drag")save();
+  mode=null;dragId=null;
+});
+function select(id){sel=id;canvas.querySelectorAll(".node").forEach(n=>n.classList.toggle("sel",n.dataset.id===id));}
+window.addEventListener("keydown",e=>{
+  if((e.key==="Delete"||e.key==="Backspace")&&sel){
+    state.edges=state.edges.filter(x=>x.from!==sel&&x.to!==sel);
+    delete state.pos[sel];sel=null;save();render();
+  }});
+
+// ---- toolbar ----
+document.getElementById("tidy").onclick=()=>{state.pos=tidyPos();save();render();};
+document.getElementById("clearEdges").onclick=()=>{if(confirm("Remove all links?")){state.edges=[];save();renderEdges();}};
+document.getElementById("reset").onclick=()=>{if(confirm("Reset layout AND links?")){state={pos:tidyPos(),edges:[]};save();render();}};
+document.getElementById("export").onclick=()=>{
+  const out={nodes:DEF.map(n=>({id:n.id,name:n.name,group:n.group,pos:state.pos[n.id]||null})),
+    edges:state.edges.map(e=>({from:e.from,to:e.to})),
+    order:orderFromEdges()};
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="flow.json";a.click();};
+document.getElementById("import").onclick=()=>document.getElementById("file").click();
+document.getElementById("file").onchange=function(){const f=this.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);
+    const pos={};(j.nodes||[]).forEach(n=>{if(n.pos)pos[n.id]=n.pos;});
+    state={pos:Object.keys(pos).length?pos:tidyPos(),edges:(j.edges||[])};save();render();}catch(e){alert("bad json");}};
+  r.readAsText(f);};
+// a readable linear order derived from the links (topological-ish; falls back to layout)
+function orderFromEdges(){const ins={},adj={};DEF.forEach(n=>{ins[n.id]=0;adj[n.id]=[];});
+  state.edges.forEach(e=>{if(adj[e.from]){adj[e.from].push(e.to);ins[e.to]++;}});
+  const q=DEF.map(n=>n.id).filter(id=>ins[id]===0),out=[];
+  while(q.length){const id=q.shift();out.push(id);(adj[id]||[]).forEach(t=>{if(--ins[t]===0)q.push(t);});}
+  return out.length===DEF.length?out:null;}
+</script></body></html>
