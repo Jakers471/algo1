@@ -144,34 +144,40 @@ def main():
             P["next_session"] = nxt["session"] if nxt else None
             P["next_open"] = nxt["start"] if nxt else None
             P["duration_sec"] = int(P["end"] - P["start"])
-        # base_profile companion (same dict shape, scored by the same gates) for module-vs-module compare
-        try:
-            base_list, _ = bpm.compute(tail=8000)
-            base_by = {b["sid"]: b for b in base_list}
+        # base_profile scale — OPT-IN: only load when strategy_config.BASE["on"] (else 5m session only)
+        if cfg.BASE.get("on"):
+            try:
+                base_list, _ = bpm.compute(tail=8000)
+                base_by = {b["sid"]: b for b in base_list}
+                for P in profiles:
+                    b = base_by.get(P["sid"])
+                    if b:
+                        b["shape"] = sf.score(b) or {}
+                        b["zone"] = zc.calibrate(b) or {}
+                        P["base"] = b
+            except Exception as e:
+                print("  base scale skipped:", e)
+        # htf_profile scale — OPT-IN: only load when strategy_config.HTF["on"]
+        if cfg.HTF.get("on"):
+            try:
+                htf_by = {h["sid"]: h for h in htfm.compute(since_ts=cut)}
+                for P in profiles:
+                    h = htf_by.get(P["sid"])
+                    if h:
+                        h["shape"] = sf.score(h) or {}
+                        h["zone"] = zc.calibrate(h) or {}
+                        P["htf"] = h
+            except Exception as e:
+                print("  htf scale skipped:", e)
+        # multi-scale target ladder — needs the base scale (1R = the coil); only when BASE is on
+        if cfg.BASE.get("on"):
             for P in profiles:
-                b = base_by.get(P["sid"])
-                if b:
-                    b["shape"] = sf.score(b) or {}
-                    b["zone"] = zc.calibrate(b) or {}
-                    P["base"] = b
-        except Exception as e:
-            print("  base companion skipped:", e)
-        # htf_profile companion (the third scale: trailing-week composite before session open)
-        try:
-            htf_by = {h["sid"]: h for h in htfm.compute(since_ts=cut)}
-            for P in profiles:
-                h = htf_by.get(P["sid"])
-                if h:
-                    h["shape"] = sf.score(h) or {}
-                    h["zone"] = zc.calibrate(h) or {}
-                    P["htf"] = h
-        except Exception as e:
-            print("  htf companion skipped:", e)
-        # multi-scale target ladder (R:R geometry) per session
-        for P in profiles:
-            L = tlm.ladder({"base": P.get("base"), "session": P, "htf": P.get("htf")})
-            if L:
-                P["ladder"] = L
+                L = tlm.ladder({"base": P.get("base"), "session": P, "htf": P.get("htf")})
+                if L:
+                    P["ladder"] = L
+        n_base = sum(1 for P in profiles if P.get("base")); n_htf = sum(1 for P in profiles if P.get("htf"))
+        print(f"  scales: session (5m) always · base {'ON ('+str(n_base)+')' if cfg.BASE.get('on') else 'off'}"
+              f" · htf {'ON ('+str(n_htf)+')' if cfg.HTF.get('on') else 'off'}")
     manifest["profiles"] = profiles
 
     json.dump(manifest, open(os.path.join(DATA, "manifest.json"), "w"))

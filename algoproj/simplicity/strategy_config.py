@@ -105,9 +105,11 @@ MIN_TRAIL_VOL = None             # optional hard floor (%) on trailing vol; None
 # module reads the SAME dicts -> identical behavior, clean promotion, nothing breaks. The
 # chart injects them into the manifest so replay/scoring stay in sync. Every run snapshots
 # them to the run ledger (research/runs). Tune HERE, re-run, compare in the ledger.
-PROFILE = {"row_size": 2.0, "va_pct": 0.70}          # volume_profile + base_profile binning
-BASE = {"band_mult": 5.0, "min_bars": 8}             # base detector (causal contraction scan)
-HTF = {"days": 7, "bins": 70, "min_bars": 200}       # trailing-week composite profiler
+PROFILE = {"row_size": 2.0, "va_pct": 0.70}          # volume_profile (the 5m SESSION dimension — always on)
+# --- extra SCALES beyond the 5m session profile. Each loads on the chart only when "on" (opt-in). ---
+# The session volume_profile is the base dimension; base (coil/LTF) + htf (composite) are wired in per config.
+BASE = {"on": False, "band_mult": 5.0, "min_bars": 8}          # the coil (LTF) — enable to add the base scale
+HTF  = {"on": False, "days": 7, "bins": 70, "min_bars": 200}   # trailing composite (HTF); days=14 => 2-week lookback
 SHAPE = {                                            # shape_filter "clean vs foggy" (NOTES F16/F17)
     "weights": {"tight": 0.40, "peak": 0.30, "single": 0.20, "central": 0.10},
     "tight_peak": 40.0, "tight_hi": 85.0,            # peaked tightness curve on va_pct (F16)

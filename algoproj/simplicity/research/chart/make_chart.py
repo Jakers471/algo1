@@ -166,7 +166,7 @@ padding:7px 14px;border-radius:7px;z-index:50;font-size:12px;box-shadow:0 4px 14
 const SERIES=__SERIES__, M=__MANIFEST__, C=M.config;
 const TFO=["1m","5m","15m","60m","1d"];
 const avail={};M.series.forEach(s=>{(avail[s.instrument]=avail[s.instrument]||{})[s.tf]=s;});
-let inst="NQ", tf="1d", shSess=false, shVol=false, cfgSel=M.default_config||"research";
+let inst="NQ", tf="5m", shSess=false, shVol=false, cfgSel=M.default_config||"research";  // 5m = the base dimension
 
 // ET, 12-hour (AM/PM) axis + crosshair -- display only, uses raw times underneath
 const _TZ={timeZone:C.clock};
@@ -413,7 +413,7 @@ function renderStack(P,rp){
   const sp=rp?(computeProfile(scs)||{high:P.high,low:P.low,poc:P.poc,val:P.val,vah:P.vah,bins:[],va_pct_of_range:0,height_pct:0,shape:{},zone:{},bars:scs.length}):P;
   html+=cardHTML(_meta(P,scs),sp,scs,"session",{isReplay:!!rp,replayControls:rp?rp.ctrls:''});
   let bp=null,bcs=null,bm=null;
-  if(rp){const bw=computeBase(scs); if(bw&&bw.length>=3){bp=computeProfile(bw); if(bp){bcs=bw;bm=_meta(P,bw);}}}
+  if(rp&&GB.on){const bw=computeBase(scs); if(bw&&bw.length>=3){bp=computeProfile(bw); if(bp){bcs=bw;bm=_meta(P,bw);}}}  // base scale opt-in
   else if(P.base){bp=P.base;bcs=sess.filter(c=>c.time>=P.base.start&&c.time<=P.base.end);bm=_meta(P,bcs);}
   if(bp&&bcs&&bcs.length)html+=cardHTML(bm,bp,bcs,"base",{});
   const lad=bp?computeLadder({base:bp,session:sp,htf:P.htf}):null;   // recomputes live in replay
